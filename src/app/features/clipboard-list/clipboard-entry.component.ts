@@ -47,17 +47,13 @@ import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
         <!-- Pin button -->
         <button
           hlmBtn variant="ghost" size="icon"
-          class="opacity-0 group-hover:opacity-100 transition-opacity"
-          [class.opacity-100]="selected() || entry().pinned"
-          [class]="entry().pinned
-            ? 'text-indigo-400 hover:text-indigo-300'
-            : 'text-zinc-600 hover:text-zinc-400'"
+          [class]="pinButtonClass()"
           title="Toggle pin (P)"
           (click)="$event.stopPropagation(); pin.emit()"
         >
           @if (entry().pinned) {
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z"/>
+              <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
             </svg>
           } @else {
             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -97,6 +93,15 @@ export class ClipboardEntryComponent {
     const e = this.entry();
     if (e.width && e.height) return `${e.width} × ${e.height}`;
     return null;
+  });
+
+  protected pinButtonClass = computed(() => {
+    const alwaysVisible = this.selected() || this.entry().pinned;
+    const visibility = alwaysVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100';
+    const color = this.entry().pinned
+      ? 'text-indigo-400 hover:text-indigo-300'
+      : 'text-zinc-600 hover:text-zinc-400';
+    return `${visibility} transition-opacity ${color}`;
   });
 }
 
