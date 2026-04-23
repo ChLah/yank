@@ -16,6 +16,7 @@ import { ClipboardService } from '../../core/services/clipboard.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
+import { HlmTabs, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs';
 
 type Tab    = 'recent' | 'pinned';
 type Filter = 'all' | 'text' | 'image';
@@ -23,7 +24,7 @@ type Filter = 'all' | 'text' | 'image';
 @Component({
   selector: 'app-clipboard-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ClipboardEntryComponent, RouterLink, HlmButton, HlmBadge],
+  imports: [ClipboardEntryComponent, RouterLink, HlmButton, HlmBadge, HlmTabs, HlmTabsList, HlmTabsTrigger],
   host: {
     '(keydown)': 'onKeyDown($event)',
     'tabindex': '0',
@@ -55,20 +56,17 @@ type Filter = 'all' | 'text' | 'image';
 
       <!-- Tab + filter row -->
       <div class="flex items-center justify-between px-3.5 shrink-0 bg-zinc-900/50 border-b border-zinc-800" style="height:34px">
-        <div class="flex items-center">
-          @for (tab of tabs; track tab.value) {
-            <button
-              class="text-[12px] font-medium px-0.5 mr-3 pb-px border-b-2 transition-colors flex items-center gap-1.5 h-full"
-              [class]="activeTab() === tab.value
-                ? 'border-indigo-500 text-zinc-200'
-                : 'border-transparent text-zinc-500 hover:text-zinc-400'"
-              (click)="setTab(tab.value)">
-              {{ tab.label }}
-              @if (tab.value === 'pinned' && pinnedCount() > 0) {
-                <span hlmBadge variant="secondary" class="text-[10px] h-4 min-w-0 px-1">{{ pinnedCount() }}</span>
-              }
-            </button>
-          }
+        <div hlmTabs [tab]="activeTab()" (tabActivated)="setTab($event)">
+          <div hlmTabsList variant="line" class="h-8 rounded-none bg-transparent p-0">
+            @for (tab of tabs; track tab.value) {
+              <button [hlmTabsTrigger]="tab.value" class="text-[12px] gap-1.5 px-1">
+                {{ tab.label }}
+                @if (tab.value === 'pinned' && pinnedCount() > 0) {
+                  <span hlmBadge variant="secondary" class="text-[10px] h-4 min-w-0 px-1">{{ pinnedCount() }}</span>
+                }
+              </button>
+            }
+          </div>
         </div>
         <div class="flex items-center gap-1">
           @for (f of filters; track f.value) {
@@ -265,8 +263,8 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     this.unlistenPopupShown?.();
   }
 
-  protected setTab(tab: Tab): void {
-    this.activeTab.set(tab);
+  protected setTab(tab: string): void {
+    this.activeTab.set(tab as Tab);
     this.selectedIndex.set(0);
   }
 
