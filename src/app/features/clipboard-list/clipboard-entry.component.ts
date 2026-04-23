@@ -49,10 +49,9 @@ import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
           hlmBtn variant="ghost" size="icon"
           class="opacity-0 group-hover:opacity-100 transition-opacity"
           [class.opacity-100]="selected() || entry().pinned"
-          [class.text-indigo-400]="entry().pinned"
-          [class.text-zinc-600]="!entry().pinned"
-          [class.hover:text-indigo-300]="entry().pinned"
-          [class.hover:text-zinc-400]="!entry().pinned"
+          [class]="entry().pinned
+            ? 'text-indigo-400 hover:text-indigo-300'
+            : 'text-zinc-600 hover:text-zinc-400'"
           title="Toggle pin (P)"
           (click)="$event.stopPropagation(); pin.emit()"
         >
