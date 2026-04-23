@@ -7,14 +7,20 @@ import {
 } from '@angular/core';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideBookmark, lucideImage, lucideX } from '@ng-icons/lucide';
+import { TranslatePipe } from '@ngx-translate/core';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
 
+interface TimeTranslation {
+  key: string;
+  params: Record<string, number>;
+}
+
 @Component({
   selector: 'app-clipboard-entry',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgIcon, HlmIcon, HlmButton],
+  imports: [NgIcon, HlmIcon, HlmButton, TranslatePipe],
   providers: [provideIcons({ lucideImage, lucideBookmark, lucideX })],
   template: `
     <div
@@ -31,7 +37,7 @@ import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
           }
         </div>
         <div class="flex-1 min-w-0 py-2">
-          <p class="text-[13px] font-medium text-zinc-300 leading-snug">Image</p>
+          <p class="text-[13px] font-medium text-zinc-300 leading-snug">{{ 'ENTRY.IMAGE' | translate }}</p>
           @if (imageDimensions()) {
             <p class="text-[11px] text-zinc-600 mt-0.5">{{ imageDimensions() }}</p>
           }
@@ -43,13 +49,15 @@ import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
       }
 
       <div class="flex items-center gap-1 shrink-0">
-        <span class="text-[11px] text-zinc-600 tabular-nums">{{ relativeTime() }}</span>
+        <span class="text-[11px] text-zinc-600 tabular-nums">
+          {{ relativeTimeTranslation().key | translate:relativeTimeTranslation().params }}
+        </span>
 
         <!-- Pin button -->
         <button
           hlmBtn variant="ghost" size="icon"
           [class]="pinButtonClass()"
-          title="Toggle pin (P)"
+          [title]="'ENTRY.TOGGLE_PIN' | translate"
           (click)="$event.stopPropagation(); pin.emit()"
         >
           <ng-icon hlm size="sm" name="lucideBookmark" />
@@ -60,7 +68,7 @@ import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
           hlmBtn variant="ghost" size="icon"
           class="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-700 hover:text-red-400 hover:bg-red-500/10"
           [class.opacity-100]="selected()"
-          title="Delete (Del)"
+          [title]="'ENTRY.DELETE' | translate"
           (click)="$event.stopPropagation(); delete.emit()"
         >
           <ng-icon hlm size="sm" name="lucideX" />
@@ -77,7 +85,9 @@ export class ClipboardEntryComponent {
   delete = output<void>();
   pin    = output<void>();
 
-  relativeTime = computed(() => formatRelativeTime(this.entry().lastUsedAt));
+  relativeTimeTranslation = computed<TimeTranslation>(() =>
+    buildRelativeTimeTranslation(this.entry().lastUsedAt)
+  );
 
   imageDimensions = computed(() => {
     const e = this.entry();
@@ -95,13 +105,13 @@ export class ClipboardEntryComponent {
   });
 }
 
-function formatRelativeTime(unixSeconds: number): string {
+function buildRelativeTimeTranslation(unixSeconds: number): TimeTranslation {
   const diffMs = Date.now() - unixSeconds * 1000;
   const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return 'just now';
+  if (diffSec < 60) return { key: 'ENTRY.TIME_JUST_NOW', params: {} };
   const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 60) return { key: 'ENTRY.TIME_MINUTES', params: { n: diffMin } };
   const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
-  return `${Math.floor(diffHr / 24)}d ago`;
+  if (diffHr < 24) return { key: 'ENTRY.TIME_HOURS', params: { n: diffHr } };
+  return { key: 'ENTRY.TIME_DAYS', params: { n: Math.floor(diffHr / 24) } };
 }
