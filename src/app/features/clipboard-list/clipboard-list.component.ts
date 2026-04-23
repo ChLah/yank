@@ -15,6 +15,9 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 
+type Tab    = 'recent' | 'pinned';
+type Filter = 'all' | 'text' | 'image';
+
 @Component({
   selector: 'app-clipboard-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,8 +38,8 @@ import { HlmBadge } from '@spartan-ng/helm/badge';
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">Clipboard</span>
-          @if (entries().length > 0) {
-            <span hlmBadge variant="secondary">{{ entries().length }}</span>
+          @if (allEntries().length > 0) {
+            <span hlmBadge variant="secondary">{{ allEntries().length }}</span>
           }
         </div>
         <a routerLink="/settings" class="p-1.5 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors">
@@ -46,6 +49,66 @@ import { HlmBadge } from '@spartan-ng/helm/badge';
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         </a>
+      </div>
+
+      <!-- Tab + filter row -->
+      <div class="flex items-center justify-between px-3.5 shrink-0 bg-zinc-900/50 border-b border-zinc-800" style="height:34px">
+        <div class="flex items-center">
+          @for (tab of tabs; track tab.value) {
+            <button
+              class="text-[12px] font-medium px-0.5 mr-3 pb-px border-b-2 transition-colors flex items-center gap-1.5 h-full"
+              [class]="activeTab() === tab.value
+                ? 'border-indigo-500 text-zinc-200'
+                : 'border-transparent text-zinc-500 hover:text-zinc-400'"
+              (click)="setTab(tab.value)">
+              {{ tab.label }}
+              @if (tab.value === 'pinned' && pinnedCount() > 0) {
+                <span hlmBadge variant="secondary" class="text-[10px] h-4 min-w-0 px-1">{{ pinnedCount() }}</span>
+              }
+            </button>
+          }
+        </div>
+        <div class="flex items-center gap-1">
+          @for (f of filters; track f.value) {
+            <button
+              class="text-[11px] px-2 py-0.5 rounded-full border transition-colors"
+              [class]="activeFilter() === f.value
+                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                : 'text-zinc-600 border-transparent hover:text-zinc-400'"
+              (click)="setFilter(f.value)">
+              {{ f.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Search bar (animated slide-in) -->
+      <div
+        class="overflow-hidden transition-all duration-150 ease-out shrink-0"
+        [class]="isSearching() ? 'max-h-10 opacity-100 border-b border-zinc-800' : 'max-h-0 opacity-0'">
+        <div class="flex items-center gap-2 px-3.5 h-9">
+          <svg class="w-3.5 h-3.5 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            #searchInput
+            type="text"
+            [value]="searchQuery()"
+            (input)="onSearchInput($event)"
+            placeholder="filter..."
+            class="flex-1 bg-transparent text-[13px] text-zinc-200 placeholder:text-zinc-600 outline-none"
+          />
+          @if (searchQuery()) {
+            <button
+              class="text-zinc-600 hover:text-zinc-400 transition-colors"
+              (click)="clearSearch()">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          }
+        </div>
       </div>
 
       <!-- Content -->
@@ -75,25 +138,40 @@ import { HlmBadge } from '@spartan-ng/helm/badge';
               Try again
             </button>
           </div>
-        } @else if (entries().length === 0) {
+        } @else if (filteredEntries().length === 0) {
           <div class="flex flex-col items-center justify-center h-full py-10 text-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center">
-              <svg class="w-5 h-5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
+              @if (activeTab() === 'pinned') {
+                <svg class="w-5 h-5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                </svg>
+              } @else {
+                <svg class="w-5 h-5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              }
             </div>
-            <p class="text-[13px] text-zinc-500">Nothing copied yet</p>
+            @if (activeTab() === 'pinned') {
+              <p class="text-[13px] text-zinc-500">No pinned items yet</p>
+              <p class="text-[11px] text-zinc-600">Select an entry and press P</p>
+            } @else if (searchQuery()) {
+              <p class="text-[13px] text-zinc-500">No matches for "{{ searchQuery() }}"</p>
+            } @else {
+              <p class="text-[13px] text-zinc-500">Nothing copied yet</p>
+            }
           </div>
         } @else {
           <div class="py-1">
-            @for (entry of entries(); track entry.id; let i = $index) {
+            @for (entry of filteredEntries(); track entry.id; let i = $index) {
               <div class="entry-item">
                 <app-clipboard-entry
                   [entry]="entry"
                   [selected]="selectedIndex() === i"
                   (select)="selectEntry(i)"
                   (delete)="deleteEntry(i)"
+                  (pin)="pinEntry(i)"
                 />
               </div>
             }
@@ -102,20 +180,27 @@ import { HlmBadge } from '@spartan-ng/helm/badge';
       </div>
 
       <!-- Footer -->
-      <div class="h-9 px-3.5 flex items-center gap-2.5 shrink-0 bg-zinc-900 border-t border-zinc-800">
-        <span class="flex items-center gap-1.5 text-[11px] text-zinc-600">
+      <div class="h-9 px-3.5 flex items-center gap-2 shrink-0 bg-zinc-900 border-t border-zinc-800">
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">↑↓</kbd>
-          navigate
+          nav
         </span>
-        <span class="flex items-center gap-1.5 text-[11px] text-zinc-600">
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">↵</kbd>
           paste
         </span>
-        <span class="flex items-center gap-1.5 text-[11px] text-zinc-600">
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">⌫</kbd>
-          delete
+          del
         </span>
-        <span class="flex items-center gap-1.5 text-[11px] text-zinc-600 ml-auto">
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600">
+          <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">P</kbd>
+          pin
+        </span>
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600 ml-auto">
+          type to search
+        </span>
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">Esc</kbd>
           close
         </span>
@@ -131,18 +216,55 @@ export class ClipboardListComponent implements OnInit {
   protected selectedIndex = signal(0);
   protected skeletons = Array(5);
 
-  protected entries = computed(() => this.clipboard.entries.value() ?? []);
+  protected activeTab    = signal<Tab>('recent');
+  protected activeFilter = signal<Filter>('all');
+  protected searchQuery  = signal('');
+  protected isSearching  = signal(false);
+
+  protected tabs = [
+    { label: 'Recent', value: 'recent' as Tab },
+    { label: 'Pinned', value: 'pinned' as Tab },
+  ];
+
+  protected filters = [
+    { label: 'All',   value: 'all'   as Filter },
+    { label: 'Text',  value: 'text'  as Filter },
+    { label: 'Image', value: 'image' as Filter },
+  ];
+
+  protected allEntries = computed(() => this.clipboard.entries.value() ?? []);
+
+  protected pinnedCount = computed(() => this.allEntries().filter(e => e.pinned).length);
+
+  protected filteredEntries = computed(() => {
+    let list = this.allEntries();
+    if (this.activeTab() === 'pinned')       list = list.filter(e => e.pinned);
+    if (this.activeFilter() !== 'all')       list = list.filter(e => e.kind === this.activeFilter());
+    const q = this.searchQuery().toLowerCase().trim();
+    if (q) list = list.filter(e => e.content?.toLowerCase().includes(q));
+    return list;
+  });
 
   @ViewChild('listContainer') listContainer!: ElementRef<HTMLElement>;
+  @ViewChild('searchInput')   searchInput?: ElementRef<HTMLInputElement>;
 
   ngOnInit(): void {
-    // Focus the component so keyboard events work immediately
     (document.querySelector('[tabindex="0"]') as HTMLElement | null)?.focus();
+  }
+
+  protected setTab(tab: Tab): void {
+    this.activeTab.set(tab);
+    this.selectedIndex.set(0);
+  }
+
+  protected setFilter(filter: Filter): void {
+    this.activeFilter.set(filter);
+    this.selectedIndex.set(0);
   }
 
   protected selectEntry(index: number): void {
     this.selectedIndex.set(index);
-    const entry = this.entries()[index];
+    const entry = this.filteredEntries()[index];
     if (!entry) return;
     if (entry.kind === 'image') {
       this.router.navigate(['/preview'], { queryParams: { id: entry.id } });
@@ -152,17 +274,56 @@ export class ClipboardListComponent implements OnInit {
   }
 
   protected deleteEntry(index: number): void {
-    const entry = this.entries()[index];
+    const entry = this.filteredEntries()[index];
     if (!entry) return;
     this.clipboard.deleteEntry(entry.id);
-    // Adjust selectedIndex if needed
-    const newLen = this.entries().length - 1;
+    const newLen = this.filteredEntries().length - 1;
     if (this.selectedIndex() >= newLen && newLen > 0) {
       this.selectedIndex.set(newLen - 1);
     }
   }
 
+  protected pinEntry(index: number): void {
+    const entry = this.filteredEntries()[index];
+    if (!entry) return;
+    this.clipboard.togglePin(entry.id);
+  }
+
+  protected onSearchInput(event: Event): void {
+    this.searchQuery.set((event.target as HTMLInputElement).value);
+    this.selectedIndex.set(0);
+  }
+
+  protected clearSearch(): void {
+    this.searchQuery.set('');
+    this.isSearching.set(false);
+    this.selectedIndex.set(0);
+    (document.querySelector('[tabindex="0"]') as HTMLElement | null)?.focus();
+  }
+
   protected onKeyDown(event: KeyboardEvent): void {
+    if (this.isSearching()) {
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault();
+          this.moveSelection(1);
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          this.moveSelection(-1);
+          break;
+        case 'Enter':
+          event.preventDefault();
+          this.copySelected();
+          break;
+        case 'Escape':
+          event.preventDefault();
+          this.clearSearch();
+          break;
+      }
+      return;
+    }
+
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault();
@@ -184,11 +345,28 @@ export class ClipboardListComponent implements OnInit {
         event.preventDefault();
         this.bridge.hidePopup();
         break;
+      default:
+        if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+          if (event.key.toLowerCase() === 'p') {
+            event.preventDefault();
+            this.pinSelected();
+          } else {
+            this.isSearching.set(true);
+            this.searchQuery.set(event.key);
+            setTimeout(() => this.searchInput?.nativeElement.focus(), 0);
+          }
+        }
     }
   }
 
+  private pinSelected(): void {
+    const entry = this.filteredEntries()[this.selectedIndex()];
+    if (!entry) return;
+    this.clipboard.togglePin(entry.id);
+  }
+
   private moveSelection(delta: number): void {
-    const len = this.entries().length;
+    const len = this.filteredEntries().length;
     if (len === 0) return;
     const next = Math.max(0, Math.min(len - 1, this.selectedIndex() + delta));
     this.selectedIndex.set(next);
@@ -196,7 +374,7 @@ export class ClipboardListComponent implements OnInit {
   }
 
   private copySelected(): void {
-    const entry = this.entries()[this.selectedIndex()];
+    const entry = this.filteredEntries()[this.selectedIndex()];
     if (!entry) return;
     this.clipboard.setClipboard(entry.id);
   }
