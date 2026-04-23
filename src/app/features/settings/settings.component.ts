@@ -6,7 +6,10 @@ import {
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideChevronLeft } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
@@ -15,16 +18,15 @@ import { SettingsService } from '../../core/services/settings.service';
 @Component({
   selector: 'app-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, HlmButton, HlmInput, HlmLabel, HlmAlert, HlmAlertDescription],
+  imports: [RouterLink, NgIcon, HlmIcon, HlmButton, HlmInput, HlmLabel, HlmAlert, HlmAlertDescription],
+  providers: [provideIcons({ lucideChevronLeft })],
   template: `
     <div class="flex flex-col h-screen bg-zinc-950">
 
       <!-- Header -->
       <div class="px-3.5 h-11 flex items-center gap-2 shrink-0 bg-zinc-900 border-b border-zinc-800">
         <a routerLink="/" class="p-1 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
+          <ng-icon hlm size="sm" name="lucideChevronLeft" />
         </a>
         <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">Settings</span>
       </div>

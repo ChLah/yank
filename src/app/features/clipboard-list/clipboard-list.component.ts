@@ -11,11 +11,14 @@ import {
 } from '@angular/core';
 import { UnlistenFn } from '@tauri-apps/api/event';
 import { Router, RouterLink } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideAlertCircle, lucideBookmark, lucideClipboard, lucideSearch, lucideSettings, lucideX } from '@ng-icons/lucide';
 import { ClipboardEntryComponent } from './clipboard-entry.component';
 import { ClipboardService } from '../../core/services/clipboard.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
+import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmTabs, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs';
 
 type Tab    = 'recent' | 'pinned';
@@ -24,7 +27,8 @@ type Filter = 'all' | 'text' | 'image';
 @Component({
   selector: 'app-clipboard-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ClipboardEntryComponent, RouterLink, HlmButton, HlmBadge, HlmTabs, HlmTabsList, HlmTabsTrigger],
+  imports: [ClipboardEntryComponent, RouterLink, NgIcon, HlmIcon, HlmButton, HlmBadge, HlmTabs, HlmTabsList, HlmTabsTrigger],
+  providers: [provideIcons({ lucideClipboard, lucideSettings, lucideSearch, lucideX, lucideAlertCircle, lucideBookmark })],
   host: {
     '(keydown)': 'onKeyDown($event)',
     'tabindex': '0',
@@ -36,21 +40,14 @@ type Filter = 'all' | 'text' | 'image';
       <!-- Header -->
       <div class="px-3.5 h-11 flex items-center justify-between shrink-0 bg-zinc-900 border-b border-zinc-800">
         <div class="flex items-center gap-2">
-          <svg class="w-3.5 h-3.5 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
+          <ng-icon hlm size="sm" name="lucideClipboard" class="text-zinc-500 shrink-0" />
           <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">Clipboard</span>
           @if (allEntries().length > 0) {
             <span hlmBadge variant="secondary">{{ allEntries().length }}</span>
           }
         </div>
         <a routerLink="/settings" class="p-1.5 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+          <ng-icon hlm size="sm" name="lucideSettings" />
         </a>
       </div>
 
@@ -87,10 +84,7 @@ type Filter = 'all' | 'text' | 'image';
         class="overflow-hidden transition-all duration-150 ease-out shrink-0"
         [class]="isSearching() ? 'max-h-10 opacity-100 border-b border-zinc-800' : 'max-h-0 opacity-0'">
         <div class="flex items-center gap-2 px-3.5 h-9">
-          <svg class="w-3.5 h-3.5 text-zinc-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+          <ng-icon hlm size="sm" name="lucideSearch" class="text-zinc-500 shrink-0" />
           <input
             #searchInput
             type="text"
@@ -103,9 +97,7 @@ type Filter = 'all' | 'text' | 'image';
             <button
               class="text-zinc-600 hover:text-zinc-400 transition-colors"
               (click)="clearSearch()">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <ng-icon hlm size="sm" name="lucideX" />
             </button>
           }
         </div>
@@ -128,10 +120,7 @@ type Filter = 'all' | 'text' | 'image';
         } @else if (clipboard.entries.error()) {
           <div class="flex flex-col items-center justify-center h-full py-10 text-center">
             <div class="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center mb-3">
-              <svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <ng-icon hlm size="sm" name="lucideAlertCircle" class="text-red-400" />
             </div>
             <p class="text-[13px] text-zinc-400 mb-1.5">Failed to load history</p>
             <button hlmBtn variant="link" size="sm" (click)="clipboard.entries.reload()">
@@ -142,15 +131,9 @@ type Filter = 'all' | 'text' | 'image';
           <div class="flex flex-col items-center justify-center h-full py-10 text-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center">
               @if (activeTab() === 'pinned') {
-                <svg class="w-5 h-5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                    d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-                </svg>
+                <ng-icon hlm size="base" name="lucideBookmark" class="text-zinc-600" />
               } @else {
-                <svg class="w-5 h-5 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
+                <ng-icon hlm size="base" name="lucideClipboard" class="text-zinc-600" />
               }
             </div>
             @if (activeTab() === 'pinned') {

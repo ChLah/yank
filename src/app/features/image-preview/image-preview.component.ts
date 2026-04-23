@@ -6,13 +6,17 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideAlertCircle, lucideCheck, lucideCopy, lucideLoader, lucideX } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmIcon } from '@spartan-ng/helm/icon';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 
 @Component({
   selector: 'app-image-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HlmButton],
+  imports: [NgIcon, HlmIcon, HlmButton],
+  providers: [provideIcons({ lucideLoader, lucideCopy, lucideX, lucideAlertCircle, lucideCheck })],
   host: { '(keydown.escape)': 'onEscape()' },
   template: `
     <div class="flex flex-col h-full bg-zinc-950">
@@ -28,16 +32,10 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
             (click)="copyToClipboard()"
           >
             @if (copying()) {
-              <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-              </svg>
+              <ng-icon hlm size="sm" name="lucideLoader" class="animate-spin" />
               Copying…
             } @else {
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-              </svg>
+              <ng-icon hlm size="sm" name="lucideCopy" />
               Copy
             }
           </button>
@@ -47,9 +45,7 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
             (click)="closeWindow()"
             title="Close"
           >
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <ng-icon hlm size="sm" name="lucideX" />
           </button>
         </div>
       </div>
@@ -64,10 +60,7 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
         } @else if (error()) {
           <div class="flex flex-col items-center gap-3">
             <div class="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center">
-              <svg class="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <ng-icon hlm size="sm" name="lucideAlertCircle" class="text-red-400" />
             </div>
             <p class="text-[13px] text-zinc-400">Failed to load image</p>
           </div>
@@ -82,9 +75,7 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 
       @if (copied()) {
         <div class="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl">
-          <svg class="w-3.5 h-3.5 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
+          <ng-icon hlm size="sm" name="lucideCheck" class="text-green-400 shrink-0" />
           <span class="text-[12px] text-zinc-200">Copied to clipboard</span>
         </div>
       }

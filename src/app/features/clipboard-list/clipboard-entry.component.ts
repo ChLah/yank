@@ -5,13 +5,17 @@ import {
   input,
   output,
 } from '@angular/core';
+import { NgIcon, provideIcons } from '@ng-icons/core';
+import { lucideBookmark, lucideImage, lucideX } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { HlmIcon } from '@spartan-ng/helm/icon';
 import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
 
 @Component({
   selector: 'app-clipboard-entry',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [HlmButton],
+  imports: [NgIcon, HlmIcon, HlmButton],
+  providers: [provideIcons({ lucideImage, lucideBookmark, lucideX })],
   template: `
     <div
       class="flex items-center gap-2 pl-3.5 pr-3 cursor-pointer group transition-colors border-l-2"
@@ -23,10 +27,7 @@ import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
           @if (entry().thumbnail) {
             <img [src]="entry().thumbnail!" alt="Clipboard image" class="w-full h-full object-cover" />
           } @else {
-            <svg class="w-4 h-4 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+            <ng-icon hlm size="sm" name="lucideImage" class="text-zinc-600" />
           }
         </div>
         <div class="flex-1 min-w-0 py-2">
@@ -51,16 +52,7 @@ import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
           title="Toggle pin (P)"
           (click)="$event.stopPropagation(); pin.emit()"
         >
-          @if (entry().pinned) {
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-            </svg>
-          } @else {
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
-            </svg>
-          }
+          <ng-icon hlm size="sm" name="lucideBookmark" />
         </button>
 
         <!-- Delete button -->
@@ -71,9 +63,7 @@ import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
           title="Delete (Del)"
           (click)="$event.stopPropagation(); delete.emit()"
         >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <ng-icon hlm size="sm" name="lucideX" />
         </button>
       </div>
     </div>
