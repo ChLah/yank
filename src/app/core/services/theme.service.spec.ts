@@ -1,12 +1,11 @@
-import { TestBed } from '@angular/core/testing';
+// @vitest-environment jsdom
 import { ThemeService } from './theme.service';
 
 describe('ThemeService', () => {
   let service: ThemeService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(ThemeService);
+    service = new ThemeService();
     document.documentElement.classList.remove('dark', 'light');
   });
 
