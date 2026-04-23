@@ -11,6 +11,10 @@ export interface Translation {
     LANGUAGE_SYSTEM: string;
     LANGUAGE_EN: string;
     LANGUAGE_DE: string;
+    THEME_LABEL: string;
+    THEME_SYSTEM: string;
+    THEME_LIGHT: string;
+    THEME_DARK: string;
     SAVE: string;
     SAVING: string;
     SAVED: string;
