@@ -5,7 +5,7 @@ use image::imageops::FilterType;
 use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
-use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload};
+use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language};
 
 const THUMBNAIL_MAX_SIZE: u32 = 200;
 
@@ -253,7 +253,20 @@ impl SqliteStore {
             .and_then(|v| v.parse::<i64>().ok())
             .unwrap_or(AppSettings::default().max_entries);
 
-        Ok(AppSettings { shortcut, max_entries })
+        let language = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'language'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .ok()
+            .and_then(|v| match v.as_str() {
+                "en" => Some(Language::En),
+                "de" => Some(Language::De),
+                _ => None,
+            });
+
+        Ok(AppSettings { shortcut, max_entries, language })
     }
 
     pub fn save_settings(&self, settings: &AppSettings) -> Result<(), rusqlite::Error> {
@@ -266,6 +279,21 @@ impl SqliteStore {
             "INSERT OR REPLACE INTO settings (key, value) VALUES ('max_entries', ?1)",
             params![settings.max_entries.to_string()],
         )?;
+        match &settings.language {
+            Some(lang) => {
+                let lang_str = match lang {
+                    Language::En => "en",
+                    Language::De => "de",
+                };
+                conn.execute(
+                    "INSERT OR REPLACE INTO settings (key, value) VALUES ('language', ?1)",
+                    params![lang_str],
+                )?;
+            }
+            None => {
+                conn.execute("DELETE FROM settings WHERE key = 'language'", [])?;
+            }
+        }
         Ok(())
     }
 
@@ -351,7 +379,7 @@ mod tests {
     fn test_prunes_beyond_max_entries() {
         let store = in_memory_store();
         // Set max to 3
-        store.save_settings(&AppSettings { shortcut: "Ctrl+SEMICOLON".into(), max_entries: 3 }).unwrap();
+        store.save_settings(&AppSettings { shortcut: "Ctrl+SEMICOLON".into(), max_entries: 3, language: None }).unwrap();
 
         for i in 0..5 {
             store.save_entry(&text_payload(&format!("entry {}", i))).unwrap();
@@ -373,7 +401,7 @@ mod tests {
     #[test]
     fn test_settings_round_trip() {
         let store = in_memory_store();
-        let settings = AppSettings { shortcut: "Ctrl+ALT+V".to_string(), max_entries: 10 };
+        let settings = AppSettings { shortcut: "Ctrl+ALT+V".to_string(), max_entries: 10, language: None };
         store.save_settings(&settings).unwrap();
         let loaded = store.get_settings().unwrap();
         assert_eq!(loaded.shortcut, "Ctrl+ALT+V");
@@ -438,6 +466,7 @@ mod tests {
         store.save_settings(&AppSettings {
             shortcut: "Ctrl+Quote".into(),
             max_entries: 2,
+            language: None,
         }).unwrap();
 
         store.save_entry(&text_payload("pinned entry")).unwrap();
