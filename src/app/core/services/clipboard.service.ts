@@ -37,6 +37,11 @@ export class ClipboardService implements OnDestroy {
     this.entries.reload();
   }
 
+  async togglePin(id: number): Promise<void> {
+    await this.bridge.togglePin(id);
+    this.entries.reload();
+  }
+
   ngOnDestroy(): void {
     this.unlistenClipboardChanged?.();
     this.unlistenPopupShown?.();

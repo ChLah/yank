@@ -39,6 +39,10 @@ export class TauriBridgeService {
     return invoke('hide_popup');
   }
 
+  togglePin(id: number): Promise<boolean> {
+    return invoke<boolean>('toggle_pin', { id });
+  }
+
   onClipboardChanged(handler: () => void): Promise<UnlistenFn> {
     return listen('clipboard-changed', handler);
   }
