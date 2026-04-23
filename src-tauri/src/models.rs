@@ -22,12 +22,21 @@ pub enum Language {
     De,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum Theme {
+    Dark,
+    Light,
+    System,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     pub shortcut: String,
     pub max_entries: i64,
     pub language: Option<Language>,
+    pub theme: Theme,
 }
 
 impl Default for AppSettings {
@@ -36,6 +45,7 @@ impl Default for AppSettings {
             shortcut: "Ctrl+Quote".to_string(),
             max_entries: 20,
             language: None,
+            theme: Theme::System,
         }
     }
 }
