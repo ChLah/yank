@@ -2,12 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  OnDestroy,
   OnInit,
   ViewChild,
   computed,
   inject,
   signal,
 } from '@angular/core';
+import { UnlistenFn } from '@tauri-apps/api/event';
 import { Router, RouterLink } from '@angular/router';
 import { ClipboardEntryComponent } from './clipboard-entry.component';
 import { ClipboardService } from '../../core/services/clipboard.service';
@@ -208,11 +210,12 @@ type Filter = 'all' | 'text' | 'image';
     </div>
   `,
 })
-export class ClipboardListComponent implements OnInit {
+export class ClipboardListComponent implements OnInit, OnDestroy {
   protected clipboard = inject(ClipboardService);
   private bridge = inject(TauriBridgeService);
   private router = inject(Router);
   private hostEl = inject(ElementRef);
+  private unlistenPopupShown?: UnlistenFn;
 
   protected selectedIndex = signal(0);
   protected skeletons = Array.from({ length: 5 });
@@ -251,6 +254,12 @@ export class ClipboardListComponent implements OnInit {
 
   ngOnInit(): void {
     this.hostEl.nativeElement.focus();
+    this.bridge.onPopupShown(() => this.clearSearch())
+      .then(fn => { this.unlistenPopupShown = fn; });
+  }
+
+  ngOnDestroy(): void {
+    this.unlistenPopupShown?.();
   }
 
   protected setTab(tab: Tab): void {
@@ -277,9 +286,11 @@ export class ClipboardListComponent implements OnInit {
   protected deleteEntry(index: number): void {
     const entry = this.filteredEntries()[index];
     if (!entry) return;
-    this.clipboard.deleteEntry(entry.id);
     const newLen = this.filteredEntries().length - 1;
-    if (this.selectedIndex() >= newLen && newLen > 0) {
+    this.clipboard.deleteEntry(entry.id);
+    if (newLen <= 0) {
+      this.selectedIndex.set(0);
+    } else if (this.selectedIndex() >= newLen) {
       this.selectedIndex.set(newLen - 1);
     }
   }
