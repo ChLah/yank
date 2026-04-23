@@ -166,26 +166,26 @@ type Filter = 'all' | 'text' | 'image';
       <!-- Footer -->
       <div class="h-9 px-3.5 flex items-center gap-2 shrink-0 bg-zinc-900 border-t border-zinc-800">
         <!-- footer nav hints -->
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600">
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600 whitespace-nowrap">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">↑↓</kbd>
           {{ 'CLIPBOARD.HINT_NAV' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600">
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600 whitespace-nowrap">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">↵</kbd>
           {{ 'CLIPBOARD.HINT_PASTE' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600">
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600 whitespace-nowrap">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">⌫</kbd>
           {{ 'CLIPBOARD.HINT_DELETE' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600">
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600 whitespace-nowrap">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">P</kbd>
           {{ 'CLIPBOARD.HINT_PIN' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600 ml-auto">
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600 ml-auto whitespace-nowrap">
           {{ 'CLIPBOARD.HINT_SEARCH' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600">
+        <span class="flex items-center gap-1 text-[10px] text-zinc-600 whitespace-nowrap">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">Esc</kbd>
           {{ 'CLIPBOARD.HINT_CLOSE' | translate }}
         </span>
