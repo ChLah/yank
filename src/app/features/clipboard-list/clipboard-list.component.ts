@@ -212,9 +212,10 @@ export class ClipboardListComponent implements OnInit {
   protected clipboard = inject(ClipboardService);
   private bridge = inject(TauriBridgeService);
   private router = inject(Router);
+  private hostEl = inject(ElementRef);
 
   protected selectedIndex = signal(0);
-  protected skeletons = Array(5);
+  protected skeletons = Array.from({ length: 5 });
 
   protected activeTab    = signal<Tab>('recent');
   protected activeFilter = signal<Filter>('all');
@@ -249,7 +250,7 @@ export class ClipboardListComponent implements OnInit {
   @ViewChild('searchInput')   searchInput?: ElementRef<HTMLInputElement>;
 
   ngOnInit(): void {
-    (document.querySelector('[tabindex="0"]') as HTMLElement | null)?.focus();
+    this.hostEl.nativeElement.focus();
   }
 
   protected setTab(tab: Tab): void {
@@ -298,7 +299,7 @@ export class ClipboardListComponent implements OnInit {
     this.searchQuery.set('');
     this.isSearching.set(false);
     this.selectedIndex.set(0);
-    (document.querySelector('[tabindex="0"]') as HTMLElement | null)?.focus();
+    this.hostEl.nativeElement.focus();
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
@@ -353,7 +354,14 @@ export class ClipboardListComponent implements OnInit {
           } else {
             this.isSearching.set(true);
             this.searchQuery.set(event.key);
-            setTimeout(() => this.searchInput?.nativeElement.focus(), 0);
+            setTimeout(() => {
+              const input = this.searchInput?.nativeElement;
+              if (input) {
+                input.value = this.searchQuery();
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
+              }
+            }, 0);
           }
         }
     }
@@ -374,9 +382,7 @@ export class ClipboardListComponent implements OnInit {
   }
 
   private copySelected(): void {
-    const entry = this.filteredEntries()[this.selectedIndex()];
-    if (!entry) return;
-    this.clipboard.setClipboard(entry.id);
+    this.selectEntry(this.selectedIndex());
   }
 
   private scrollSelectedIntoView(): void {
