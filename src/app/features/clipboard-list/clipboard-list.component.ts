@@ -254,8 +254,11 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.hostEl.nativeElement.focus();
-    this.bridge.onPopupShown(() => this.clearSearch())
-      .then(fn => { this.unlistenPopupShown = fn; });
+    this.bridge.onPopupShown(() => {
+      this.activeTab.set('recent');
+      this.activeFilter.set('all');
+      this.clearSearch();
+    }).then(fn => { this.unlistenPopupShown = fn; });
   }
 
   ngOnDestroy(): void {
