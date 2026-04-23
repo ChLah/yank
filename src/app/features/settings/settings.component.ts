@@ -133,6 +133,7 @@ export class SettingsComponent {
       await this.settingsService.saveSettings({
         shortcut: this.shortcut(),
         maxEntries: this.maxEntries(),
+        language: null,
       });
       this.saved.set(true);
       setTimeout(() => this.saved.set(false), 2000);
