@@ -10,12 +10,13 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideAlertCircle, lucideCheck, lucideCopy, lucideLoader, lucideX } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmIcon } from '@spartan-ng/helm/icon';
+import { TranslatePipe } from '@ngx-translate/core';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 
 @Component({
   selector: 'app-image-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgIcon, HlmIcon, HlmButton],
+  imports: [NgIcon, HlmIcon, HlmButton, TranslatePipe],
   providers: [provideIcons({ lucideLoader, lucideCopy, lucideX, lucideAlertCircle, lucideCheck })],
   host: { '(keydown.escape)': 'onEscape()' },
   template: `
@@ -23,7 +24,7 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 
       <!-- Toolbar -->
       <div class="px-3.5 h-11 flex items-center justify-between shrink-0 bg-zinc-900 border-b border-zinc-800">
-        <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">Image Preview</span>
+        <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">{{ 'IMAGE_PREVIEW.TITLE' | translate }}</span>
         <div class="flex items-center gap-2">
           <button
             hlmBtn variant="outline" size="sm"
@@ -33,17 +34,17 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
           >
             @if (copying()) {
               <ng-icon hlm size="sm" name="lucideLoader" class="animate-spin" />
-              Copying…
+              {{ 'IMAGE_PREVIEW.COPYING' | translate }}
             } @else {
               <ng-icon hlm size="sm" name="lucideCopy" />
-              Copy
+              {{ 'IMAGE_PREVIEW.COPY' | translate }}
             }
           </button>
           <button
             hlmBtn variant="ghost" size="sm"
             class="w-8 h-8 p-0 flex items-center justify-center"
             (click)="closeWindow()"
-            title="Close"
+            [title]="'IMAGE_PREVIEW.CLOSE' | translate"
           >
             <ng-icon hlm size="sm" name="lucideX" />
           </button>
@@ -55,14 +56,14 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
         @if (loading()) {
           <div class="flex flex-col items-center gap-3">
             <div class="w-5 h-5 border-2 border-zinc-800 border-t-zinc-500 rounded-full animate-spin"></div>
-            <span class="text-[13px] text-zinc-500">Loading…</span>
+            <span class="text-[13px] text-zinc-500">{{ 'IMAGE_PREVIEW.LOADING' | translate }}</span>
           </div>
         } @else if (error()) {
           <div class="flex flex-col items-center gap-3">
             <div class="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center">
               <ng-icon hlm size="sm" name="lucideAlertCircle" class="text-red-400" />
             </div>
-            <p class="text-[13px] text-zinc-400">Failed to load image</p>
+            <p class="text-[13px] text-zinc-400">{{ 'IMAGE_PREVIEW.ERROR' | translate }}</p>
           </div>
         } @else if (imageSrc()) {
           <img
@@ -76,7 +77,7 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
       @if (copied()) {
         <div class="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl">
           <ng-icon hlm size="sm" name="lucideCheck" class="text-green-400 shrink-0" />
-          <span class="text-[12px] text-zinc-200">Copied to clipboard</span>
+          <span class="text-[12px] text-zinc-200">{{ 'IMAGE_PREVIEW.COPIED' | translate }}</span>
         </div>
       }
     </div>
