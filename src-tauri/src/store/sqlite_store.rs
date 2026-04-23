@@ -5,7 +5,7 @@ use image::imageops::FilterType;
 use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
-use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language};
+use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language, Theme};
 
 const THUMBNAIL_MAX_SIZE: u32 = 200;
 
@@ -266,7 +266,21 @@ impl SqliteStore {
                 _ => None,
             });
 
-        Ok(AppSettings { shortcut, max_entries, language })
+        let theme = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'theme'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .ok()
+            .map(|v| match v.as_str() {
+                "dark" => Theme::Dark,
+                "light" => Theme::Light,
+                _ => Theme::System,
+            })
+            .unwrap_or(Theme::System);
+
+        Ok(AppSettings { shortcut, max_entries, language, theme })
     }
 
     pub fn save_settings(&self, settings: &AppSettings) -> Result<(), rusqlite::Error> {
@@ -294,6 +308,15 @@ impl SqliteStore {
                 conn.execute("DELETE FROM settings WHERE key = 'language'", [])?;
             }
         }
+        let theme_str = match settings.theme {
+            Theme::Dark => "dark",
+            Theme::Light => "light",
+            Theme::System => "system",
+        };
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('theme', ?1)",
+            params![theme_str],
+        )?;
         Ok(())
     }
 
@@ -379,7 +402,7 @@ mod tests {
     fn test_prunes_beyond_max_entries() {
         let store = in_memory_store();
         // Set max to 3
-        store.save_settings(&AppSettings { shortcut: "Ctrl+SEMICOLON".into(), max_entries: 3, language: None }).unwrap();
+        store.save_settings(&AppSettings { shortcut: "Ctrl+SEMICOLON".into(), max_entries: 3, language: None, theme: Theme::System }).unwrap();
 
         for i in 0..5 {
             store.save_entry(&text_payload(&format!("entry {}", i))).unwrap();
@@ -401,7 +424,7 @@ mod tests {
     #[test]
     fn test_settings_round_trip() {
         let store = in_memory_store();
-        let settings = AppSettings { shortcut: "Ctrl+ALT+V".to_string(), max_entries: 10, language: None };
+        let settings = AppSettings { shortcut: "Ctrl+ALT+V".to_string(), max_entries: 10, language: None, theme: Theme::System };
         store.save_settings(&settings).unwrap();
         let loaded = store.get_settings().unwrap();
         assert_eq!(loaded.shortcut, "Ctrl+ALT+V");
@@ -467,6 +490,7 @@ mod tests {
             shortcut: "Ctrl+Quote".into(),
             max_entries: 2,
             language: None,
+            theme: Theme::System,
         }).unwrap();
 
         store.save_entry(&text_payload("pinned entry")).unwrap();
