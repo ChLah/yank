@@ -441,6 +441,17 @@ mod tests {
         store.save_settings(&dark_settings).unwrap();
         let dark_loaded = store.get_settings().unwrap();
         assert_eq!(dark_loaded.theme, Theme::Dark);
+
+        // Verify Light theme persists
+        let light_settings = AppSettings {
+            shortcut: "Ctrl+B".to_string(),
+            max_entries: 5,
+            language: None,
+            theme: Theme::Light,
+        };
+        store.save_settings(&light_settings).unwrap();
+        let light_loaded = store.get_settings().unwrap();
+        assert_eq!(light_loaded.theme, Theme::Light);
     }
 
     #[test]

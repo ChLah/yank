@@ -166,13 +166,13 @@ export class SettingsComponent {
     }
   }
 
-  protected onLanguageChange(value: string): void {
-    const lang = value === '' ? null : (value as Language);
+  protected onLanguageChange(value: string | null): void {
+    const lang = value === '' || value === null ? null : (value as Language);
     this.language.set(lang);
     this.i18nService.setLanguage(lang);
   }
 
-  protected onThemeChange(value: string): void {
+  protected onThemeChange(value: string | null): void {
     const theme = (value as Theme) || 'system';
     this.theme.set(theme);
     this.themeService.applyTheme(theme);
