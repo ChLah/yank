@@ -61,3 +61,8 @@ pub fn hide_popup(app_handle: tauri::AppHandle) -> Result<(), String> {
     }
     Ok(())
 }
+
+#[tauri::command]
+pub fn toggle_pin(id: i64, store: StoreState) -> Result<bool, String> {
+    store.toggle_pin(id).map_err(|e| e.to_string())
+}

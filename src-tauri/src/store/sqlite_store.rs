@@ -107,7 +107,7 @@ impl SqliteStore {
         // Prune oldest entries beyond max_entries
         conn.execute(
             "DELETE FROM entries WHERE id IN (
-                SELECT id FROM entries ORDER BY last_used_at DESC LIMIT -1 OFFSET ?1
+                SELECT id FROM entries WHERE pinned = 0 ORDER BY last_used_at DESC LIMIT -1 OFFSET ?1
              )",
             params![max_entries],
         )?;
@@ -158,6 +158,20 @@ impl SqliteStore {
         let conn = self.conn.lock().unwrap();
         conn.execute("DELETE FROM entries WHERE id = ?1", params![id])?;
         Ok(())
+    }
+
+    pub fn toggle_pin(&self, id: i64) -> Result<bool, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE entries SET pinned = CASE WHEN pinned = 0 THEN 1 ELSE 0 END WHERE id = ?1",
+            params![id],
+        )?;
+        let new_val: i64 = conn.query_row(
+            "SELECT pinned FROM entries WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        )?;
+        Ok(new_val == 1)
     }
 
     /// Returns the full image bytes (PNG) for clipboard restore or preview
@@ -395,5 +409,46 @@ mod tests {
         store.save_entry(&text_payload("legacy")).unwrap();
         let entries = store.get_all_entries().unwrap();
         assert!(!entries[0].pinned);
+    }
+
+    #[test]
+    fn test_toggle_pin() {
+        let store = in_memory_store();
+        store.save_entry(&text_payload("hello")).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        let id = entries[0].id;
+
+        assert!(!entries[0].pinned);
+
+        let now_pinned = store.toggle_pin(id).unwrap();
+        assert!(now_pinned);
+        assert!(store.get_all_entries().unwrap()[0].pinned);
+
+        let now_pinned = store.toggle_pin(id).unwrap();
+        assert!(!now_pinned);
+        assert!(!store.get_all_entries().unwrap()[0].pinned);
+    }
+
+    #[test]
+    fn test_pinned_entries_not_pruned() {
+        let store = in_memory_store();
+        store.save_settings(&AppSettings {
+            shortcut: "Ctrl+Quote".into(),
+            max_entries: 2,
+        }).unwrap();
+
+        store.save_entry(&text_payload("pinned entry")).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        let pinned_id = entries[0].id;
+        store.toggle_pin(pinned_id).unwrap();
+
+        store.save_entry(&text_payload("entry 1")).unwrap();
+        store.save_entry(&text_payload("entry 2")).unwrap();
+        store.save_entry(&text_payload("entry 3")).unwrap(); // triggers pruning
+
+        let entries = store.get_all_entries().unwrap();
+        assert!(entries.iter().any(|e| e.id == pinned_id), "pinned entry was pruned");
+        // 2 unpinned (max_entries) + 1 pinned
+        assert_eq!(entries.len(), 3);
     }
 }
