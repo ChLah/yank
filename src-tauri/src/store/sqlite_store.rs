@@ -365,8 +365,34 @@ mod tests {
 
     #[test]
     fn test_migration_is_idempotent() {
-        let store = in_memory_store();
-        store.save_entry(&text_payload("hello")).unwrap();
+        // Calling run_migrations() twice on the same database must not error.
+        let store = in_memory_store(); // first call happens inside in_memory_store()
+        store.run_migrations().unwrap(); // second call — must succeed without error
+    }
+
+    #[test]
+    fn test_migration_adds_pinned_to_legacy_schema() {
+        // Simulate a pre-existing database that has entries table WITHOUT the pinned column.
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE entries (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind         TEXT    NOT NULL,
+                content      BLOB    NOT NULL,
+                thumbnail    BLOB,
+                width        INTEGER,
+                height       INTEGER,
+                hash         TEXT    NOT NULL UNIQUE,
+                created_at   INTEGER NOT NULL,
+                last_used_at INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);"
+        ).unwrap();
+        let store = SqliteStore { conn: Mutex::new(conn) };
+        // run_migrations must detect missing pinned column and ALTER TABLE successfully
+        store.run_migrations().unwrap();
+        // Verify pinned column works — save entry, get it back with pinned=false
+        store.save_entry(&text_payload("legacy")).unwrap();
         let entries = store.get_all_entries().unwrap();
         assert!(!entries[0].pinned);
     }
