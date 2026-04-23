@@ -41,8 +41,34 @@ import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
         </div>
       }
 
-      <div class="flex items-center gap-1.5 shrink-0">
+      <div class="flex items-center gap-1 shrink-0">
         <span class="text-[11px] text-zinc-600 tabular-nums">{{ relativeTime() }}</span>
+
+        <!-- Pin button -->
+        <button
+          hlmBtn variant="ghost" size="icon"
+          class="opacity-0 group-hover:opacity-100 transition-opacity"
+          [class.opacity-100]="selected() || entry().pinned"
+          [class.text-indigo-400]="entry().pinned"
+          [class.text-zinc-600]="!entry().pinned"
+          [class.hover:text-indigo-300]="entry().pinned"
+          [class.hover:text-zinc-400]="!entry().pinned"
+          title="Toggle pin (P)"
+          (click)="$event.stopPropagation(); pin.emit()"
+        >
+          @if (entry().pinned) {
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M5 4a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 20V4z"/>
+            </svg>
+          } @else {
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+            </svg>
+          }
+        </button>
+
+        <!-- Delete button -->
         <button
           hlmBtn variant="ghost" size="icon"
           class="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-700 hover:text-red-400 hover:bg-red-500/10"
@@ -64,6 +90,7 @@ export class ClipboardEntryComponent {
 
   select = output<void>();
   delete = output<void>();
+  pin    = output<void>();
 
   relativeTime = computed(() => formatRelativeTime(this.entry().lastUsedAt));
 
