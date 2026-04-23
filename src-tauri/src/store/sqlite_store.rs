@@ -429,6 +429,18 @@ mod tests {
         let loaded = store.get_settings().unwrap();
         assert_eq!(loaded.shortcut, "Ctrl+ALT+V");
         assert_eq!(loaded.max_entries, 10);
+        assert_eq!(loaded.theme, Theme::System);
+
+        // Verify non-default theme persists
+        let dark_settings = AppSettings {
+            shortcut: "Ctrl+A".to_string(),
+            max_entries: 10,
+            language: None,
+            theme: Theme::Dark,
+        };
+        store.save_settings(&dark_settings).unwrap();
+        let dark_loaded = store.get_settings().unwrap();
+        assert_eq!(dark_loaded.theme, Theme::Dark);
     }
 
     #[test]
