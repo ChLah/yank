@@ -162,10 +162,13 @@ impl SqliteStore {
 
     pub fn toggle_pin(&self, id: i64) -> Result<bool, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
-        conn.execute(
+        let rows_changed = conn.execute(
             "UPDATE entries SET pinned = CASE WHEN pinned = 0 THEN 1 ELSE 0 END WHERE id = ?1",
             params![id],
         )?;
+        if rows_changed == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows);
+        }
         let new_val: i64 = conn.query_row(
             "SELECT pinned FROM entries WHERE id = ?1",
             params![id],
