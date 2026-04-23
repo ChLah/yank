@@ -33,15 +33,33 @@ impl SqliteStore {
                 height       INTEGER,
                 hash         TEXT    NOT NULL UNIQUE,
                 created_at   INTEGER NOT NULL,
-                last_used_at INTEGER NOT NULL
+                last_used_at INTEGER NOT NULL,
+                pinned       INTEGER NOT NULL DEFAULT 0
             );
             CREATE INDEX IF NOT EXISTS idx_entries_last_used ON entries (last_used_at DESC);
-
             CREATE TABLE IF NOT EXISTS settings (
                 key   TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );"
-        )
+        )?;
+
+        // For existing databases that pre-date this migration, add pinned column if missing.
+        // SQLite does not support ADD COLUMN IF NOT EXISTS, so we check via PRAGMA.
+        let has_pinned: bool = {
+            let mut stmt = conn.prepare("PRAGMA table_info(entries)")?;
+            let cols: Vec<String> = stmt
+                .query_map([], |row| row.get::<_, String>(1))?
+                .filter_map(|r| r.ok())
+                .collect();
+            cols.iter().any(|name| name == "pinned")
+        };
+        if !has_pinned {
+            conn.execute_batch(
+                "ALTER TABLE entries ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;"
+            )?;
+        }
+
+        Ok(())
     }
 
     /// Save a clipboard payload, handling dedup. Returns the updated entry list.
@@ -100,7 +118,7 @@ impl SqliteStore {
     pub fn get_all_entries(&self) -> Result<Vec<ClipboardEntry>, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, kind, content, thumbnail, width, height, hash, created_at, last_used_at
+            "SELECT id, kind, content, thumbnail, width, height, hash, created_at, last_used_at, pinned
              FROM entries ORDER BY last_used_at DESC",
         )?;
 
@@ -128,6 +146,7 @@ impl SqliteStore {
                 hash: row.get(6)?,
                 created_at: row.get(7)?,
                 last_used_at: row.get(8)?,
+                pinned: row.get::<_, i64>(9)? != 0,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -342,5 +361,13 @@ mod tests {
         let loaded = store.get_settings().unwrap();
         assert_eq!(loaded.shortcut, "Ctrl+ALT+V");
         assert_eq!(loaded.max_entries, 10);
+    }
+
+    #[test]
+    fn test_migration_is_idempotent() {
+        let store = in_memory_store();
+        store.save_entry(&text_payload("hello")).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        assert!(!entries[0].pinned);
     }
 }

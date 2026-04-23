@@ -5,15 +5,14 @@ use serde::{Deserialize, Serialize};
 pub struct ClipboardEntry {
     pub id: i64,
     pub kind: String,
-    /// Text content for text entries; None for image entries
     pub content: Option<String>,
-    /// Base64-encoded thumbnail PNG for image entries; None for text
     pub thumbnail: Option<String>,
     pub width: Option<u32>,
     pub height: Option<u32>,
     pub hash: String,
     pub created_at: i64,
     pub last_used_at: i64,
+    pub pinned: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
