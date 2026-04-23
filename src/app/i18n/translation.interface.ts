@@ -1,4 +1,5 @@
 export interface Translation {
+  [key: string]: any;
   SETTINGS: {
     TITLE: string;
     SHORTCUT_LABEL: string;
