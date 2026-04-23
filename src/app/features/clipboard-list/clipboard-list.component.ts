@@ -20,6 +20,7 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmTabs, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs';
+import { TranslatePipe } from '@ngx-translate/core';
 
 type Tab    = 'recent' | 'pinned';
 type Filter = 'all' | 'text' | 'image';
@@ -27,7 +28,7 @@ type Filter = 'all' | 'text' | 'image';
 @Component({
   selector: 'app-clipboard-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ClipboardEntryComponent, RouterLink, NgIcon, HlmIcon, HlmButton, HlmBadge, HlmTabs, HlmTabsList, HlmTabsTrigger],
+  imports: [ClipboardEntryComponent, RouterLink, NgIcon, HlmIcon, HlmButton, HlmBadge, HlmTabs, HlmTabsList, HlmTabsTrigger, TranslatePipe],
   providers: [provideIcons({ lucideClipboard, lucideSettings, lucideSearch, lucideX, lucideAlertCircle, lucideBookmark })],
   host: {
     '(keydown)': 'onKeyDown($event)',
@@ -41,7 +42,7 @@ type Filter = 'all' | 'text' | 'image';
       <div class="px-3.5 h-11 flex items-center justify-between shrink-0 bg-zinc-900 border-b border-zinc-800">
         <div class="flex items-center gap-2">
           <ng-icon hlm size="sm" name="lucideClipboard" class="text-zinc-500 shrink-0" />
-          <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">Clipboard</span>
+          <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">{{ 'CLIPBOARD.TITLE' | translate }}</span>
           @if (allEntries().length > 0) {
             <span hlmBadge variant="secondary">{{ allEntries().length }}</span>
           }
@@ -57,7 +58,7 @@ type Filter = 'all' | 'text' | 'image';
           <div hlmTabsList variant="line" class="h-8 rounded-none bg-transparent p-0">
             @for (tab of tabs; track tab.value) {
               <button [hlmTabsTrigger]="tab.value" class="text-[12px] gap-1.5 px-1">
-                {{ tab.label }}
+                {{ tab.labelKey | translate }}
                 @if (tab.value === 'pinned' && pinnedCount() > 0) {
                   <span hlmBadge variant="secondary" class="text-[10px] h-4 min-w-0 px-1">{{ pinnedCount() }}</span>
                 }
@@ -73,7 +74,7 @@ type Filter = 'all' | 'text' | 'image';
                 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
                 : 'text-zinc-600 border-transparent hover:text-zinc-400'"
               (click)="setFilter(f.value)">
-              {{ f.label }}
+              {{ f.labelKey | translate }}
             </button>
           }
         </div>
@@ -90,7 +91,7 @@ type Filter = 'all' | 'text' | 'image';
             type="text"
             [value]="searchQuery()"
             (input)="onSearchInput($event)"
-            placeholder="filter..."
+            [placeholder]="'CLIPBOARD.SEARCH_PLACEHOLDER' | translate"
             class="flex-1 bg-transparent text-[13px] text-zinc-200 placeholder:text-zinc-600 outline-none"
           />
           @if (searchQuery()) {
@@ -122,9 +123,9 @@ type Filter = 'all' | 'text' | 'image';
             <div class="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center mb-3">
               <ng-icon hlm size="sm" name="lucideAlertCircle" class="text-red-400" />
             </div>
-            <p class="text-[13px] text-zinc-400 mb-1.5">Failed to load history</p>
+            <p class="text-[13px] text-zinc-400 mb-1.5">{{ 'CLIPBOARD.ERROR_LOAD' | translate }}</p>
             <button hlmBtn variant="link" size="sm" (click)="clipboard.entries.reload()">
-              Try again
+              {{ 'CLIPBOARD.TRY_AGAIN' | translate }}
             </button>
           </div>
         } @else if (filteredEntries().length === 0) {
@@ -137,12 +138,12 @@ type Filter = 'all' | 'text' | 'image';
               }
             </div>
             @if (activeTab() === 'pinned') {
-              <p class="text-[13px] text-zinc-500">No pinned items yet</p>
-              <p class="text-[11px] text-zinc-600">Select an entry and press P</p>
+              <p class="text-[13px] text-zinc-500">{{ 'CLIPBOARD.EMPTY_PINNED' | translate }}</p>
+              <p class="text-[11px] text-zinc-600">{{ 'CLIPBOARD.EMPTY_PINNED_HINT' | translate }}</p>
             } @else if (searchQuery()) {
-              <p class="text-[13px] text-zinc-500">No matches for "{{ searchQuery() }}"</p>
+              <p class="text-[13px] text-zinc-500">{{ 'CLIPBOARD.EMPTY_NO_MATCHES' | translate:{ term: searchQuery() } }}</p>
             } @else {
-              <p class="text-[13px] text-zinc-500">Nothing copied yet</p>
+              <p class="text-[13px] text-zinc-500">{{ 'CLIPBOARD.EMPTY_NOTHING' | translate }}</p>
             }
           </div>
         } @else {
@@ -164,28 +165,29 @@ type Filter = 'all' | 'text' | 'image';
 
       <!-- Footer -->
       <div class="h-9 px-3.5 flex items-center gap-2 shrink-0 bg-zinc-900 border-t border-zinc-800">
+        <!-- footer nav hints -->
         <span class="flex items-center gap-1 text-[10px] text-zinc-600">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">↑↓</kbd>
-          nav
+          {{ 'CLIPBOARD.HINT_NAV' | translate }}
         </span>
         <span class="flex items-center gap-1 text-[10px] text-zinc-600">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">↵</kbd>
-          paste
+          {{ 'CLIPBOARD.HINT_PASTE' | translate }}
         </span>
         <span class="flex items-center gap-1 text-[10px] text-zinc-600">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">⌫</kbd>
-          del
+          {{ 'CLIPBOARD.HINT_DELETE' | translate }}
         </span>
         <span class="flex items-center gap-1 text-[10px] text-zinc-600">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">P</kbd>
-          pin
+          {{ 'CLIPBOARD.HINT_PIN' | translate }}
         </span>
         <span class="flex items-center gap-1 text-[10px] text-zinc-600 ml-auto">
-          type to search
+          {{ 'CLIPBOARD.HINT_SEARCH' | translate }}
         </span>
         <span class="flex items-center gap-1 text-[10px] text-zinc-600">
           <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">Esc</kbd>
-          close
+          {{ 'CLIPBOARD.HINT_CLOSE' | translate }}
         </span>
       </div>
     </div>
@@ -207,14 +209,14 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected isSearching  = signal(false);
 
   protected tabs = [
-    { label: 'Recent', value: 'recent' as Tab },
-    { label: 'Pinned', value: 'pinned' as Tab },
+    { labelKey: 'CLIPBOARD.TAB_RECENT', value: 'recent' as Tab },
+    { labelKey: 'CLIPBOARD.TAB_PINNED', value: 'pinned' as Tab },
   ];
 
   protected filters = [
-    { label: 'All',   value: 'all'   as Filter },
-    { label: 'Text',  value: 'text'  as Filter },
-    { label: 'Image', value: 'image' as Filter },
+    { labelKey: 'CLIPBOARD.FILTER_ALL',   value: 'all'   as Filter },
+    { labelKey: 'CLIPBOARD.FILTER_TEXT',  value: 'text'  as Filter },
+    { labelKey: 'CLIPBOARD.FILTER_IMAGE', value: 'image' as Filter },
   ];
 
   protected allEntries = computed(() => this.clipboard.entries.value() ?? []);
