@@ -1,4 +1,6 @@
-# Clipboard Manager
+# YANK
+
+**Yet Another Nifty Keeper** — Your clipboard history, kept.
 
 A keyboard-driven clipboard history manager for Windows, built as a lightweight system tray application. It captures everything you copy, lets you search and filter your history, pin important items, and paste with a single keypress — without leaving your current workflow.
 
