@@ -1,10 +1,10 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Clipboard Manager",
+  "productName": "YANK",
   "version": "0.1.0",
-  "identifier": "com.clipboardmanager.app",
+  "identifier": "com.yank.app",
   "build": {
-    "frontendDist": "../dist/clipboard-manager/browser",
+    "frontendDist": "../dist/yank/browser",
     "devUrl": "http://localhost:4200",
     "beforeDevCommand": "pnpm ng serve",
     "beforeBuildCommand": "pnpm ng build"
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Clipboard Manager",
+        "title": "YANK",
         "width": 480,
         "height": 680,
         "minWidth": 320,
