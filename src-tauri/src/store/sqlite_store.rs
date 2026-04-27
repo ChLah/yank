@@ -96,7 +96,7 @@ impl SqliteStore {
             return Ok(());
         }
 
-        let (delete_after_max_entries, max_entries, _delete_after_days, _max_days) =
+        let (delete_after_max_entries, max_entries, delete_after_days, max_days) =
             self.get_prune_settings_internal(&conn);
 
         match &payload.content {
@@ -124,6 +124,48 @@ impl SqliteStore {
                     SELECT id FROM entries WHERE pinned = 0 ORDER BY last_used_at DESC LIMIT -1 OFFSET ?1
                  )",
                 params![max_entries],
+            )?;
+        }
+
+        if delete_after_days {
+            let cutoff = now - max_days * 86400;
+            conn.execute(
+                "DELETE FROM entries WHERE pinned = 0 AND created_at < ?1",
+                params![cutoff],
+            )?;
+        }
+
+        Ok(())
+    }
+
+    pub fn prune_old_entries_if_enabled(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let conn = self.conn.lock().unwrap();
+        let delete_after_days = conn
+            .query_row(
+                "SELECT value_int FROM settings WHERE key = 'deleteAfterDays'",
+                [],
+                |row| row.get::<_, Option<i64>>(0),
+            )
+            .ok()
+            .flatten()
+            .map(|v| v != 0)
+            .unwrap_or(false);
+
+        if delete_after_days {
+            let max_days = conn
+                .query_row(
+                    "SELECT value_int FROM settings WHERE key = 'maxDays'",
+                    [],
+                    |row| row.get::<_, Option<i64>>(0),
+                )
+                .ok()
+                .flatten()
+                .unwrap_or(30);
+
+            let cutoff = chrono::Utc::now().timestamp() - max_days * 86400;
+            conn.execute(
+                "DELETE FROM entries WHERE pinned = 0 AND created_at < ?1",
+                params![cutoff],
             )?;
         }
 
@@ -658,6 +700,76 @@ mod tests {
         let now_pinned = store.toggle_pin(id).unwrap();
         assert!(!now_pinned);
         assert!(!store.get_all_entries().unwrap()[0].pinned);
+    }
+
+    #[test]
+    fn test_prune_max_entries_disabled() {
+        let store = in_memory_store();
+        store.save_settings(&AppSettings {
+            max_entries: 2,
+            delete_after_max_entries: false,
+            ..AppSettings::default()
+        }).unwrap();
+
+        for i in 0..5 {
+            store.save_entry(&text_payload(&format!("entry {}", i))).unwrap();
+        }
+
+        assert_eq!(store.get_all_entries().unwrap().len(), 5);
+    }
+
+    #[test]
+    fn test_prune_old_entries_by_age() {
+        let store = in_memory_store();
+        store.save_settings(&AppSettings {
+            delete_after_max_entries: false,
+            delete_after_days: true,
+            max_days: 1,
+            ..AppSettings::default()
+        }).unwrap();
+
+        let old_ts = chrono::Utc::now().timestamp() - 2 * 86400;
+        let new_ts = chrono::Utc::now().timestamp();
+        {
+            let conn = store.conn.lock().unwrap();
+            conn.execute(
+                "INSERT INTO entries (kind, content, hash, created_at, last_used_at, pinned) VALUES ('text', ?1, 'hash_old', ?2, ?2, 0)",
+                params![b"old entry".to_vec(), old_ts],
+            ).unwrap();
+            conn.execute(
+                "INSERT INTO entries (kind, content, hash, created_at, last_used_at, pinned) VALUES ('text', ?1, 'hash_new', ?2, ?2, 0)",
+                params![b"new entry".to_vec(), new_ts],
+            ).unwrap();
+        }
+
+        store.save_entry(&text_payload("trigger")).unwrap();
+
+        let entries = store.get_all_entries().unwrap();
+        assert!(!entries.iter().any(|e| e.content.as_deref() == Some("old entry")), "old entry should have been pruned");
+        assert!(entries.iter().any(|e| e.content.as_deref() == Some("new entry")));
+    }
+
+    #[test]
+    fn test_prune_old_entries_if_enabled_on_startup() {
+        let store = in_memory_store();
+        store.save_settings(&AppSettings {
+            delete_after_max_entries: false,
+            delete_after_days: true,
+            max_days: 1,
+            ..AppSettings::default()
+        }).unwrap();
+
+        let old_ts = chrono::Utc::now().timestamp() - 2 * 86400;
+        {
+            let conn = store.conn.lock().unwrap();
+            conn.execute(
+                "INSERT INTO entries (kind, content, hash, created_at, last_used_at, pinned) VALUES ('text', ?1, 'hash_stale', ?2, ?2, 0)",
+                params![b"stale".to_vec(), old_ts],
+            ).unwrap();
+        }
+
+        store.prune_old_entries_if_enabled().unwrap();
+        assert!(store.get_all_entries().unwrap().is_empty());
     }
 
     #[test]
