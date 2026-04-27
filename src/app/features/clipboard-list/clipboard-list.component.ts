@@ -36,24 +36,24 @@ type Filter = 'all' | 'text' | 'image';
     'class': 'block outline-none h-full',
   },
   template: `
-    <div class="flex flex-col h-full bg-zinc-950 rounded-xl overflow-hidden border border-zinc-800 shadow-2xl">
+    <div class="flex flex-col h-full bg-background rounded-xl overflow-hidden border border-border shadow-2xl">
 
       <!-- Header -->
-      <div class="px-3.5 h-11 flex items-center justify-between shrink-0 bg-zinc-900 border-b border-zinc-800">
+      <div class="px-3.5 h-11 flex items-center justify-between shrink-0 bg-card border-b border-border">
         <div class="flex items-center gap-2">
-          <ng-icon hlm size="sm" name="lucideClipboard" class="text-zinc-500 shrink-0" />
-          <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">{{ 'CLIPBOARD.TITLE' | translate }}</span>
+          <ng-icon hlm size="sm" name="lucideClipboard" class="text-muted-foreground shrink-0" />
+          <span class="text-[13px] font-semibold text-foreground tracking-tight">{{ 'CLIPBOARD.TITLE' | translate }}</span>
           @if (allEntries().length > 0) {
             <span hlmBadge variant="secondary">{{ allEntries().length }}</span>
           }
         </div>
-        <a routerLink="/settings" class="p-1.5 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800 transition-colors">
+        <a routerLink="/settings" class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
           <ng-icon hlm size="sm" name="lucideSettings" />
         </a>
       </div>
 
       <!-- Tab + filter row -->
-      <div class="flex items-center justify-between px-3.5 shrink-0 bg-zinc-900/50 border-b border-zinc-800" style="height:34px">
+      <div class="flex items-center justify-between px-3.5 shrink-0 bg-card/50 border-b border-border" style="height:34px">
         <div hlmTabs [tab]="activeTab()" (tabActivated)="setTab($event)">
           <div hlmTabsList variant="line" class="h-8 rounded-none bg-transparent p-0">
             @for (tab of tabs; track tab.value) {
@@ -72,7 +72,7 @@ type Filter = 'all' | 'text' | 'image';
               class="text-[11px] px-2 py-0.5 rounded-full border transition-colors"
               [class]="activeFilter() === f.value
                 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
-                : 'text-zinc-600 border-transparent hover:text-zinc-400'"
+                : 'text-muted-foreground border-transparent hover:text-foreground'"
               (click)="setFilter(f.value)">
               {{ f.labelKey | translate }}
             </button>
@@ -83,20 +83,20 @@ type Filter = 'all' | 'text' | 'image';
       <!-- Search bar (animated slide-in) -->
       <div
         class="overflow-hidden transition-all duration-150 ease-out shrink-0"
-        [class]="isSearching() ? 'max-h-10 opacity-100 border-b border-zinc-800' : 'max-h-0 opacity-0'">
+        [class]="isSearching() ? 'max-h-10 opacity-100 border-b border-border' : 'max-h-0 opacity-0'">
         <div class="flex items-center gap-2 px-3.5 h-9">
-          <ng-icon hlm size="sm" name="lucideSearch" class="text-zinc-500 shrink-0" />
+          <ng-icon hlm size="sm" name="lucideSearch" class="text-muted-foreground shrink-0" />
           <input
             #searchInput
             type="text"
             [value]="searchQuery()"
             (input)="onSearchInput($event)"
             [placeholder]="'CLIPBOARD.SEARCH_PLACEHOLDER' | translate"
-            class="flex-1 bg-transparent text-[13px] text-zinc-200 placeholder:text-zinc-600 outline-none"
+            class="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground outline-none"
           />
           @if (searchQuery()) {
             <button
-              class="text-zinc-600 hover:text-zinc-400 transition-colors"
+              class="text-muted-foreground hover:text-foreground transition-colors"
               (click)="clearSearch()">
               <ng-icon hlm size="sm" name="lucideX" />
             </button>
@@ -112,8 +112,8 @@ type Filter = 'all' | 'text' | 'image';
             @for (skeleton of skeletons; track $index) {
               <div class="flex items-center gap-3 pl-5 pr-4 py-2.5 border-l-2 border-l-transparent">
                 <div class="flex-1 space-y-1.5">
-                  <div class="h-3 bg-zinc-800 rounded animate-pulse" [style.width.%]="65 + ($index % 3) * 10"></div>
-                  <div class="h-2 bg-zinc-800 rounded animate-pulse w-12 opacity-50"></div>
+                  <div class="h-3 bg-muted rounded animate-pulse" [style.width.%]="65 + ($index % 3) * 10"></div>
+                  <div class="h-2 bg-muted rounded animate-pulse w-12 opacity-50"></div>
                 </div>
               </div>
             }
@@ -123,27 +123,27 @@ type Filter = 'all' | 'text' | 'image';
             <div class="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center mb-3">
               <ng-icon hlm size="sm" name="lucideAlertCircle" class="text-red-400" />
             </div>
-            <p class="text-[13px] text-zinc-400 mb-1.5">{{ 'CLIPBOARD.ERROR_LOAD' | translate }}</p>
+            <p class="text-[13px] text-muted-foreground mb-1.5">{{ 'CLIPBOARD.ERROR_LOAD' | translate }}</p>
             <button hlmBtn variant="link" size="sm" (click)="clipboard.entries.reload()">
               {{ 'CLIPBOARD.TRY_AGAIN' | translate }}
             </button>
           </div>
         } @else if (filteredEntries().length === 0) {
           <div class="flex flex-col items-center justify-center h-full py-10 text-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center">
+            <div class="w-10 h-10 rounded-xl bg-card flex items-center justify-center">
               @if (activeTab() === 'pinned') {
-                <ng-icon hlm size="base" name="lucideBookmark" class="text-zinc-600" />
+                <ng-icon hlm size="base" name="lucideBookmark" class="text-muted-foreground" />
               } @else {
-                <ng-icon hlm size="base" name="lucideClipboard" class="text-zinc-600" />
+                <ng-icon hlm size="base" name="lucideClipboard" class="text-muted-foreground" />
               }
             </div>
             @if (activeTab() === 'pinned') {
-              <p class="text-[13px] text-zinc-500">{{ 'CLIPBOARD.EMPTY_PINNED' | translate }}</p>
-              <p class="text-[11px] text-zinc-600">{{ 'CLIPBOARD.EMPTY_PINNED_HINT' | translate }}</p>
+              <p class="text-[13px] text-muted-foreground">{{ 'CLIPBOARD.EMPTY_PINNED' | translate }}</p>
+              <p class="text-[11px] text-muted-foreground">{{ 'CLIPBOARD.EMPTY_PINNED_HINT' | translate }}</p>
             } @else if (searchQuery()) {
-              <p class="text-[13px] text-zinc-500">{{ 'CLIPBOARD.EMPTY_NO_MATCHES' | translate:{ term: searchQuery() } }}</p>
+              <p class="text-[13px] text-muted-foreground">{{ 'CLIPBOARD.EMPTY_NO_MATCHES' | translate:{ term: searchQuery() } }}</p>
             } @else {
-              <p class="text-[13px] text-zinc-500">{{ 'CLIPBOARD.EMPTY_NOTHING' | translate }}</p>
+              <p class="text-[13px] text-muted-foreground">{{ 'CLIPBOARD.EMPTY_NOTHING' | translate }}</p>
             }
           </div>
         } @else {
@@ -164,29 +164,29 @@ type Filter = 'all' | 'text' | 'image';
       </div>
 
       <!-- Footer -->
-      <div class="h-9 px-3.5 flex items-center gap-2 shrink-0 bg-zinc-900 border-t border-zinc-800">
+      <div class="h-9 px-3.5 flex items-center gap-2 shrink-0 bg-card border-t border-border">
         <!-- footer nav hints -->
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600 whitespace-nowrap">
-          <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">↑↓</kbd>
+        <span class="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
+          <kbd class="inline-flex items-center px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground leading-none">↑↓</kbd>
           {{ 'CLIPBOARD.HINT_NAV' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600 whitespace-nowrap">
-          <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">↵</kbd>
+        <span class="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
+          <kbd class="inline-flex items-center px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground leading-none">↵</kbd>
           {{ 'CLIPBOARD.HINT_PASTE' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600 whitespace-nowrap">
-          <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">⌫</kbd>
+        <span class="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
+          <kbd class="inline-flex items-center px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground leading-none">⌫</kbd>
           {{ 'CLIPBOARD.HINT_DELETE' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600 whitespace-nowrap">
-          <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">P</kbd>
+        <span class="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
+          <kbd class="inline-flex items-center px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground leading-none">P</kbd>
           {{ 'CLIPBOARD.HINT_PIN' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600 ml-auto whitespace-nowrap">
+        <span class="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
           {{ 'CLIPBOARD.HINT_SEARCH' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-zinc-600 whitespace-nowrap">
-          <kbd class="inline-flex items-center px-1 py-0.5 bg-zinc-800 border border-zinc-700 rounded text-[10px] font-mono text-zinc-500 leading-none">Esc</kbd>
+        <span class="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
+          <kbd class="inline-flex items-center px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground leading-none">Esc</kbd>
           {{ 'CLIPBOARD.HINT_CLOSE' | translate }}
         </span>
       </div>

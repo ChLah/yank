@@ -40,7 +40,7 @@ pub struct AppSettings {
     pub shortcut: String,
     pub max_entries: i64,
     pub language: Option<Language>,
-    pub theme: Theme,  // always present; defaults to System when key is absent in DB
+    pub theme: Option<Theme>,  // defaults to System when key is absent in DB
 }
 ```
 

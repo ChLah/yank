@@ -4,6 +4,8 @@
 @import "tailwindcss/utilities.css";
 @import "@spartan-ng/brain/hlm-tailwind-preset.css";
 
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --radius: 0.625rem;

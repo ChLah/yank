@@ -25,31 +25,31 @@ interface TimeTranslation {
   template: `
     <div
       class="flex items-center gap-2 pl-3.5 pr-3 cursor-pointer group transition-colors border-l-2"
-      [class]="selected() ? 'border-l-indigo-500 bg-zinc-900' : 'border-l-transparent hover:bg-zinc-900/60'"
+      [class]="selected() ? 'border-l-indigo-500 bg-card' : 'border-l-transparent hover:bg-card/60'"
       (click)="select.emit()"
     >
       @if (entry().kind === 'image') {
-        <div class="shrink-0 w-8 h-8 rounded-md overflow-hidden bg-zinc-800 flex items-center justify-center my-2">
+        <div class="shrink-0 w-8 h-8 rounded-md overflow-hidden bg-muted flex items-center justify-center my-2">
           @if (entry().thumbnail) {
             <img [src]="entry().thumbnail!" alt="Clipboard image" class="w-full h-full object-cover" />
           } @else {
-            <ng-icon hlm size="sm" name="lucideImage" class="text-zinc-600" />
+            <ng-icon hlm size="sm" name="lucideImage" class="text-muted-foreground" />
           }
         </div>
         <div class="flex-1 min-w-0 py-2">
-          <p class="text-[13px] font-medium text-zinc-300 leading-snug">{{ 'ENTRY.IMAGE' | translate }}</p>
+          <p class="text-[13px] font-medium text-foreground leading-snug">{{ 'ENTRY.IMAGE' | translate }}</p>
           @if (imageDimensions()) {
-            <p class="text-[11px] text-zinc-600 mt-0.5">{{ imageDimensions() }}</p>
+            <p class="text-[11px] text-muted-foreground mt-0.5">{{ imageDimensions() }}</p>
           }
         </div>
       } @else {
         <div class="flex-1 min-w-0 py-2.5">
-          <p class="text-[13px] text-zinc-300 truncate leading-snug">{{ entry().content }}</p>
+          <p class="text-[13px] text-foreground truncate leading-snug">{{ entry().content }}</p>
         </div>
       }
 
       <div class="flex items-center gap-1 shrink-0">
-        <span class="text-[11px] text-zinc-600 tabular-nums">
+        <span class="text-[11px] text-muted-foreground tabular-nums">
           {{ relativeTimeTranslation().key | translate:relativeTimeTranslation().params }}
         </span>
 
@@ -66,7 +66,7 @@ interface TimeTranslation {
         <!-- Delete button -->
         <button
           hlmBtn variant="ghost" size="icon"
-          class="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-700 hover:text-red-400 hover:bg-red-500/10"
+          class="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
           [class.opacity-100]="selected()"
           [title]="'ENTRY.DELETE' | translate"
           (click)="$event.stopPropagation(); delete.emit()"
@@ -100,7 +100,7 @@ export class ClipboardEntryComponent {
     const visibility = alwaysVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100';
     const color = this.entry().pinned
       ? 'text-indigo-400 hover:text-indigo-300'
-      : 'text-zinc-600 hover:text-zinc-400';
+      : 'text-muted-foreground hover:text-foreground';
     return `${visibility} transition-opacity ${color}`;
   });
 }

@@ -15,6 +15,7 @@ import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
 import { HlmSelectImports } from '@spartan-ng/helm/select';
+import { TranslateService } from '@ngx-translate/core';
 import { SettingsService } from '../../core/services/settings.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ThemeService } from '../../core/services/theme.service';
@@ -84,11 +85,11 @@ import { Language, Theme } from '../../core/models/settings.model';
           <!-- Language -->
           <div class="space-y-1.5">
             <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.LANGUAGE_LABEL' | translate }}</label>
-            <div hlmSelect [value]="language() ?? ''" (valueChange)="onLanguageChange($event)">
+            <div hlmSelect [value]="language() ?? ''" [itemToString]="languageLabel" (valueChange)="onLanguageChange($event)">
               <hlm-select-trigger class="w-full">
                 <hlm-select-value />
               </hlm-select-trigger>
-              <hlm-select-content>
+              <hlm-select-content *hlmSelectPortal>
                 <hlm-select-item value="">{{ 'SETTINGS.LANGUAGE_SYSTEM' | translate }}</hlm-select-item>
                 <hlm-select-item value="en">{{ 'SETTINGS.LANGUAGE_EN' | translate }}</hlm-select-item>
                 <hlm-select-item value="de">{{ 'SETTINGS.LANGUAGE_DE' | translate }}</hlm-select-item>
@@ -99,11 +100,11 @@ import { Language, Theme } from '../../core/models/settings.model';
           <!-- Theme -->
           <div class="space-y-1.5">
             <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.THEME_LABEL' | translate }}</label>
-            <div hlmSelect [value]="theme()" (valueChange)="onThemeChange($event)">
+            <div hlmSelect [value]="theme()" [itemToString]="themeLabel" (valueChange)="onThemeChange($event)">
               <hlm-select-trigger class="w-full">
                 <hlm-select-value />
               </hlm-select-trigger>
-              <hlm-select-content>
+              <hlm-select-content *hlmSelectPortal>
                 <hlm-select-item value="system">{{ 'SETTINGS.THEME_SYSTEM' | translate }}</hlm-select-item>
                 <hlm-select-item value="light">{{ 'SETTINGS.THEME_LIGHT' | translate }}</hlm-select-item>
                 <hlm-select-item value="dark">{{ 'SETTINGS.THEME_DARK' | translate }}</hlm-select-item>
@@ -137,6 +138,7 @@ export class SettingsComponent {
   protected settingsService = inject(SettingsService);
   protected i18nService = inject(I18nService);
   protected themeService = inject(ThemeService);
+  private translate = inject(TranslateService);
 
   protected shortcut = linkedSignal(() => this.settingsService.settings.value()?.shortcut ?? '');
   protected maxEntries = linkedSignal(() => this.settingsService.settings.value()?.maxEntries ?? 20);
@@ -145,6 +147,22 @@ export class SettingsComponent {
   protected saving = signal(false);
   protected saved = signal(false);
   protected error = signal<string | null>(null);
+
+  protected languageLabel = (val: string): string => {
+    switch (val) {
+      case 'en': return this.translate.instant('SETTINGS.LANGUAGE_EN');
+      case 'de': return this.translate.instant('SETTINGS.LANGUAGE_DE');
+      default:   return this.translate.instant('SETTINGS.LANGUAGE_SYSTEM');
+    }
+  };
+
+  protected themeLabel = (val: string): string => {
+    switch (val) {
+      case 'dark':  return this.translate.instant('SETTINGS.THEME_DARK');
+      case 'light': return this.translate.instant('SETTINGS.THEME_LIGHT');
+      default:      return this.translate.instant('SETTINGS.THEME_SYSTEM');
+    }
+  };
 
   protected captureShortcut(event: KeyboardEvent): void {
     event.preventDefault();
