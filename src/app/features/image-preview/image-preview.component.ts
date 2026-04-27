@@ -7,25 +7,29 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideAlertCircle, lucideCheck, lucideCopy, lucideLoader, lucideX } from '@ng-icons/lucide';
+import { lucideCheck, lucideCopy, lucideLoader, lucideX } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
+import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
+import { LoadingSpinnerComponent } from '../../shared/ui/loading-spinner/loading-spinner.component';
+import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
 
 @Component({
   selector: 'app-image-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgIcon, HlmIcon, HlmButton, TranslatePipe],
-  providers: [provideIcons({ lucideLoader, lucideCopy, lucideX, lucideAlertCircle, lucideCheck })],
+  imports: [NgIcon, HlmIcon, HlmButton, TranslatePipe, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent],
+  providers: [provideIcons({ lucideLoader, lucideCopy, lucideX, lucideCheck })],
   host: { '(keydown.escape)': 'onEscape()' },
   template: `
     <div class="flex flex-col h-full bg-zinc-950">
 
-      <!-- Toolbar -->
-      <div class="px-3.5 h-11 flex items-center justify-between shrink-0 bg-zinc-900 border-b border-zinc-800">
-        <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">{{ 'IMAGE_PREVIEW.TITLE' | translate }}</span>
-        <div class="flex items-center gap-2">
+      <app-page-header variant="dark" [dragRegion]="false">
+        <ng-container start>
+          <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">{{ 'IMAGE_PREVIEW.TITLE' | translate }}</span>
+        </ng-container>
+        <ng-container end>
           <button
             hlmBtn variant="outline" size="sm"
             class="flex items-center gap-1.5"
@@ -48,23 +52,22 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
           >
             <ng-icon hlm size="sm" name="lucideX" />
           </button>
-        </div>
-      </div>
+        </ng-container>
+      </app-page-header>
 
       <!-- Image area -->
       <div class="flex-1 flex items-center justify-center p-8 overflow-auto">
         @if (loading()) {
           <div class="flex flex-col items-center gap-3">
-            <div class="w-5 h-5 border-2 border-zinc-800 border-t-zinc-500 rounded-full animate-spin"></div>
+            <app-loading-spinner variant="dark" />
             <span class="text-[13px] text-zinc-500">{{ 'IMAGE_PREVIEW.LOADING' | translate }}</span>
           </div>
         } @else if (error()) {
-          <div class="flex flex-col items-center gap-3">
-            <div class="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center">
-              <ng-icon hlm size="sm" name="lucideAlertCircle" class="text-red-400" />
-            </div>
-            <p class="text-[13px] text-zinc-400">{{ 'IMAGE_PREVIEW.ERROR' | translate }}</p>
-          </div>
+          <app-empty-state
+            icon="lucideAlertCircle"
+            [title]="'IMAGE_PREVIEW.ERROR' | translate"
+            variant="destructive"
+          />
         } @else if (imageSrc()) {
           <img
             [src]="imageSrc()!"
