@@ -37,10 +37,19 @@ pub fn save_settings(
 ) -> Result<(), String> {
     store.save_settings(&settings).map_err(|e| e.to_string())?;
 
-    // Re-register global shortcut with new shortcut string.
-    // Non-fatal: if re-registration fails (e.g. OS conflict), settings are still saved.
     if let Err(e) = crate::shortcuts::register_shortcut(&app_handle, &settings.shortcut) {
         tracing::warn!("Failed to re-register shortcut '{}' after save: {}", settings.shortcut, e);
+    }
+
+    use tauri_plugin_autostart::ManagerExt;
+    if settings.autostart {
+        if let Err(e) = app_handle.autolaunch().enable() {
+            tracing::warn!("Failed to enable autostart: {}", e);
+        }
+    } else {
+        if let Err(e) = app_handle.autolaunch().disable() {
+            tracing::warn!("Failed to disable autostart: {}", e);
+        }
     }
 
     Ok(())
