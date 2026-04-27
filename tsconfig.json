@@ -21,7 +21,9 @@
       "@spartan-ng/helm/alert": ["./src/libs/ui/alert/src/index.ts"],
       "@spartan-ng/helm/icon": ["./src/libs/ui/icon/src/index.ts"],
       "@spartan-ng/helm/tabs": ["./src/libs/ui/tabs/src/index.ts"],
-      "@spartan-ng/helm/select": ["./src/libs/ui/select/src/index.ts"]
+      "@spartan-ng/helm/select": ["./src/libs/ui/select/src/index.ts"],
+      "@spartan-ng/helm/checkbox": ["./src/libs/ui/checkbox/src/index.ts"],
+      "@spartan-ng/helm/separator": ["./src/libs/ui/separator/src/index.ts"]
     }
   },
   "angularCompilerOptions": {
