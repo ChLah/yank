@@ -56,7 +56,11 @@ pub fn run() {
 
             app.manage(store.clone());
 
-            // Load and register the global shortcut from settings
+            // Prune stale entries on startup if age-based deletion is enabled
+            if let Err(e) = store.prune_old_entries_if_enabled() {
+                tracing::warn!("Failed to prune old entries on startup: {}", e);
+            }
+
             let shortcut = store
                 .get_settings()
                 .map(|s| s.shortcut)
