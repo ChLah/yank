@@ -24,6 +24,9 @@ export interface Translation {
     WINDOW_POSITION_LABEL: string;
     WINDOW_POSITION_CURSOR: string;
     WINDOW_POSITION_LAST: string;
+    GROUP_GENERAL: string;
+    GROUP_APPEARANCE: string;
+    GROUP_HISTORY: string;
   };
   CLIPBOARD: {
     TITLE: string;

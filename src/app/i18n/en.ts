@@ -25,6 +25,9 @@ export const en: Translation = {
     WINDOW_POSITION_LABEL: 'Window Position',
     WINDOW_POSITION_CURSOR: 'Cursor position',
     WINDOW_POSITION_LAST: 'Last position',
+    GROUP_GENERAL: 'General',
+    GROUP_APPEARANCE: 'Appearance',
+    GROUP_HISTORY: 'History',
   },
   CLIPBOARD: {
     TITLE: 'Clipboard',

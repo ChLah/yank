@@ -25,6 +25,9 @@ export const de: Translation = {
     WINDOW_POSITION_LABEL: 'Fensterposition',
     WINDOW_POSITION_CURSOR: 'Cursor-Position',
     WINDOW_POSITION_LAST: 'Letzte Position',
+    GROUP_GENERAL: 'Allgemein',
+    GROUP_APPEARANCE: 'Darstellung',
+    GROUP_HISTORY: 'Verlauf',
   },
   CLIPBOARD: {
     TITLE: 'Zwischenablage',
