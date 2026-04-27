@@ -13,8 +13,11 @@ import { UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideAlertCircle, lucideBookmark, lucideClipboard, lucideSearch, lucideSettings, lucideX } from '@ng-icons/lucide';
+import { lucideClipboard, lucideSearch, lucideSettings, lucideX } from '@ng-icons/lucide';
 import { ClipboardEntryComponent } from './clipboard-entry.component';
+import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
+import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
+import { KeyboardHintComponent } from '../../shared/ui/keyboard-hint/keyboard-hint.component';
 import { ClipboardService } from '../../core/services/clipboard.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { SettingsService } from '../../core/services/settings.service';
@@ -30,8 +33,8 @@ type Filter = 'all' | 'text' | 'image';
 @Component({
   selector: 'app-clipboard-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ClipboardEntryComponent, RouterLink, NgIcon, HlmIcon, HlmButton, HlmBadge, HlmTabs, HlmTabsList, HlmTabsTrigger, TranslatePipe],
-  providers: [provideIcons({ lucideClipboard, lucideSettings, lucideSearch, lucideX, lucideAlertCircle, lucideBookmark })],
+  imports: [ClipboardEntryComponent, RouterLink, NgIcon, HlmIcon, HlmButton, HlmBadge, HlmTabs, HlmTabsList, HlmTabsTrigger, TranslatePipe, PageHeaderComponent, EmptyStateComponent, KeyboardHintComponent],
+  providers: [provideIcons({ lucideClipboard, lucideSettings, lucideSearch, lucideX })],
   host: {
     '(keydown)': 'onKeyDown($event)',
     'tabindex': '0',
@@ -41,18 +44,20 @@ type Filter = 'all' | 'text' | 'image';
     <div class="flex flex-col h-full bg-background rounded-xl overflow-hidden border border-border shadow-2xl">
 
       <!-- Header -->
-      <div class="px-3.5 h-11 flex items-center justify-between shrink-0 bg-card border-b border-border" data-tauri-drag-region>
-        <div class="flex items-center gap-2">
+      <app-page-header>
+        <ng-container start>
           <ng-icon hlm size="sm" name="lucideClipboard" class="text-muted-foreground shrink-0" />
           <span class="text-[13px] font-semibold text-foreground tracking-tight">{{ 'CLIPBOARD.TITLE' | translate }}</span>
           @if (allEntries().length > 0) {
             <span hlmBadge variant="secondary">{{ allEntries().length }}</span>
           }
-        </div>
-        <a routerLink="/settings" class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-          <ng-icon hlm size="sm" name="lucideSettings" />
-        </a>
-      </div>
+        </ng-container>
+        <ng-container end>
+          <a routerLink="/settings" class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <ng-icon hlm size="sm" name="lucideSettings" />
+          </a>
+        </ng-container>
+      </app-page-header>
 
       <!-- Tab + filter row -->
       <div class="flex items-center justify-between px-3.5 shrink-0 bg-card/50 border-b border-border" style="height:34px">
@@ -121,33 +126,32 @@ type Filter = 'all' | 'text' | 'image';
             }
           </div>
         } @else if (clipboard.entries.error()) {
-          <div class="flex flex-col items-center justify-center h-full py-10 text-center">
-            <div class="w-9 h-9 rounded-full bg-red-500/10 flex items-center justify-center mb-3">
-              <ng-icon hlm size="sm" name="lucideAlertCircle" class="text-red-400" />
-            </div>
-            <p class="text-[13px] text-muted-foreground mb-1.5">{{ 'CLIPBOARD.ERROR_LOAD' | translate }}</p>
+          <app-empty-state
+            icon="lucideAlertCircle"
+            [title]="'CLIPBOARD.ERROR_LOAD' | translate"
+            variant="destructive">
             <button hlmBtn variant="link" size="sm" (click)="clipboard.entries.reload()">
               {{ 'CLIPBOARD.TRY_AGAIN' | translate }}
             </button>
-          </div>
+          </app-empty-state>
         } @else if (filteredEntries().length === 0) {
-          <div class="flex flex-col items-center justify-center h-full py-10 text-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-card flex items-center justify-center">
-              @if (activeTab() === 'pinned') {
-                <ng-icon hlm size="base" name="lucideBookmark" class="text-muted-foreground" />
-              } @else {
-                <ng-icon hlm size="base" name="lucideClipboard" class="text-muted-foreground" />
-              }
-            </div>
-            @if (activeTab() === 'pinned') {
-              <p class="text-[13px] text-muted-foreground">{{ 'CLIPBOARD.EMPTY_PINNED' | translate }}</p>
-              <p class="text-[11px] text-muted-foreground">{{ 'CLIPBOARD.EMPTY_PINNED_HINT' | translate }}</p>
-            } @else if (searchQuery()) {
-              <p class="text-[13px] text-muted-foreground">{{ 'CLIPBOARD.EMPTY_NO_MATCHES' | translate:{ term: searchQuery() } }}</p>
-            } @else {
-              <p class="text-[13px] text-muted-foreground">{{ 'CLIPBOARD.EMPTY_NOTHING' | translate }}</p>
-            }
-          </div>
+          @if (activeTab() === 'pinned') {
+            <app-empty-state
+              icon="lucideBookmark"
+              [title]="'CLIPBOARD.EMPTY_PINNED' | translate"
+              [hint]="'CLIPBOARD.EMPTY_PINNED_HINT' | translate"
+            />
+          } @else if (searchQuery()) {
+            <app-empty-state
+              icon="lucideClipboard"
+              [title]="'CLIPBOARD.EMPTY_NO_MATCHES' | translate:{ term: searchQuery() }"
+            />
+          } @else {
+            <app-empty-state
+              icon="lucideClipboard"
+              [title]="'CLIPBOARD.EMPTY_NOTHING' | translate"
+            />
+          }
         } @else {
           <div class="py-1">
             @for (entry of filteredEntries(); track entry.id; let i = $index) {
@@ -168,29 +172,14 @@ type Filter = 'all' | 'text' | 'image';
       <!-- Footer -->
       <div class="h-9 px-3.5 flex items-center gap-2 shrink-0 bg-card border-t border-border">
         <!-- footer nav hints -->
-        <span class="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
-          <kbd class="inline-flex items-center px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground leading-none">↑↓</kbd>
-          {{ 'CLIPBOARD.HINT_NAV' | translate }}
-        </span>
-        <span class="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
-          <kbd class="inline-flex items-center px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground leading-none">↵</kbd>
-          {{ 'CLIPBOARD.HINT_PASTE' | translate }}
-        </span>
-        <span class="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
-          <kbd class="inline-flex items-center px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground leading-none">⌫</kbd>
-          {{ 'CLIPBOARD.HINT_DELETE' | translate }}
-        </span>
-        <span class="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
-          <kbd class="inline-flex items-center px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground leading-none">P</kbd>
-          {{ 'CLIPBOARD.HINT_PIN' | translate }}
-        </span>
+        <app-keyboard-hint key="↑↓" [label]="'CLIPBOARD.HINT_NAV' | translate" />
+        <app-keyboard-hint key="↵" [label]="'CLIPBOARD.HINT_PASTE' | translate" />
+        <app-keyboard-hint key="⌫" [label]="'CLIPBOARD.HINT_DELETE' | translate" />
+        <app-keyboard-hint key="P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
         <span class="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
           {{ 'CLIPBOARD.HINT_SEARCH' | translate }}
         </span>
-        <span class="flex items-center gap-1 text-[10px] text-muted-foreground whitespace-nowrap">
-          <kbd class="inline-flex items-center px-1 py-0.5 bg-muted border border-border rounded text-[10px] font-mono text-muted-foreground leading-none">Esc</kbd>
-          {{ 'CLIPBOARD.HINT_CLOSE' | translate }}
-        </span>
+        <app-keyboard-hint key="Esc" [label]="'CLIPBOARD.HINT_CLOSE' | translate" />
       </div>
     </div>
   `,
