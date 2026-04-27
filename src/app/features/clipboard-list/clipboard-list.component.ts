@@ -186,17 +186,20 @@ type Filter = 'all' | 'text' | 'image';
       }
 
       <!-- Footer -->
-      <div class="h-9 px-3.5 flex items-center gap-2 shrink-0 bg-card border-t border-border">
-        <!-- footer nav hints -->
-        <app-keyboard-hint key="↑↓" [label]="'CLIPBOARD.HINT_NAV' | translate" />
-        <app-keyboard-hint key="↵" [label]="'CLIPBOARD.HINT_PASTE' | translate" />
-        <app-keyboard-hint key="⇧↵" [label]="'TRANSFORM.HINT' | translate" />
-        <app-keyboard-hint key="⌫" [label]="'CLIPBOARD.HINT_DELETE' | translate" />
-        <app-keyboard-hint key="P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
-        <span class="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
-          {{ 'CLIPBOARD.HINT_SEARCH' | translate }}
-        </span>
-        <app-keyboard-hint key="Esc" [label]="'CLIPBOARD.HINT_CLOSE' | translate" />
+      <div class="px-3.5 py-1.5 flex flex-col gap-1 shrink-0 bg-card border-t border-border">
+        <div class="flex items-center gap-2">
+          <app-keyboard-hint key="↑↓" [label]="'CLIPBOARD.HINT_NAV' | translate" />
+          <app-keyboard-hint key="↵" [label]="'CLIPBOARD.HINT_PASTE' | translate" />
+          <app-keyboard-hint key="⇧↵" [label]="'TRANSFORM.HINT' | translate" />
+          <span class="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">
+            {{ 'CLIPBOARD.HINT_SEARCH' | translate }}
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <app-keyboard-hint key="⌫" [label]="'CLIPBOARD.HINT_DELETE' | translate" />
+          <app-keyboard-hint key="P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
+          <app-keyboard-hint key="Esc" [label]="'CLIPBOARD.HINT_CLOSE' | translate" class="ml-auto" />
+        </div>
       </div>
     </div>
   `,
