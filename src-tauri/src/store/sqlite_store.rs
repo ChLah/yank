@@ -5,7 +5,7 @@ use image::imageops::FilterType;
 use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
-use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language, Theme};
+use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language, Theme, WindowPositionMode};
 
 const THUMBNAIL_MAX_SIZE: u32 = 200;
 
@@ -274,6 +274,7 @@ impl SqliteStore {
         let map = Self::fetch_settings_map(&conn, &[
             "shortcut", "maxEntries", "language", "theme",
             "autostart", "deleteAfterMaxEntries", "deleteAfterDays", "maxDays",
+            "windowPosition",
         ])?;
 
         let defaults = AppSettings::default();
@@ -296,8 +297,12 @@ impl SqliteStore {
         let delete_after_max_entries = int("deleteAfterMaxEntries").map(|v| v != 0).unwrap_or(true);
         let delete_after_days       = int("deleteAfterDays").map(|v| v != 0).unwrap_or(false);
         let max_days                = int("maxDays").unwrap_or(30);
+        let window_position = text("windowPosition").map(|v| match v.as_str() {
+            "last" => WindowPositionMode::Last,
+            _      => WindowPositionMode::Cursor,
+        }).unwrap_or(WindowPositionMode::Cursor);
 
-        Ok(AppSettings { shortcut, max_entries, language, theme, autostart, delete_after_max_entries, delete_after_days, max_days })
+        Ok(AppSettings { shortcut, max_entries, language, theme, autostart, delete_after_max_entries, delete_after_days, max_days, window_position })
     }
 
     pub fn save_settings(&self, settings: &AppSettings) -> Result<(), rusqlite::Error> {
@@ -310,6 +315,10 @@ impl SqliteStore {
             Theme::Light => "light",
             Theme::System => "system",
         };
+        let window_position_str = match settings.window_position {
+            WindowPositionMode::Cursor => "cursor",
+            WindowPositionMode::Last   => "last",
+        };
 
         let rows: &[(&str, Option<&str>, Option<i64>)] = &[
             ("shortcut",              Some(settings.shortcut.as_str()),            None),
@@ -320,6 +329,7 @@ impl SqliteStore {
             ("deleteAfterMaxEntries", None,                                         Some(settings.delete_after_max_entries as i64)),
             ("deleteAfterDays",       None,                                         Some(settings.delete_after_days as i64)),
             ("maxDays",               None,                                         Some(settings.max_days)),
+            ("windowPosition",        Some(window_position_str),                   None),
         ];
 
         let conn = self.conn.lock().unwrap();
@@ -332,6 +342,26 @@ impl SqliteStore {
         }
         drop(stmt);
         tx.commit()
+    }
+
+    pub fn save_window_position(&self, x: i64, y: i64) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let tx = conn.unchecked_transaction()?;
+        let mut stmt = tx.prepare(
+            "INSERT OR REPLACE INTO settings (key, value_text, value_int) VALUES (?1, ?2, ?3)"
+        )?;
+        stmt.execute(params!["lastWindowX", None::<String>, Some(x)])?;
+        stmt.execute(params!["lastWindowY", None::<String>, Some(y)])?;
+        drop(stmt);
+        tx.commit()
+    }
+
+    pub fn get_window_position(&self) -> Result<Option<(i64, i64)>, Box<dyn std::error::Error>> {
+        let conn = self.conn.lock().unwrap();
+        let map = Self::fetch_settings_map(&conn, &["lastWindowX", "lastWindowY"])?;
+        let x = map.get("lastWindowX").and_then(|(_, i)| *i);
+        let y = map.get("lastWindowY").and_then(|(_, i)| *i);
+        Ok(x.zip(y))
     }
 
     fn get_prune_settings_internal(&self, conn: &Connection) -> (bool, i64, bool, i64) {
@@ -663,6 +693,50 @@ mod tests {
 
         store.prune_old_entries_if_enabled().unwrap();
         assert!(store.get_all_entries().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_window_position_mode_round_trip() {
+        let store = in_memory_store();
+
+        // Default is cursor
+        let s = store.get_settings().unwrap();
+        assert_eq!(s.window_position, WindowPositionMode::Cursor);
+
+        // Save last, reload
+        store.save_settings(&AppSettings {
+            window_position: WindowPositionMode::Last,
+            ..AppSettings::default()
+        }).unwrap();
+        let s = store.get_settings().unwrap();
+        assert_eq!(s.window_position, WindowPositionMode::Last);
+
+        // Switch back to cursor
+        store.save_settings(&AppSettings {
+            window_position: WindowPositionMode::Cursor,
+            ..AppSettings::default()
+        }).unwrap();
+        let s = store.get_settings().unwrap();
+        assert_eq!(s.window_position, WindowPositionMode::Cursor);
+    }
+
+    #[test]
+    fn test_save_and_get_window_position() {
+        let store = in_memory_store();
+
+        // None before any save
+        assert!(store.get_window_position().unwrap().is_none());
+
+        store.save_window_position(1280, 720).unwrap();
+        assert_eq!(store.get_window_position().unwrap(), Some((1280, 720)));
+
+        // Overwrite updates both coordinates atomically
+        store.save_window_position(100, 200).unwrap();
+        assert_eq!(store.get_window_position().unwrap(), Some((100, 200)));
+
+        // Negative coords (window on secondary monitor left of primary) are valid
+        store.save_window_position(-500, 300).unwrap();
+        assert_eq!(store.get_window_position().unwrap(), Some((-500, 300)));
     }
 
     #[test]
