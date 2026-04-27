@@ -5,7 +5,6 @@ export interface Translation {
     SHORTCUT_LABEL: string;
     SHORTCUT_PLACEHOLDER: string;
     SHORTCUT_HINT: string;
-    MAX_ENTRIES_LABEL: string;
     MAX_ENTRIES_RANGE: string;
     LANGUAGE_LABEL: string;
     LANGUAGE_SYSTEM: string;

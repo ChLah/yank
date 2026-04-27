@@ -369,24 +369,25 @@ impl SqliteStore {
 
     pub fn save_settings(&self, settings: &AppSettings) -> Result<(), rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
-        conn.execute(
+        let tx = conn.unchecked_transaction()?;
+        tx.execute(
             "INSERT OR REPLACE INTO settings (key, value_text) VALUES ('shortcut', ?1)",
             params![settings.shortcut],
         )?;
-        conn.execute(
+        tx.execute(
             "INSERT OR REPLACE INTO settings (key, value_int) VALUES ('maxEntries', ?1)",
             params![settings.max_entries],
         )?;
         match &settings.language {
             Some(lang) => {
                 let lang_str = match lang { Language::En => "en", Language::De => "de" };
-                conn.execute(
+                tx.execute(
                     "INSERT OR REPLACE INTO settings (key, value_text) VALUES ('language', ?1)",
                     params![lang_str],
                 )?;
             }
             None => {
-                conn.execute("DELETE FROM settings WHERE key = 'language'", [])?;
+                tx.execute("DELETE FROM settings WHERE key = 'language'", [])?;
             }
         }
         let theme_str = match settings.theme {
@@ -394,27 +395,27 @@ impl SqliteStore {
             Theme::Light => "light",
             Theme::System => "system",
         };
-        conn.execute(
+        tx.execute(
             "INSERT OR REPLACE INTO settings (key, value_text) VALUES ('theme', ?1)",
             params![theme_str],
         )?;
-        conn.execute(
+        tx.execute(
             "INSERT OR REPLACE INTO settings (key, value_int) VALUES ('autostart', ?1)",
             params![settings.autostart as i64],
         )?;
-        conn.execute(
+        tx.execute(
             "INSERT OR REPLACE INTO settings (key, value_int) VALUES ('deleteAfterMaxEntries', ?1)",
             params![settings.delete_after_max_entries as i64],
         )?;
-        conn.execute(
+        tx.execute(
             "INSERT OR REPLACE INTO settings (key, value_int) VALUES ('deleteAfterDays', ?1)",
             params![settings.delete_after_days as i64],
         )?;
-        conn.execute(
+        tx.execute(
             "INSERT OR REPLACE INTO settings (key, value_int) VALUES ('maxDays', ?1)",
             params![settings.max_days],
         )?;
-        Ok(())
+        tx.commit()
     }
 
     fn get_prune_settings_internal(&self, conn: &Connection) -> (bool, i64, bool, i64) {

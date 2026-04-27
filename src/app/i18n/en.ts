@@ -6,7 +6,6 @@ export const en: Translation = {
     SHORTCUT_LABEL: 'Global Shortcut',
     SHORTCUT_PLACEHOLDER: 'Click and press keys…',
     SHORTCUT_HINT: 'Click the field, then press your desired key combination.',
-    MAX_ENTRIES_LABEL: 'History Limit',
     MAX_ENTRIES_RANGE: 'entries ({{min}} – {{max}})',
     LANGUAGE_LABEL: 'Language',
     LANGUAGE_SYSTEM: 'System',

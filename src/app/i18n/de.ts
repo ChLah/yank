@@ -6,7 +6,6 @@ export const de: Translation = {
     SHORTCUT_LABEL: 'Globaler Shortcut',
     SHORTCUT_PLACEHOLDER: 'Klicken und Tasten drücken…',
     SHORTCUT_HINT: 'Klicke das Feld und drücke dann die gewünschte Tastenkombination.',
-    MAX_ENTRIES_LABEL: 'Verlaufs-Limit',
     MAX_ENTRIES_RANGE: 'Einträge ({{min}} – {{max}})',
     LANGUAGE_LABEL: 'Sprache',
     LANGUAGE_SYSTEM: 'System',
