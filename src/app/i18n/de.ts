@@ -22,6 +22,9 @@ export const de: Translation = {
     DELETE_AFTER_MAX_LABEL: 'Verlauf begrenzen',
     DELETE_AFTER_DAYS_LABEL: 'Alte Einträge löschen',
     MAX_DAYS_RANGE: 'Tage ({{min}} – {{max}})',
+    WINDOW_POSITION_LABEL: 'Fensterposition',
+    WINDOW_POSITION_CURSOR: 'Cursor-Position',
+    WINDOW_POSITION_LAST: 'Letzte Position',
   },
   CLIPBOARD: {
     TITLE: 'Zwischenablage',

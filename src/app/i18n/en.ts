@@ -22,6 +22,9 @@ export const en: Translation = {
     DELETE_AFTER_MAX_LABEL: 'Limit history size',
     DELETE_AFTER_DAYS_LABEL: 'Auto-delete old entries',
     MAX_DAYS_RANGE: 'days ({{min}} – {{max}})',
+    WINDOW_POSITION_LABEL: 'Window Position',
+    WINDOW_POSITION_CURSOR: 'Cursor position',
+    WINDOW_POSITION_LAST: 'Last position',
   },
   CLIPBOARD: {
     TITLE: 'Clipboard',

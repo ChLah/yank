@@ -21,6 +21,9 @@ export interface Translation {
     DELETE_AFTER_MAX_LABEL: string;
     DELETE_AFTER_DAYS_LABEL: string;
     MAX_DAYS_RANGE: string;
+    WINDOW_POSITION_LABEL: string;
+    WINDOW_POSITION_CURSOR: string;
+    WINDOW_POSITION_LAST: string;
   };
   CLIPBOARD: {
     TITLE: string;
