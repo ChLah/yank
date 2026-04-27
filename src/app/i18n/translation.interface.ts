@@ -67,4 +67,19 @@ export interface Translation {
     CLOSE: string;
     COPIED: string;
   };
+  TRANSFORM: {
+    STRIP_WHITESPACE: string;
+    UPPERCASE: string;
+    LOWERCASE: string;
+    TITLE_CASE: string;
+    URL_ENCODE: string;
+    URL_DECODE: string;
+    JSON_FORMAT: string;
+    STRIP_HTML: string;
+    SAVE_TO_HISTORY: string;
+    ERROR_JSON: string;
+    ERROR_URL_DECODE: string;
+    HINT: string;
+    DUPLICATE_ERROR: string;
+  };
 }
