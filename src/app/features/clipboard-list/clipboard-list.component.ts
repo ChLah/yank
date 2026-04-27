@@ -161,9 +161,12 @@ type Filter = 'all' | 'text' | 'image';
                 <app-clipboard-entry
                   [entry]="entry"
                   [selected]="selectedIndex() === i"
+                  [editMode]="editingEntryId() === entry.id"
                   (select)="selectEntry(i)"
                   (delete)="deleteEntry(i)"
                   (pin)="pinEntry(i)"
+                  (editConfirm)="onEditConfirm($event)"
+                  (editCancel)="onEditCancel()"
                 />
                 @if (showTransformPicker() && selectedIndex() === i && entry.kind === 'text') {
                   <app-transform-picker
@@ -185,6 +188,12 @@ type Filter = 'all' | 'text' | 'image';
         </div>
       }
 
+      @if (editCopyFailed()) {
+        <div class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0">
+          {{ 'CLIPBOARD.EDIT_COPY_FAILED' | translate }}
+        </div>
+      }
+
       <!-- Footer -->
       <div class="px-3.5 py-1.5 flex flex-col gap-1 shrink-0 bg-card border-t border-border">
         <div class="flex items-center gap-2">
@@ -198,6 +207,7 @@ type Filter = 'all' | 'text' | 'image';
         <div class="flex items-center gap-2">
           <app-keyboard-hint key="⌫" [label]="'CLIPBOARD.HINT_DELETE' | translate" />
           <app-keyboard-hint key="P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
+          <app-keyboard-hint key="E" [label]="'CLIPBOARD.HINT_EDIT' | translate" />
           <app-keyboard-hint key="Esc" [label]="'CLIPBOARD.HINT_CLOSE' | translate" class="ml-auto" />
         </div>
       </div>
@@ -216,7 +226,10 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   private duplicateErrorTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressPositionSave = false;
 
-  protected selectedIndex = signal(0);
+  protected selectedIndex   = signal(0);
+  protected editingEntryId  = signal<number | null>(null);
+  protected editCopyFailed  = signal(false);
+  private editCopyFailedTimer: ReturnType<typeof setTimeout> | null = null;
   protected skeletons = Array.from({ length: 5 });
 
   protected activeTab    = signal<Tab>('recent');
@@ -256,6 +269,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.hostEl.nativeElement.focus();
     this.bridge.onPopupShown(() => {
+      this.editingEntryId.set(null);
       this.activeTab.set('recent');
       this.activeFilter.set('all');
       this.clearSearch();
@@ -280,6 +294,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     this.unlistenWindowMoved?.();
     if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
     if (this.duplicateErrorTimer) clearTimeout(this.duplicateErrorTimer);
+    if (this.editCopyFailedTimer) clearTimeout(this.editCopyFailedTimer);
   }
 
   protected setTab(tab: string): void {
@@ -293,6 +308,11 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   }
 
   protected selectEntry(index: number): void {
+    if (this.editingEntryId() !== null) {
+      this.editingEntryId.set(null);
+      this.selectedIndex.set(index);
+      return;
+    }
     this.selectedIndex.set(index);
     const entry = this.filteredEntries()[index];
     if (!entry) return;
@@ -335,6 +355,15 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
   protected onKeyDown(event: KeyboardEvent): void {
     if (this.showTransformPicker()) return;
+
+    // While in edit mode, only allow arrow keys (cancel edit then navigate); block all others
+    if (this.editingEntryId() !== null) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        this.editingEntryId.set(null); // cancel edit, then fall through to navigation
+      } else {
+        return;
+      }
+    }
 
     if (this.isSearching()) {
       switch (event.key) {
@@ -392,6 +421,9 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
           if (event.key.toLowerCase() === 'p') {
             event.preventDefault();
             this.pinSelected();
+          } else if (event.key.toLowerCase() === 'e') {
+            event.preventDefault();
+            this.enterEditMode();
           } else {
             this.isSearching.set(true);
             this.searchQuery.set(event.key);
@@ -406,6 +438,30 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
           }
         }
     }
+  }
+
+  private enterEditMode(): void {
+    const entry = this.filteredEntries()[this.selectedIndex()];
+    if (!entry || entry.kind !== 'text') return;
+    this.editingEntryId.set(entry.id);
+  }
+
+  protected async onEditConfirm(text: string): Promise<void> {
+    this.editingEntryId.set(null);
+    try {
+      await this.bridge.setClipboardText(text);
+      this.bridge.hidePopup();
+    } catch {
+      this.editCopyFailed.set(true);
+      this.editCopyFailedTimer = setTimeout(() => {
+        this.editCopyFailed.set(false);
+      }, 2000);
+    }
+  }
+
+  protected onEditCancel(): void {
+    this.editingEntryId.set(null);
+    this.hostEl.nativeElement.focus();
   }
 
   private pinSelected(): void {

@@ -49,6 +49,9 @@ export const en: Translation = {
     HINT_PIN: 'pin',
     HINT_SEARCH: 'type to search',
     HINT_CLOSE: 'close',
+    HINT_EDIT: 'edit',
+    EDIT_HINT: 'Enter to paste · Esc to cancel',
+    EDIT_COPY_FAILED: 'Failed to copy to clipboard.',
   },
   ENTRY: {
     IMAGE: 'Image',
