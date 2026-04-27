@@ -30,7 +30,8 @@ interface TimeTranslation {
   providers: [provideIcons({ lucideImage, lucideBookmark, lucideX })],
   template: `
     <div
-      class="flex items-center gap-2 pl-3.5 pr-3 cursor-pointer group transition-colors border-l-2"
+      class="flex items-center gap-2 pl-3.5 pr-3 group transition-colors border-l-2"
+      [class.cursor-pointer]="!editMode()"
       [class]="selected() ? 'border-l-indigo-500 bg-card' : 'border-l-transparent hover:bg-card/60'"
       (click)="onOuterClick()"
     >

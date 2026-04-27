@@ -5,7 +5,7 @@
 
 ## Overview
 
-Users can press `E` on a selected text entry to expand it into an editable textarea, make quick changes, and immediately paste the edited content via `Ctrl+Enter`. The original history entry is never modified — the edit is always ephemeral.
+Users can press `E` on a selected text entry to expand it into an editable textarea, make quick changes, and immediately paste the edited content via `Enter`. The original history entry is never modified — the edit is always ephemeral.
 
 ## Trigger
 
@@ -21,15 +21,15 @@ The selected entry card expands in-place. The text content is replaced by a `tex
 - All text is selected on open (ready to retype from scratch or deselect to position cursor).
 - The entry's timestamp, pin button, and delete button are hidden while in edit mode.
 - The card grows vertically to fit the textarea (min 3 rows, no max — scrolls internally if very long).
-- A small hint below the textarea: `Ctrl+Enter to paste · Esc to cancel`
+- A small hint below the textarea: `Enter to paste · Esc to cancel`
 
 ## Keyboard
 
 | Key | Action |
 |---|---|
 | `E` | Enter edit mode on focused entry |
-| `Enter` | Insert newline (normal textarea behavior) |
-| `Ctrl+Enter` | Paste edited content + close popup |
+| `Shift+Enter` | Insert newline |
+| `Enter` | Paste edited content + close popup |
 | `Escape` | Cancel edit, collapse back to normal entry view |
 | `Tab` | Move focus to next focusable element (exits edit mode — treated as cancel) |
 
@@ -37,15 +37,14 @@ Clicking on a different entry also cancels the edit (no changes made).
 
 ## Paste Behavior
 
-On `Ctrl+Enter`:
+On `Enter` (without Shift):
 
 1. Read current textarea value.
-2. Call `TauriBridgeService.setClipboard(entryId)` — but with the edited text rather than the stored content.
-
-> Note: `set_clipboard` currently pastes by entry id. For inline edit, the command needs to accept an **override text** argument, or a new command `set_clipboard_text(text: string)` is added. The latter is cleaner and avoids coupling the command to the entry.
-
+2. Call `TauriBridgeService.setClipboardText(text)` with the edited text.
 3. Hide popup via `TauriBridgeService.hidePopup()`.
 4. The stored entry in the DB is **not modified**.
+
+> Note: The original draft referenced `Ctrl+Enter` and `set_clipboard(entryId)` with an override. The implemented approach uses plain `Enter` (matching the keyboard table) and the already-available `set_clipboard_text(text)` command.
 
 ## New Tauri Command
 
@@ -71,7 +70,7 @@ No new component is needed — the entry component owns its own edit state.
 
 ## Error Handling
 
-- Empty textarea on `Ctrl+Enter`: allowed — pastes an empty string (same as the existing clipboard behavior).
+- Empty textarea on `Enter`: allowed — pastes an empty string (same as the existing clipboard behavior).
 - `set_clipboard_text` failure: toast notification "Failed to copy to clipboard."
 
 ## What is NOT in scope

@@ -298,11 +298,13 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   }
 
   protected setTab(tab: string): void {
+    this.editingEntryId.set(null);
     this.activeTab.set(tab as Tab);
     this.selectedIndex.set(0);
   }
 
   protected setFilter(filter: Filter): void {
+    this.editingEntryId.set(null);
     this.activeFilter.set(filter);
     this.selectedIndex.set(0);
   }
