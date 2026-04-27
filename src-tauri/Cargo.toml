@@ -1,7 +1,7 @@
 [package]
-name = "clipboard-manager"
+name = "yank"
 version = "0.1.0"
-description = "A clipboard history manager"
+description = "YANK — Yet Another Nifty Keeper. Your clipboard history, kept."
 authors = []
 license = ""
 repository = ""
@@ -9,7 +9,7 @@ edition = "2021"
 rust-version = "1.77.2"
 
 [lib]
-name = "clipboard_manager_lib"
+name = "yank_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
