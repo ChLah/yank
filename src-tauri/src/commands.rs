@@ -84,3 +84,9 @@ pub fn toggle_pin(id: i64, store: StoreState) -> Result<bool, String> {
 pub fn save_window_position(x: i32, y: i32, store: StoreState) -> Result<(), String> {
     store.save_window_position(x as i64, y as i64).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn set_clipboard_text(text: String) -> Result<(), String> {
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    clipboard.set_text(text).map_err(|e| e.to_string())
+}
