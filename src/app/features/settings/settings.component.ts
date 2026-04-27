@@ -5,8 +5,9 @@ import {
   linkedSignal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideChevronLeft } from '@ng-icons/lucide';
+import { lucideChevronLeft, lucideX } from '@ng-icons/lucide';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmInput } from '@spartan-ng/helm/input';
@@ -31,18 +32,27 @@ import { SettingCheckboxComponent } from './components/setting-checkbox/setting-
     PageHeaderComponent, LoadingSpinnerComponent,
     SettingFieldComponent, SettingCheckboxComponent,
   ],
-  providers: [provideIcons({ lucideChevronLeft })],
+  providers: [provideIcons({ lucideChevronLeft, lucideX })],
   template: `
     <div class="flex flex-col h-screen bg-background">
 
       <!-- Header -->
       <app-page-header>
         <ng-container start>
-          <a routerLink="/" class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-            <ng-icon hlm size="sm" name="lucideChevronLeft" />
-          </a>
+          @if (!isStandaloneWindow) {
+            <a routerLink="/" class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <ng-icon hlm size="sm" name="lucideChevronLeft" />
+            </a>
+          }
           <span class="text-[13px] font-semibold text-foreground tracking-tight">{{ 'SETTINGS.TITLE' | translate }}</span>
         </ng-container>
+        @if (isStandaloneWindow) {
+          <ng-container end>
+            <button (click)="closeWindow()" class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <ng-icon hlm size="sm" name="lucideX" />
+            </button>
+          </ng-container>
+        }
       </app-page-header>
 
       @if (settingsService.settings.isLoading()) {
@@ -199,6 +209,12 @@ export class SettingsComponent {
   private i18nService = inject(I18nService);
   private themeService = inject(ThemeService);
   private translate = inject(TranslateService);
+
+  protected readonly isStandaloneWindow = getCurrentWindow().label === 'settings';
+
+  protected closeWindow(): void {
+    getCurrentWindow().close();
+  }
 
   protected settings = linkedSignal<AppSettings>(
     () => this.settingsService.settings.value() ?? DEFAULT_SETTINGS

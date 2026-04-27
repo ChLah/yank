@@ -174,8 +174,9 @@ pub fn open_settings(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
 
     WebviewWindowBuilder::new(app, label, WebviewUrl::App("/".into()))
         .title("Settings")
-        .inner_size(500.0, 400.0)
+        .inner_size(500.0, 680.0)
         .resizable(false)
+        .decorations(false)
         .initialization_script("window.location.hash = '#/settings';")
         .build()?;
 
