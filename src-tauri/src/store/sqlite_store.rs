@@ -293,7 +293,56 @@ impl SqliteStore {
             })
             .unwrap_or(Theme::System);
 
-        Ok(AppSettings { shortcut, max_entries, language, theme })
+        let autostart = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'autostart'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .ok()
+            .map(|v| v == "true")
+            .unwrap_or(AppSettings::default().autostart);
+
+        let delete_after_max_entries = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'delete_after_max_entries'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .ok()
+            .map(|v| v == "true")
+            .unwrap_or(AppSettings::default().delete_after_max_entries);
+
+        let delete_after_days = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'delete_after_days'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .ok()
+            .map(|v| v == "true")
+            .unwrap_or(AppSettings::default().delete_after_days);
+
+        let max_days = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'max_days'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .ok()
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(AppSettings::default().max_days);
+
+        Ok(AppSettings {
+            shortcut,
+            max_entries,
+            language,
+            theme,
+            autostart,
+            delete_after_max_entries,
+            delete_after_days,
+            max_days,
+        })
     }
 
     pub fn save_settings(&self, settings: &AppSettings) -> Result<(), rusqlite::Error> {
@@ -329,6 +378,22 @@ impl SqliteStore {
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES ('theme', ?1)",
             params![theme_str],
+        )?;
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('autostart', ?1)",
+            params![settings.autostart.to_string()],
+        )?;
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('delete_after_max_entries', ?1)",
+            params![settings.delete_after_max_entries.to_string()],
+        )?;
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('delete_after_days', ?1)",
+            params![settings.delete_after_days.to_string()],
+        )?;
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES ('max_days', ?1)",
+            params![settings.max_days.to_string()],
         )?;
         Ok(())
     }
@@ -415,7 +480,12 @@ mod tests {
     fn test_prunes_beyond_max_entries() {
         let store = in_memory_store();
         // Set max to 3
-        store.save_settings(&AppSettings { shortcut: "Ctrl+SEMICOLON".into(), max_entries: 3, language: None, theme: Theme::System }).unwrap();
+        store.save_settings(&AppSettings {
+            shortcut: "Ctrl+SEMICOLON".into(),
+            max_entries: 3,
+            delete_after_max_entries: true,
+            ..AppSettings::default()
+        }).unwrap();
 
         for i in 0..5 {
             store.save_entry(&text_payload(&format!("entry {}", i))).unwrap();
@@ -437,7 +507,11 @@ mod tests {
     #[test]
     fn test_settings_round_trip() {
         let store = in_memory_store();
-        let settings = AppSettings { shortcut: "Ctrl+ALT+V".to_string(), max_entries: 10, language: None, theme: Theme::System };
+        let settings = AppSettings {
+            shortcut: "Ctrl+ALT+V".to_string(),
+            max_entries: 10,
+            ..AppSettings::default()
+        };
         store.save_settings(&settings).unwrap();
         let loaded = store.get_settings().unwrap();
         assert_eq!(loaded.shortcut, "Ctrl+ALT+V");
@@ -448,8 +522,8 @@ mod tests {
         let dark_settings = AppSettings {
             shortcut: "Ctrl+A".to_string(),
             max_entries: 10,
-            language: None,
             theme: Theme::Dark,
+            ..AppSettings::default()
         };
         store.save_settings(&dark_settings).unwrap();
         let dark_loaded = store.get_settings().unwrap();
@@ -459,8 +533,8 @@ mod tests {
         let light_settings = AppSettings {
             shortcut: "Ctrl+B".to_string(),
             max_entries: 5,
-            language: None,
             theme: Theme::Light,
+            ..AppSettings::default()
         };
         store.save_settings(&light_settings).unwrap();
         let light_loaded = store.get_settings().unwrap();
@@ -539,10 +613,9 @@ mod tests {
     fn test_pinned_entries_not_pruned() {
         let store = in_memory_store();
         store.save_settings(&AppSettings {
-            shortcut: "Ctrl+Quote".into(),
             max_entries: 2,
-            language: None,
-            theme: Theme::System,
+            delete_after_max_entries: true,
+            ..AppSettings::default()
         }).unwrap();
 
         store.save_entry(&text_payload("pinned entry")).unwrap();

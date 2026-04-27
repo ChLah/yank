@@ -37,6 +37,10 @@ pub struct AppSettings {
     pub max_entries: i64,
     pub language: Option<Language>,
     pub theme: Theme,
+    pub autostart: bool,
+    pub delete_after_max_entries: bool,
+    pub delete_after_days: bool,
+    pub max_days: i64,
 }
 
 impl Default for AppSettings {
@@ -46,6 +50,10 @@ impl Default for AppSettings {
             max_entries: 20,
             language: None,
             theme: Theme::System,
+            autostart: false,
+            delete_after_max_entries: true,
+            delete_after_days: false,
+            max_days: 30,
         }
     }
 }
