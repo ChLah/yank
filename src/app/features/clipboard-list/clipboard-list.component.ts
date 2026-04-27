@@ -4,10 +4,10 @@ import {
   ElementRef,
   OnDestroy,
   OnInit,
-  ViewChild,
   computed,
   inject,
   signal,
+  viewChild,
 } from '@angular/core';
 import { UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -263,8 +263,8 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     return list;
   });
 
-  @ViewChild('listContainer') listContainer!: ElementRef<HTMLElement>;
-  @ViewChild('searchInput')   searchInput?: ElementRef<HTMLInputElement>;
+  private listContainer = viewChild.required<ElementRef<HTMLElement>>('listContainer');
+  private searchInput   = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
   ngOnInit(): void {
     this.hostEl.nativeElement.focus();
@@ -432,7 +432,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
             this.isSearching.set(true);
             this.searchQuery.set(event.key);
             setTimeout(() => {
-              const input = this.searchInput?.nativeElement;
+              const input = this.searchInput()?.nativeElement;
               if (input) {
                 input.value = this.searchQuery();
                 input.focus();
@@ -538,8 +538,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   }
 
   private scrollSelectedIntoView(): void {
-    if (!this.listContainer) return;
-    const items = this.listContainer.nativeElement.querySelectorAll<HTMLElement>('.entry-item');
+    const items = this.listContainer().nativeElement.querySelectorAll<HTMLElement>('.entry-item');
     const item = items[this.selectedIndex()];
     item?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }

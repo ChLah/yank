@@ -11,6 +11,8 @@ import {
   output,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { timer } from 'rxjs';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideBookmark, lucideImage, lucideX } from '@ng-icons/lucide';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -110,6 +112,7 @@ export class ClipboardEntryComponent {
 
   private textareaRef = viewChild<ElementRef<HTMLTextAreaElement>>('editTextarea');
   private injector    = inject(Injector);
+  private tick        = toSignal(timer(0, 30_000));
 
   constructor() {
     effect(() => {
@@ -140,9 +143,10 @@ export class ClipboardEntryComponent {
     }
   }
 
-  relativeTimeTranslation = computed<TimeTranslation>(() =>
-    buildRelativeTimeTranslation(this.entry().lastUsedAt)
-  );
+  relativeTimeTranslation = computed<TimeTranslation>(() => {
+    this.tick();
+    return buildRelativeTimeTranslation(this.entry().lastUsedAt);
+  });
 
   imageDimensions = computed(() => {
     const e = this.entry();

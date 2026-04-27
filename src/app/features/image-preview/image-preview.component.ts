@@ -1,10 +1,12 @@
 import {
   ChangeDetectionStrategy,
-  ChangeDetectorRef,
   Component,
+  computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideCheck, lucideCopy, lucideLoader, lucideX } from '@ng-icons/lucide';
@@ -90,7 +92,6 @@ export class ImagePreviewComponent {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private bridge = inject(TauriBridgeService);
-  private cdr = inject(ChangeDetectorRef);
 
   protected imageSrc = signal<string | null>(null);
   protected loading = signal(true);
@@ -98,17 +99,15 @@ export class ImagePreviewComponent {
   protected copying = signal(false);
   protected copied = signal(false);
 
-  private entryId = 0;
+  private queryParams = toSignal(this.route.queryParams, { initialValue: {} });
+  private entryId = computed(() => {
+    const id = this.queryParams()['id'];
+    return id ? Number(id) : 0;
+  });
 
   constructor() {
-    // Use the observable so the component reacts to param changes when the
-    // preview window is reused for a different image entry.
-    this.route.queryParams.subscribe(params => {
-      const id = params['id'];
-      if (id) {
-        this.entryId = Number(id);
-        this.loadImage();
-      }
+    effect(() => {
+      if (this.entryId()) this.loadImage();
     });
   }
 
@@ -117,14 +116,12 @@ export class ImagePreviewComponent {
     this.error.set(false);
     this.imageSrc.set(null);
     try {
-      const src = await this.bridge.getEntryImage(this.entryId);
+      const src = await this.bridge.getEntryImage(this.entryId());
       this.imageSrc.set(src);
     } catch {
       this.error.set(true);
     } finally {
       this.loading.set(false);
-      // Explicit markForCheck so OnPush picks up signal updates from async IPC.
-      this.cdr.markForCheck();
     }
   }
 
@@ -140,7 +137,7 @@ export class ImagePreviewComponent {
   protected async copyToClipboard(): Promise<void> {
     this.copying.set(true);
     try {
-      await this.bridge.setClipboard(this.entryId);
+      await this.bridge.setClipboard(this.entryId());
       await this.bridge.hidePopup();
       this.router.navigate(['/']);
     } finally {
