@@ -10,12 +10,14 @@ import {
   signal,
 } from '@angular/core';
 import { UnlistenFn } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideAlertCircle, lucideBookmark, lucideClipboard, lucideSearch, lucideSettings, lucideX } from '@ng-icons/lucide';
 import { ClipboardEntryComponent } from './clipboard-entry.component';
 import { ClipboardService } from '../../core/services/clipboard.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
+import { SettingsService } from '../../core/services/settings.service';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmIcon } from '@spartan-ng/helm/icon';
@@ -39,7 +41,7 @@ type Filter = 'all' | 'text' | 'image';
     <div class="flex flex-col h-full bg-background rounded-xl overflow-hidden border border-border shadow-2xl">
 
       <!-- Header -->
-      <div class="px-3.5 h-11 flex items-center justify-between shrink-0 bg-card border-b border-border">
+      <div class="px-3.5 h-11 flex items-center justify-between shrink-0 bg-card border-b border-border" data-tauri-drag-region>
         <div class="flex items-center gap-2">
           <ng-icon hlm size="sm" name="lucideClipboard" class="text-muted-foreground shrink-0" />
           <span class="text-[13px] font-semibold text-foreground tracking-tight">{{ 'CLIPBOARD.TITLE' | translate }}</span>
@@ -196,9 +198,13 @@ type Filter = 'all' | 'text' | 'image';
 export class ClipboardListComponent implements OnInit, OnDestroy {
   protected clipboard = inject(ClipboardService);
   private bridge = inject(TauriBridgeService);
+  private settings = inject(SettingsService);
   private router = inject(Router);
   private hostEl = inject(ElementRef);
   private unlistenPopupShown?: UnlistenFn;
+  private unlistenWindowMoved?: UnlistenFn;
+  private moveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private suppressPositionSave = false;
 
   protected selectedIndex = signal(0);
   protected skeletons = Array.from({ length: 5 });
@@ -241,11 +247,26 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
       this.activeTab.set('recent');
       this.activeFilter.set('all');
       this.clearSearch();
+      // Suppress saving the position set programmatically on show
+      this.suppressPositionSave = true;
+      setTimeout(() => { this.suppressPositionSave = false; }, 600);
     }).then(fn => { this.unlistenPopupShown = fn; });
+
+    getCurrentWindow().onMoved(({ payload }) => {
+      if (this.suppressPositionSave) return;
+      if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
+      this.moveDebounceTimer = setTimeout(() => {
+        if (this.settings.settings.value()?.windowPosition === 'last') {
+          this.bridge.saveWindowPosition(payload.x, payload.y);
+        }
+      }, 300);
+    }).then(fn => { this.unlistenWindowMoved = fn; });
   }
 
   ngOnDestroy(): void {
     this.unlistenPopupShown?.();
+    this.unlistenWindowMoved?.();
+    if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
   }
 
   protected setTab(tab: string): void {
