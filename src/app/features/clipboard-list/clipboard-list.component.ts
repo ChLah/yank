@@ -312,7 +312,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected selectEntry(index: number): void {
     if (this.editingEntryId() !== null) {
       const clickedEntry = this.filteredEntries()[index];
-      if (clickedEntry?.id === this.editingEntryId()) return; // same entry — ignore (spec: only *different* entry cancels)
+      if (!shouldCancelEditOnSelect(clickedEntry?.id, this.editingEntryId()!)) return;
       this.editingEntryId.set(null);
       this.selectedIndex.set(index);
       return;
@@ -362,7 +362,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
     // While in edit mode, only allow arrow keys (cancel edit then navigate); block all others
     if (this.editingEntryId() !== null) {
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (resolveEditModeAction(event.key) === 'cancel-navigate') {
         this.editingEntryId.set(null); // cancel edit, then fall through to navigation
       } else {
         return;
@@ -543,4 +543,20 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     const item = items[this.selectedIndex()];
     item?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
+}
+
+/** Arrow keys cancel-then-navigate; all other keys are blocked while in edit mode. Exported for unit testing. */
+export function resolveEditModeAction(key: string): 'cancel-navigate' | 'block' {
+  return (key === 'ArrowDown' || key === 'ArrowUp') ? 'cancel-navigate' : 'block';
+}
+
+/**
+ * Returns true when clicking `clickedEntryId` should cancel edit mode
+ * (i.e. the user clicked a *different* entry). Exported for unit testing.
+ */
+export function shouldCancelEditOnSelect(
+  clickedEntryId: number | undefined,
+  editingEntryId: number,
+): boolean {
+  return clickedEntryId !== editingEntryId;
 }

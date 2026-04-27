@@ -129,21 +129,15 @@ export class ClipboardEntryComponent {
   }
 
   protected onTextareaKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
+    const action = resolveTextareaKey(event.key, event.shiftKey);
+    if (!action) return; // Shift+Enter: allow default (inserts newline)
+    event.preventDefault();
+    event.stopPropagation();
+    if (action === 'cancel') {
       this.editCancel.emit();
-    } else if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      const el = this.textareaRef()?.nativeElement;
-      this.editConfirm.emit(el?.value ?? '');
-    } else if (event.key === 'Tab') {
-      event.preventDefault();
-      event.stopPropagation();
-      this.editCancel.emit();
+    } else {
+      this.editConfirm.emit(this.textareaRef()?.nativeElement?.value ?? '');
     }
-    // Shift+Enter: allow default (inserts newline in textarea)
   }
 
   relativeTimeTranslation = computed<TimeTranslation>(() =>
@@ -164,6 +158,13 @@ export class ClipboardEntryComponent {
       : 'text-muted-foreground hover:text-foreground';
     return `${visibility} transition-opacity ${color}`;
   });
+}
+
+/** Maps a textarea keydown to an edit action. Exported for unit testing. */
+export function resolveTextareaKey(key: string, shiftKey: boolean): 'confirm' | 'cancel' | null {
+  if (key === 'Escape' || key === 'Tab') return 'cancel';
+  if (key === 'Enter' && !shiftKey) return 'confirm';
+  return null; // Shift+Enter, letters, arrows, etc. — let default behaviour run
 }
 
 function buildRelativeTimeTranslation(unixSeconds: number): TimeTranslation {
