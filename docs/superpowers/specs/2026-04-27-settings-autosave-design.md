@@ -38,14 +38,22 @@ The template binds to `settings().shortcut`, `settings().maxEntries`, etc.
 
 ```typescript
 private async persist(): Promise<void> {
-  this.error.set(null);
   try {
     await this.settingsService.saveSettings(this.settings());
   } catch (e) {
-    this.error.set(String(e));
-    setTimeout(() => this.error.set(null), 2000);
+    toast.error(String(e));
   }
 }
+```
+
+### Toast Setup
+
+`@spartan-ng/brain/sonner` provides both the `toast` function and the `BrnSonnerToaster` component. The toaster must be placed once in the app root (`app.ts`) so toasts render above all routes:
+
+```html
+<!-- app.ts template -->
+<router-outlet />
+<brn-sonner-toaster richColors />
 ```
 
 ### Removed
@@ -53,14 +61,14 @@ private async persist(): Promise<void> {
 - `shortcut`, `maxEntries`, `language`, `theme` individual `linkedSignal`s
 - `saving` signal and its usage
 - `saved` signal and its success alert
+- `error` signal and its inline destructive alert
 - `save()` method
 - Save button and its wrapper `<div>`
 - `<form>` element replaced with `<div>` (no submit needed)
-- `HlmButton` import (no longer used)
+- `HlmButton`, `HlmAlert`, `HlmAlertDescription` imports (no longer used)
 
 ### Kept
 
-- `error` signal and its destructive alert — persisted errors need user visibility
 - All existing side-effects: `i18nService.setLanguage()`, `themeService.applyTheme()`
 
 ## Template Changes
@@ -68,11 +76,11 @@ private async persist(): Promise<void> {
 - `<form (ngSubmit)="save()">` → `<div>`
 - `[value]="shortcut()"` → `[value]="settings().shortcut"`
 - `[value]="maxEntries()"` → `[value]="settings().maxEntries"`, add `(blur)="onMaxEntriesBlur($event)"`
-- `(input)="maxEntries.set(...)"` removed (no longer needed for signal sync — blur handles it)
+- `(input)="maxEntries.set(...)"` removed (blur handles persistence; no intermediate signal sync needed)
 - `[value]="language() ?? ''"` → `[value]="settings().language ?? ''"`
 - `[value]="theme()"` → `[value]="settings().theme"`
 - Remove saved alert and save button
 
 ## Error Handling
 
-Errors auto-clear after 2 seconds. No per-field error states — a single error banner is sufficient given saves are silent on success.
+Save errors are surfaced via `toast.error()` — a non-blocking toast that auto-dismisses. No inline error state in the component.
