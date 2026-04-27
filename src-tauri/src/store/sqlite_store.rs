@@ -140,35 +140,14 @@ impl SqliteStore {
 
     pub fn prune_old_entries_if_enabled(&self) -> Result<(), Box<dyn std::error::Error>> {
         let conn = self.conn.lock().unwrap();
-        let delete_after_days = conn
-            .query_row(
-                "SELECT value_int FROM settings WHERE key = 'deleteAfterDays'",
-                [],
-                |row| row.get::<_, Option<i64>>(0),
-            )
-            .ok()
-            .flatten()
-            .map(|v| v != 0)
-            .unwrap_or(false);
-
+        let (_, _, delete_after_days, max_days) = self.get_prune_settings_internal(&conn);
         if delete_after_days {
-            let max_days = conn
-                .query_row(
-                    "SELECT value_int FROM settings WHERE key = 'maxDays'",
-                    [],
-                    |row| row.get::<_, Option<i64>>(0),
-                )
-                .ok()
-                .flatten()
-                .unwrap_or(30);
-
             let cutoff = chrono::Utc::now().timestamp() - max_days * 86400;
             conn.execute(
                 "DELETE FROM entries WHERE pinned = 0 AND created_at < ?1",
                 params![cutoff],
             )?;
         }
-
         Ok(())
     }
 
