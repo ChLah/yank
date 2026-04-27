@@ -36,15 +36,10 @@ impl SqliteStore {
                 last_used_at INTEGER NOT NULL,
                 pinned       INTEGER NOT NULL DEFAULT 0
             );
-            CREATE INDEX IF NOT EXISTS idx_entries_last_used ON entries (last_used_at DESC);
-            CREATE TABLE IF NOT EXISTS settings (
-                key   TEXT PRIMARY KEY,
-                value TEXT NOT NULL
-            );"
+            CREATE INDEX IF NOT EXISTS idx_entries_last_used ON entries (last_used_at DESC);"
         )?;
 
-        // For existing databases that pre-date this migration, add pinned column if missing.
-        // SQLite does not support ADD COLUMN IF NOT EXISTS, so we check via PRAGMA.
+        // Legacy: add pinned column to pre-existing entries tables that lack it.
         let has_pinned: bool = {
             let mut stmt = conn.prepare("PRAGMA table_info(entries)")?;
             let cols: Vec<String> = stmt
@@ -56,6 +51,24 @@ impl SqliteStore {
         if !has_pinned {
             conn.execute_batch(
                 "ALTER TABLE entries ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;"
+            )?;
+        }
+
+        // Settings schema versioning via PRAGMA user_version.
+        // v0: single `value TEXT` column (old schema, reset on upgrade)
+        // v1: typed `value_text TEXT` / `value_int INTEGER` columns
+        let user_version: i64 = conn.query_row(
+            "PRAGMA user_version", [], |row| row.get(0)
+        )?;
+        if user_version < 1 {
+            conn.execute_batch(
+                "DROP TABLE IF EXISTS settings;
+                 CREATE TABLE settings (
+                     key        TEXT PRIMARY KEY,
+                     value_text TEXT,
+                     value_int  INTEGER
+                 );
+                 PRAGMA user_version = 1;"
             )?;
         }
 
@@ -459,6 +472,22 @@ mod tests {
         // Calling run_migrations() twice on the same database must not error.
         let store = in_memory_store(); // first call happens inside in_memory_store()
         store.run_migrations().unwrap(); // second call — must succeed without error
+    }
+
+    #[test]
+    fn test_settings_schema_v1_columns() {
+        let store = in_memory_store();
+        let conn = store.conn.lock().unwrap();
+        let mut stmt = conn.prepare("PRAGMA table_info(settings)").unwrap();
+        let cols: Vec<String> = stmt
+            .query_map([], |r| r.get::<_, String>(1))
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+        assert!(cols.contains(&"key".to_string()), "missing 'key' column");
+        assert!(cols.contains(&"value_text".to_string()), "missing 'value_text' column");
+        assert!(cols.contains(&"value_int".to_string()), "missing 'value_int' column");
+        assert!(!cols.contains(&"value".to_string()), "old 'value' column should not exist");
     }
 
     #[test]
