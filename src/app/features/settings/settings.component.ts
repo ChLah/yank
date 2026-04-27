@@ -44,144 +44,163 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme, WindowPositionMode } fr
       } @else {
         <div class="flex-1 flex flex-col p-5 gap-5 overflow-y-auto">
 
-          <!-- Global Shortcut -->
-          <div class="space-y-1.5">
-            <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.SHORTCUT_LABEL' | translate }}</label>
-            <input
-              hlmInput
-              type="text"
-              [value]="settings().shortcut"
-              class="w-full font-mono"
-              [placeholder]="'SETTINGS.SHORTCUT_PLACEHOLDER' | translate"
-              (keydown)="captureShortcut($event)"
-              readonly
-            />
-            <p class="text-[11px] text-muted-foreground">
-              {{ 'SETTINGS.SHORTCUT_HINT' | translate }}
-            </p>
-          </div>
+          <!-- General -->
+          <div class="space-y-3">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{{ 'SETTINGS.GROUP_GENERAL' | translate }}</p>
 
-          <!-- Start at Login -->
-          <div class="space-y-1.5">
-            <div class="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="autostart-checkbox"
-                [checked]="settings().autostart"
-                (change)="onAutostartChange($event)"
-                class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-              />
-              <label hlmLabel for="autostart-checkbox" class="uppercase tracking-wider cursor-pointer">
-                {{ 'SETTINGS.AUTOSTART_LABEL' | translate }}
-              </label>
-            </div>
-          </div>
-
-          <!-- Limit history size -->
-          <div class="space-y-1.5">
-            <div class="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="delete-max-checkbox"
-                [checked]="settings().deleteAfterMaxEntries"
-                (change)="onDeleteAfterMaxChange($event)"
-                class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-              />
-              <label hlmLabel for="delete-max-checkbox" class="uppercase tracking-wider cursor-pointer">
-                {{ 'SETTINGS.DELETE_AFTER_MAX_LABEL' | translate }}
-              </label>
-            </div>
-            <div class="flex items-center gap-3" [class.opacity-50]="!settings().deleteAfterMaxEntries">
+            <!-- Global Shortcut -->
+            <div class="space-y-1.5">
+              <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.SHORTCUT_LABEL' | translate }}</label>
               <input
                 hlmInput
-                #maxEntriesInput
-                type="number"
-                [value]="settings().maxEntries"
-                (blur)="onMaxEntriesBlur(maxEntriesInput.valueAsNumber)"
-                [attr.disabled]="!settings().deleteAfterMaxEntries ? '' : null"
-                min="5"
-                max="999"
-                class="w-24"
+                type="text"
+                [value]="settings().shortcut"
+                class="w-full font-mono"
+                [placeholder]="'SETTINGS.SHORTCUT_PLACEHOLDER' | translate"
+                (keydown)="captureShortcut($event)"
+                readonly
               />
-              <span class="text-[12px] text-muted-foreground">
-                {{ 'SETTINGS.MAX_ENTRIES_RANGE' | translate:{ min: 5, max: 999 } }}
-              </span>
+              <p class="text-[11px] text-muted-foreground">
+                {{ 'SETTINGS.SHORTCUT_HINT' | translate }}
+              </p>
+            </div>
+
+            <!-- Start at Login -->
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="autostart-checkbox"
+                  [checked]="settings().autostart"
+                  (change)="onAutostartChange($event)"
+                  class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                />
+                <label hlmLabel for="autostart-checkbox" class="uppercase tracking-wider cursor-pointer">
+                  {{ 'SETTINGS.AUTOSTART_LABEL' | translate }}
+                </label>
+              </div>
+            </div>
+
+            <!-- Window Position -->
+            <div class="space-y-1.5">
+              <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.WINDOW_POSITION_LABEL' | translate }}</label>
+              <div hlmSelect [value]="settings().windowPosition" [itemToString]="windowPositionLabel" (valueChange)="onWindowPositionChange($event)">
+                <hlm-select-trigger class="w-full">
+                  <hlm-select-value />
+                </hlm-select-trigger>
+                <hlm-select-content *hlmSelectPortal>
+                  <hlm-select-item value="cursor">{{ 'SETTINGS.WINDOW_POSITION_CURSOR' | translate }}</hlm-select-item>
+                  <hlm-select-item value="last">{{ 'SETTINGS.WINDOW_POSITION_LAST' | translate }}</hlm-select-item>
+                </hlm-select-content>
+              </div>
             </div>
           </div>
 
-          <!-- Auto-delete old entries -->
-          <div class="space-y-1.5">
-            <div class="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="delete-days-checkbox"
-                [checked]="settings().deleteAfterDays"
-                (change)="onDeleteAfterDaysChange($event)"
-                class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-              />
-              <label hlmLabel for="delete-days-checkbox" class="uppercase tracking-wider cursor-pointer">
-                {{ 'SETTINGS.DELETE_AFTER_DAYS_LABEL' | translate }}
-              </label>
+          <hr class="border-border" />
+
+          <!-- Appearance -->
+          <div class="space-y-3">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{{ 'SETTINGS.GROUP_APPEARANCE' | translate }}</p>
+
+            <!-- Language -->
+            <div class="space-y-1.5">
+              <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.LANGUAGE_LABEL' | translate }}</label>
+              <div hlmSelect [value]="settings().language ?? ''" [itemToString]="languageLabel" (valueChange)="onLanguageChange($event)">
+                <hlm-select-trigger class="w-full">
+                  <hlm-select-value />
+                </hlm-select-trigger>
+                <hlm-select-content *hlmSelectPortal>
+                  <hlm-select-item value="">{{ 'SETTINGS.LANGUAGE_SYSTEM' | translate }}</hlm-select-item>
+                  <hlm-select-item value="en">{{ 'SETTINGS.LANGUAGE_EN' | translate }}</hlm-select-item>
+                  <hlm-select-item value="de">{{ 'SETTINGS.LANGUAGE_DE' | translate }}</hlm-select-item>
+                </hlm-select-content>
+              </div>
             </div>
-            <div class="flex items-center gap-3" [class.opacity-50]="!settings().deleteAfterDays">
-              <input
-                hlmInput
-                #maxDaysInput
-                type="number"
-                [value]="settings().maxDays"
-                (blur)="onMaxDaysBlur(maxDaysInput.valueAsNumber)"
-                [attr.disabled]="!settings().deleteAfterDays ? '' : null"
-                min="1"
-                max="365"
-                class="w-24"
-              />
-              <span class="text-[12px] text-muted-foreground">
-                {{ 'SETTINGS.MAX_DAYS_RANGE' | translate:{ min: 1, max: 365 } }}
-              </span>
+
+            <!-- Theme -->
+            <div class="space-y-1.5">
+              <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.THEME_LABEL' | translate }}</label>
+              <div hlmSelect [value]="settings().theme" [itemToString]="themeLabel" (valueChange)="onThemeChange($event)">
+                <hlm-select-trigger class="w-full">
+                  <hlm-select-value />
+                </hlm-select-trigger>
+                <hlm-select-content *hlmSelectPortal>
+                  <hlm-select-item value="system">{{ 'SETTINGS.THEME_SYSTEM' | translate }}</hlm-select-item>
+                  <hlm-select-item value="light">{{ 'SETTINGS.THEME_LIGHT' | translate }}</hlm-select-item>
+                  <hlm-select-item value="dark">{{ 'SETTINGS.THEME_DARK' | translate }}</hlm-select-item>
+                </hlm-select-content>
+              </div>
             </div>
           </div>
 
-          <!-- Language -->
-          <div class="space-y-1.5">
-            <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.LANGUAGE_LABEL' | translate }}</label>
-            <div hlmSelect [value]="settings().language ?? ''" [itemToString]="languageLabel" (valueChange)="onLanguageChange($event)">
-              <hlm-select-trigger class="w-full">
-                <hlm-select-value />
-              </hlm-select-trigger>
-              <hlm-select-content *hlmSelectPortal>
-                <hlm-select-item value="">{{ 'SETTINGS.LANGUAGE_SYSTEM' | translate }}</hlm-select-item>
-                <hlm-select-item value="en">{{ 'SETTINGS.LANGUAGE_EN' | translate }}</hlm-select-item>
-                <hlm-select-item value="de">{{ 'SETTINGS.LANGUAGE_DE' | translate }}</hlm-select-item>
-              </hlm-select-content>
-            </div>
-          </div>
+          <hr class="border-border" />
 
-          <!-- Theme -->
-          <div class="space-y-1.5">
-            <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.THEME_LABEL' | translate }}</label>
-            <div hlmSelect [value]="settings().theme" [itemToString]="themeLabel" (valueChange)="onThemeChange($event)">
-              <hlm-select-trigger class="w-full">
-                <hlm-select-value />
-              </hlm-select-trigger>
-              <hlm-select-content *hlmSelectPortal>
-                <hlm-select-item value="system">{{ 'SETTINGS.THEME_SYSTEM' | translate }}</hlm-select-item>
-                <hlm-select-item value="light">{{ 'SETTINGS.THEME_LIGHT' | translate }}</hlm-select-item>
-                <hlm-select-item value="dark">{{ 'SETTINGS.THEME_DARK' | translate }}</hlm-select-item>
-              </hlm-select-content>
-            </div>
-          </div>
+          <!-- History -->
+          <div class="space-y-3">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{{ 'SETTINGS.GROUP_HISTORY' | translate }}</p>
 
-          <!-- Window Position -->
-          <div class="space-y-1.5">
-            <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.WINDOW_POSITION_LABEL' | translate }}</label>
-            <div hlmSelect [value]="settings().windowPosition" [itemToString]="windowPositionLabel" (valueChange)="onWindowPositionChange($event)">
-              <hlm-select-trigger class="w-full">
-                <hlm-select-value />
-              </hlm-select-trigger>
-              <hlm-select-content *hlmSelectPortal>
-                <hlm-select-item value="cursor">{{ 'SETTINGS.WINDOW_POSITION_CURSOR' | translate }}</hlm-select-item>
-                <hlm-select-item value="last">{{ 'SETTINGS.WINDOW_POSITION_LAST' | translate }}</hlm-select-item>
-              </hlm-select-content>
+            <!-- Limit history size -->
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="delete-max-checkbox"
+                  [checked]="settings().deleteAfterMaxEntries"
+                  (change)="onDeleteAfterMaxChange($event)"
+                  class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                />
+                <label hlmLabel for="delete-max-checkbox" class="uppercase tracking-wider cursor-pointer">
+                  {{ 'SETTINGS.DELETE_AFTER_MAX_LABEL' | translate }}
+                </label>
+              </div>
+              <div class="flex items-center gap-3" [class.opacity-50]="!settings().deleteAfterMaxEntries">
+                <input
+                  hlmInput
+                  #maxEntriesInput
+                  type="number"
+                  [value]="settings().maxEntries"
+                  (blur)="onMaxEntriesBlur(maxEntriesInput.valueAsNumber)"
+                  [attr.disabled]="!settings().deleteAfterMaxEntries ? '' : null"
+                  min="5"
+                  max="999"
+                  class="w-24"
+                />
+                <span class="text-[12px] text-muted-foreground">
+                  {{ 'SETTINGS.MAX_ENTRIES_RANGE' | translate:{ min: 5, max: 999 } }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Auto-delete old entries -->
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="delete-days-checkbox"
+                  [checked]="settings().deleteAfterDays"
+                  (change)="onDeleteAfterDaysChange($event)"
+                  class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+                />
+                <label hlmLabel for="delete-days-checkbox" class="uppercase tracking-wider cursor-pointer">
+                  {{ 'SETTINGS.DELETE_AFTER_DAYS_LABEL' | translate }}
+                </label>
+              </div>
+              <div class="flex items-center gap-3" [class.opacity-50]="!settings().deleteAfterDays">
+                <input
+                  hlmInput
+                  #maxDaysInput
+                  type="number"
+                  [value]="settings().maxDays"
+                  (blur)="onMaxDaysBlur(maxDaysInput.valueAsNumber)"
+                  [attr.disabled]="!settings().deleteAfterDays ? '' : null"
+                  min="1"
+                  max="365"
+                  class="w-24"
+                />
+                <span class="text-[12px] text-muted-foreground">
+                  {{ 'SETTINGS.MAX_DAYS_RANGE' | translate:{ min: 1, max: 365 } }}
+                </span>
+              </div>
             </div>
           </div>
 
