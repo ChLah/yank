@@ -10,36 +10,44 @@ import { lucideChevronLeft } from '@ng-icons/lucide';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmInput } from '@spartan-ng/helm/input';
-import { HlmLabel } from '@spartan-ng/helm/label';
 import { HlmSelectImports } from '@spartan-ng/helm/select';
+import { HlmSeparatorImports } from '@spartan-ng/helm/separator';
 import { toast } from '@spartan-ng/brain/sonner';
 import { SettingsService } from '../../core/services/settings.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { AppSettings, DEFAULT_SETTINGS, Language, Theme, WindowPositionMode } from '../../core/models/settings.model';
+import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
+import { LoadingSpinnerComponent } from '../../shared/ui/loading-spinner/loading-spinner.component';
+import { SettingFieldComponent } from './components/setting-field/setting-field.component';
+import { SettingCheckboxComponent } from './components/setting-checkbox/setting-checkbox.component';
 
 @Component({
   selector: 'app-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterLink, NgIcon, HlmIcon, HlmInput, HlmLabel,
-    TranslatePipe, HlmSelectImports,
+    RouterLink, NgIcon, HlmIcon, HlmInput,
+    TranslatePipe, HlmSelectImports, HlmSeparatorImports,
+    PageHeaderComponent, LoadingSpinnerComponent,
+    SettingFieldComponent, SettingCheckboxComponent,
   ],
   providers: [provideIcons({ lucideChevronLeft })],
   template: `
     <div class="flex flex-col h-screen bg-background">
 
       <!-- Header -->
-      <div class="px-3.5 h-11 flex items-center gap-2 shrink-0 bg-card border-b border-border" data-tauri-drag-region>
-        <a routerLink="/" class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-          <ng-icon hlm size="sm" name="lucideChevronLeft" />
-        </a>
-        <span class="text-[13px] font-semibold text-foreground tracking-tight">{{ 'SETTINGS.TITLE' | translate }}</span>
-      </div>
+      <app-page-header>
+        <ng-container start>
+          <a routerLink="/" class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <ng-icon hlm size="sm" name="lucideChevronLeft" />
+          </a>
+          <span class="text-[13px] font-semibold text-foreground tracking-tight">{{ 'SETTINGS.TITLE' | translate }}</span>
+        </ng-container>
+      </app-page-header>
 
       @if (settingsService.settings.isLoading()) {
         <div class="flex-1 flex items-center justify-center">
-          <div class="w-5 h-5 border-2 border-muted border-t-muted-foreground rounded-full animate-spin"></div>
+          <app-loading-spinner />
         </div>
       } @else {
         <div class="flex-1 flex flex-col p-5 gap-5 overflow-y-auto">
@@ -49,8 +57,9 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme, WindowPositionMode } fr
             <p class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{{ 'SETTINGS.GROUP_GENERAL' | translate }}</p>
 
             <!-- Global Shortcut -->
-            <div class="space-y-1.5">
-              <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.SHORTCUT_LABEL' | translate }}</label>
+            <app-setting-field
+              [label]="'SETTINGS.SHORTCUT_LABEL' | translate"
+              [hint]="'SETTINGS.SHORTCUT_HINT' | translate">
               <input
                 hlmInput
                 type="text"
@@ -60,30 +69,20 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme, WindowPositionMode } fr
                 (keydown)="captureShortcut($event)"
                 readonly
               />
-              <p class="text-[11px] text-muted-foreground">
-                {{ 'SETTINGS.SHORTCUT_HINT' | translate }}
-              </p>
-            </div>
+            </app-setting-field>
 
             <!-- Start at Login -->
-            <div class="space-y-1.5">
-              <div class="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="autostart-checkbox"
-                  [checked]="settings().autostart"
-                  (change)="onAutostartChange($event)"
-                  class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-                />
-                <label hlmLabel for="autostart-checkbox" class="uppercase tracking-wider cursor-pointer">
-                  {{ 'SETTINGS.AUTOSTART_LABEL' | translate }}
-                </label>
-              </div>
-            </div>
+            <app-setting-field>
+              <app-setting-checkbox
+                id="autostart-checkbox"
+                [label]="'SETTINGS.AUTOSTART_LABEL' | translate"
+                [checked]="settings().autostart"
+                (checkedChange)="onAutostartChange($event)"
+              />
+            </app-setting-field>
 
             <!-- Window Position -->
-            <div class="space-y-1.5">
-              <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.WINDOW_POSITION_LABEL' | translate }}</label>
+            <app-setting-field [label]="'SETTINGS.WINDOW_POSITION_LABEL' | translate">
               <div hlmSelect [value]="settings().windowPosition" [itemToString]="windowPositionLabel" (valueChange)="onWindowPositionChange($event)">
                 <hlm-select-trigger class="w-full">
                   <hlm-select-value />
@@ -93,18 +92,17 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme, WindowPositionMode } fr
                   <hlm-select-item value="last">{{ 'SETTINGS.WINDOW_POSITION_LAST' | translate }}</hlm-select-item>
                 </hlm-select-content>
               </div>
-            </div>
+            </app-setting-field>
           </div>
 
-          <hr class="border-border" />
+          <brn-separator hlmSeparator />
 
           <!-- Appearance -->
           <div class="space-y-3">
             <p class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{{ 'SETTINGS.GROUP_APPEARANCE' | translate }}</p>
 
             <!-- Language -->
-            <div class="space-y-1.5">
-              <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.LANGUAGE_LABEL' | translate }}</label>
+            <app-setting-field [label]="'SETTINGS.LANGUAGE_LABEL' | translate">
               <div hlmSelect [value]="settings().language ?? ''" [itemToString]="languageLabel" (valueChange)="onLanguageChange($event)">
                 <hlm-select-trigger class="w-full">
                   <hlm-select-value />
@@ -115,11 +113,10 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme, WindowPositionMode } fr
                   <hlm-select-item value="de">{{ 'SETTINGS.LANGUAGE_DE' | translate }}</hlm-select-item>
                 </hlm-select-content>
               </div>
-            </div>
+            </app-setting-field>
 
             <!-- Theme -->
-            <div class="space-y-1.5">
-              <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.THEME_LABEL' | translate }}</label>
+            <app-setting-field [label]="'SETTINGS.THEME_LABEL' | translate">
               <div hlmSelect [value]="settings().theme" [itemToString]="themeLabel" (valueChange)="onThemeChange($event)">
                 <hlm-select-trigger class="w-full">
                   <hlm-select-value />
@@ -130,29 +127,23 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme, WindowPositionMode } fr
                   <hlm-select-item value="dark">{{ 'SETTINGS.THEME_DARK' | translate }}</hlm-select-item>
                 </hlm-select-content>
               </div>
-            </div>
+            </app-setting-field>
           </div>
 
-          <hr class="border-border" />
+          <brn-separator hlmSeparator />
 
           <!-- History -->
           <div class="space-y-3">
             <p class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{{ 'SETTINGS.GROUP_HISTORY' | translate }}</p>
 
             <!-- Limit history size -->
-            <div class="space-y-1.5">
-              <div class="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="delete-max-checkbox"
-                  [checked]="settings().deleteAfterMaxEntries"
-                  (change)="onDeleteAfterMaxChange($event)"
-                  class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-                />
-                <label hlmLabel for="delete-max-checkbox" class="uppercase tracking-wider cursor-pointer">
-                  {{ 'SETTINGS.DELETE_AFTER_MAX_LABEL' | translate }}
-                </label>
-              </div>
+            <app-setting-field>
+              <app-setting-checkbox
+                id="delete-max-checkbox"
+                [label]="'SETTINGS.DELETE_AFTER_MAX_LABEL' | translate"
+                [checked]="settings().deleteAfterMaxEntries"
+                (checkedChange)="onDeleteAfterMaxChange($event)"
+              />
               <div class="flex items-center gap-3" [class.opacity-50]="!settings().deleteAfterMaxEntries">
                 <input
                   hlmInput
@@ -169,22 +160,16 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme, WindowPositionMode } fr
                   {{ 'SETTINGS.MAX_ENTRIES_RANGE' | translate:{ min: 5, max: 999 } }}
                 </span>
               </div>
-            </div>
+            </app-setting-field>
 
             <!-- Auto-delete old entries -->
-            <div class="space-y-1.5">
-              <div class="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="delete-days-checkbox"
-                  [checked]="settings().deleteAfterDays"
-                  (change)="onDeleteAfterDaysChange($event)"
-                  class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-                />
-                <label hlmLabel for="delete-days-checkbox" class="uppercase tracking-wider cursor-pointer">
-                  {{ 'SETTINGS.DELETE_AFTER_DAYS_LABEL' | translate }}
-                </label>
-              </div>
+            <app-setting-field>
+              <app-setting-checkbox
+                id="delete-days-checkbox"
+                [label]="'SETTINGS.DELETE_AFTER_DAYS_LABEL' | translate"
+                [checked]="settings().deleteAfterDays"
+                (checkedChange)="onDeleteAfterDaysChange($event)"
+              />
               <div class="flex items-center gap-3" [class.opacity-50]="!settings().deleteAfterDays">
                 <input
                   hlmInput
@@ -201,7 +186,7 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme, WindowPositionMode } fr
                   {{ 'SETTINGS.MAX_DAYS_RANGE' | translate:{ min: 1, max: 365 } }}
                 </span>
               </div>
-            </div>
+            </app-setting-field>
           </div>
 
         </div>
@@ -277,20 +262,17 @@ export class SettingsComponent {
     this.persist();
   }
 
-  protected onAutostartChange(event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
+  protected onAutostartChange(checked: boolean): void {
     this.settings.update(s => ({ ...s, autostart: checked }));
     this.persist();
   }
 
-  protected onDeleteAfterMaxChange(event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
+  protected onDeleteAfterMaxChange(checked: boolean): void {
     this.settings.update(s => ({ ...s, deleteAfterMaxEntries: checked }));
     this.persist();
   }
 
-  protected onDeleteAfterDaysChange(event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
+  protected onDeleteAfterDaysChange(checked: boolean): void {
     this.settings.update(s => ({ ...s, deleteAfterDays: checked }));
     this.persist();
   }
