@@ -96,7 +96,8 @@ impl SqliteStore {
             return Ok(());
         }
 
-        let max_entries = self.get_max_entries_internal(&conn);
+        let (delete_after_max_entries, max_entries, _delete_after_days, _max_days) =
+            self.get_prune_settings_internal(&conn);
 
         match &payload.content {
             ClipboardContent::Text(text) => {
@@ -117,13 +118,14 @@ impl SqliteStore {
             }
         }
 
-        // Prune oldest entries beyond max_entries
-        conn.execute(
-            "DELETE FROM entries WHERE id IN (
-                SELECT id FROM entries WHERE pinned = 0 ORDER BY last_used_at DESC LIMIT -1 OFFSET ?1
-             )",
-            params![max_entries],
-        )?;
+        if delete_after_max_entries {
+            conn.execute(
+                "DELETE FROM entries WHERE id IN (
+                    SELECT id FROM entries WHERE pinned = 0 ORDER BY last_used_at DESC LIMIT -1 OFFSET ?1
+                 )",
+                params![max_entries],
+            )?;
+        }
 
         Ok(())
     }
@@ -248,31 +250,35 @@ impl SqliteStore {
 
     pub fn get_settings(&self) -> Result<AppSettings, Box<dyn std::error::Error>> {
         let conn = self.conn.lock().unwrap();
+
         let shortcut = conn
             .query_row(
-                "SELECT value FROM settings WHERE key = 'shortcut'",
+                "SELECT value_text FROM settings WHERE key = 'shortcut'",
                 [],
-                |row| row.get::<_, String>(0),
+                |row| row.get::<_, Option<String>>(0),
             )
-            .unwrap_or_else(|_| AppSettings::default().shortcut);
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| AppSettings::default().shortcut);
 
         let max_entries = conn
             .query_row(
-                "SELECT value FROM settings WHERE key = 'max_entries'",
+                "SELECT value_int FROM settings WHERE key = 'maxEntries'",
                 [],
-                |row| row.get::<_, String>(0),
+                |row| row.get::<_, Option<i64>>(0),
             )
             .ok()
-            .and_then(|v| v.parse::<i64>().ok())
+            .flatten()
             .unwrap_or(AppSettings::default().max_entries);
 
         let language = conn
             .query_row(
-                "SELECT value FROM settings WHERE key = 'language'",
+                "SELECT value_text FROM settings WHERE key = 'language'",
                 [],
-                |row| row.get::<_, String>(0),
+                |row| row.get::<_, Option<String>>(0),
             )
             .ok()
+            .flatten()
             .and_then(|v| match v.as_str() {
                 "en" => Some(Language::En),
                 "de" => Some(Language::De),
@@ -281,11 +287,12 @@ impl SqliteStore {
 
         let theme = conn
             .query_row(
-                "SELECT value FROM settings WHERE key = 'theme'",
+                "SELECT value_text FROM settings WHERE key = 'theme'",
                 [],
-                |row| row.get::<_, String>(0),
+                |row| row.get::<_, Option<String>>(0),
             )
             .ok()
+            .flatten()
             .map(|v| match v.as_str() {
                 "dark" => Theme::Dark,
                 "light" => Theme::Light,
@@ -295,74 +302,65 @@ impl SqliteStore {
 
         let autostart = conn
             .query_row(
-                "SELECT value FROM settings WHERE key = 'autostart'",
+                "SELECT value_int FROM settings WHERE key = 'autostart'",
                 [],
-                |row| row.get::<_, String>(0),
+                |row| row.get::<_, Option<i64>>(0),
             )
             .ok()
-            .map(|v| v == "true")
-            .unwrap_or(AppSettings::default().autostart);
+            .flatten()
+            .map(|v| v != 0)
+            .unwrap_or(false);
 
         let delete_after_max_entries = conn
             .query_row(
-                "SELECT value FROM settings WHERE key = 'delete_after_max_entries'",
+                "SELECT value_int FROM settings WHERE key = 'deleteAfterMaxEntries'",
                 [],
-                |row| row.get::<_, String>(0),
+                |row| row.get::<_, Option<i64>>(0),
             )
             .ok()
-            .map(|v| v == "true")
-            .unwrap_or(AppSettings::default().delete_after_max_entries);
+            .flatten()
+            .map(|v| v != 0)
+            .unwrap_or(true);
 
         let delete_after_days = conn
             .query_row(
-                "SELECT value FROM settings WHERE key = 'delete_after_days'",
+                "SELECT value_int FROM settings WHERE key = 'deleteAfterDays'",
                 [],
-                |row| row.get::<_, String>(0),
+                |row| row.get::<_, Option<i64>>(0),
             )
             .ok()
-            .map(|v| v == "true")
-            .unwrap_or(AppSettings::default().delete_after_days);
+            .flatten()
+            .map(|v| v != 0)
+            .unwrap_or(false);
 
         let max_days = conn
             .query_row(
-                "SELECT value FROM settings WHERE key = 'max_days'",
+                "SELECT value_int FROM settings WHERE key = 'maxDays'",
                 [],
-                |row| row.get::<_, String>(0),
+                |row| row.get::<_, Option<i64>>(0),
             )
             .ok()
-            .and_then(|v| v.parse::<i64>().ok())
-            .unwrap_or(AppSettings::default().max_days);
+            .flatten()
+            .unwrap_or(30);
 
-        Ok(AppSettings {
-            shortcut,
-            max_entries,
-            language,
-            theme,
-            autostart,
-            delete_after_max_entries,
-            delete_after_days,
-            max_days,
-        })
+        Ok(AppSettings { shortcut, max_entries, language, theme, autostart, delete_after_max_entries, delete_after_days, max_days })
     }
 
     pub fn save_settings(&self, settings: &AppSettings) -> Result<(), rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('shortcut', ?1)",
+            "INSERT OR REPLACE INTO settings (key, value_text) VALUES ('shortcut', ?1)",
             params![settings.shortcut],
         )?;
         conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('max_entries', ?1)",
-            params![settings.max_entries.to_string()],
+            "INSERT OR REPLACE INTO settings (key, value_int) VALUES ('maxEntries', ?1)",
+            params![settings.max_entries],
         )?;
         match &settings.language {
             Some(lang) => {
-                let lang_str = match lang {
-                    Language::En => "en",
-                    Language::De => "de",
-                };
+                let lang_str = match lang { Language::En => "en", Language::De => "de" };
                 conn.execute(
-                    "INSERT OR REPLACE INTO settings (key, value) VALUES ('language', ?1)",
+                    "INSERT OR REPLACE INTO settings (key, value_text) VALUES ('language', ?1)",
                     params![lang_str],
                 )?;
             }
@@ -376,37 +374,72 @@ impl SqliteStore {
             Theme::System => "system",
         };
         conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('theme', ?1)",
+            "INSERT OR REPLACE INTO settings (key, value_text) VALUES ('theme', ?1)",
             params![theme_str],
         )?;
         conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('autostart', ?1)",
-            params![settings.autostart.to_string()],
+            "INSERT OR REPLACE INTO settings (key, value_int) VALUES ('autostart', ?1)",
+            params![settings.autostart as i64],
         )?;
         conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('delete_after_max_entries', ?1)",
-            params![settings.delete_after_max_entries.to_string()],
+            "INSERT OR REPLACE INTO settings (key, value_int) VALUES ('deleteAfterMaxEntries', ?1)",
+            params![settings.delete_after_max_entries as i64],
         )?;
         conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('delete_after_days', ?1)",
-            params![settings.delete_after_days.to_string()],
+            "INSERT OR REPLACE INTO settings (key, value_int) VALUES ('deleteAfterDays', ?1)",
+            params![settings.delete_after_days as i64],
         )?;
         conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value) VALUES ('max_days', ?1)",
-            params![settings.max_days.to_string()],
+            "INSERT OR REPLACE INTO settings (key, value_int) VALUES ('maxDays', ?1)",
+            params![settings.max_days],
         )?;
         Ok(())
     }
 
-    fn get_max_entries_internal(&self, conn: &Connection) -> i64 {
-        conn.query_row(
-            "SELECT value FROM settings WHERE key = 'max_entries'",
-            [],
-            |row| row.get::<_, String>(0),
-        )
-        .ok()
-        .and_then(|v| v.parse::<i64>().ok())
-        .unwrap_or(20)
+    fn get_prune_settings_internal(&self, conn: &Connection) -> (bool, i64, bool, i64) {
+        let delete_after_max_entries = conn
+            .query_row(
+                "SELECT value_int FROM settings WHERE key = 'deleteAfterMaxEntries'",
+                [],
+                |row| row.get::<_, Option<i64>>(0),
+            )
+            .ok()
+            .flatten()
+            .map(|v| v != 0)
+            .unwrap_or(true);
+
+        let max_entries = conn
+            .query_row(
+                "SELECT value_int FROM settings WHERE key = 'maxEntries'",
+                [],
+                |row| row.get::<_, Option<i64>>(0),
+            )
+            .ok()
+            .flatten()
+            .unwrap_or(20);
+
+        let delete_after_days = conn
+            .query_row(
+                "SELECT value_int FROM settings WHERE key = 'deleteAfterDays'",
+                [],
+                |row| row.get::<_, Option<i64>>(0),
+            )
+            .ok()
+            .flatten()
+            .map(|v| v != 0)
+            .unwrap_or(false);
+
+        let max_days = conn
+            .query_row(
+                "SELECT value_int FROM settings WHERE key = 'maxDays'",
+                [],
+                |row| row.get::<_, Option<i64>>(0),
+            )
+            .ok()
+            .flatten()
+            .unwrap_or(30);
+
+        (delete_after_max_entries, max_entries, delete_after_days, max_days)
     }
 }
 
@@ -562,6 +595,24 @@ mod tests {
         assert!(cols.contains(&"value_text".to_string()), "missing 'value_text' column");
         assert!(cols.contains(&"value_int".to_string()), "missing 'value_int' column");
         assert!(!cols.contains(&"value".to_string()), "old 'value' column should not exist");
+    }
+
+    #[test]
+    fn test_new_settings_fields_round_trip() {
+        let store = in_memory_store();
+        let settings = AppSettings {
+            autostart: true,
+            delete_after_max_entries: false,
+            delete_after_days: true,
+            max_days: 14,
+            ..AppSettings::default()
+        };
+        store.save_settings(&settings).unwrap();
+        let loaded = store.get_settings().unwrap();
+        assert_eq!(loaded.autostart, true);
+        assert_eq!(loaded.delete_after_max_entries, false);
+        assert_eq!(loaded.delete_after_days, true);
+        assert_eq!(loaded.max_days, 14);
     }
 
     #[test]
