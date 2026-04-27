@@ -37,6 +37,10 @@ pub fn run() {
                 })
                 .build(),
         )
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             // Open the SQLite database in the app data directory
             let app_data_dir = app
