@@ -30,6 +30,17 @@ pub enum Theme {
     System,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum WindowPositionMode {
+    Cursor,
+    Last,
+}
+
+impl Default for WindowPositionMode {
+    fn default() -> Self { WindowPositionMode::Cursor }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
@@ -41,6 +52,7 @@ pub struct AppSettings {
     pub delete_after_max_entries: bool,
     pub delete_after_days: bool,
     pub max_days: i64,
+    pub window_position: WindowPositionMode,
 }
 
 impl Default for AppSettings {
@@ -54,6 +66,7 @@ impl Default for AppSettings {
             delete_after_max_entries: true,
             delete_after_days: false,
             max_days: 30,
+            window_position: WindowPositionMode::Cursor,
         }
     }
 }
