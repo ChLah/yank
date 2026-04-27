@@ -1,5 +1,6 @@
 export type Language = 'en' | 'de';
 export type Theme = 'dark' | 'light' | 'system';
+export type WindowPositionMode = 'cursor' | 'last';
 
 export interface AppSettings {
   shortcut: string;
@@ -10,6 +11,7 @@ export interface AppSettings {
   deleteAfterMaxEntries: boolean;
   deleteAfterDays: boolean;
   maxDays: number;
+  windowPosition: WindowPositionMode;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -21,4 +23,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   deleteAfterMaxEntries: true,
   deleteAfterDays: false,
   maxDays: 30,
+  windowPosition: 'cursor',
 };

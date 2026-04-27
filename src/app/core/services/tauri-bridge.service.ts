@@ -50,4 +50,8 @@ export class TauriBridgeService {
   onPopupShown(handler: () => void): Promise<UnlistenFn> {
     return listen('popup-shown', handler);
   }
+
+  saveWindowPosition(x: number, y: number): Promise<void> {
+    return invoke('save_window_position', { x, y });
+  }
 }
