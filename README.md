@@ -125,7 +125,7 @@ To build only the Angular frontend:
 pnpm build
 ```
 
-Output is placed in `dist/clipboard-manager/browser/`.
+Output is placed in `dist/yank/browser/`.
 
 ---
 
@@ -144,7 +144,7 @@ Tests live alongside source files (`*.spec.ts`). Vitest is configured in `vitest
 ## Project Structure
 
 ```
-clipboard-manager/
+yank/
 ├── src/                          # Angular frontend
 │   ├── app/
 │   │   ├── core/
