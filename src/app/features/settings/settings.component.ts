@@ -16,7 +16,7 @@ import { toast } from '@spartan-ng/brain/sonner';
 import { SettingsService } from '../../core/services/settings.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { AppSettings, DEFAULT_SETTINGS, Language, Theme } from '../../core/models/settings.model';
+import { AppSettings, DEFAULT_SETTINGS, Language, Theme, WindowPositionMode } from '../../core/models/settings.model';
 
 @Component({
   selector: 'app-settings',
@@ -30,7 +30,7 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme } from '../../core/model
     <div class="flex flex-col h-screen bg-background">
 
       <!-- Header -->
-      <div class="px-3.5 h-11 flex items-center gap-2 shrink-0 bg-card border-b border-border">
+      <div class="px-3.5 h-11 flex items-center gap-2 shrink-0 bg-card border-b border-border" data-tauri-drag-region>
         <a routerLink="/" class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
           <ng-icon hlm size="sm" name="lucideChevronLeft" />
         </a>
@@ -171,6 +171,20 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme } from '../../core/model
             </div>
           </div>
 
+          <!-- Window Position -->
+          <div class="space-y-1.5">
+            <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.WINDOW_POSITION_LABEL' | translate }}</label>
+            <div hlmSelect [value]="settings().windowPosition" [itemToString]="windowPositionLabel" (valueChange)="onWindowPositionChange($event)">
+              <hlm-select-trigger class="w-full">
+                <hlm-select-value />
+              </hlm-select-trigger>
+              <hlm-select-content *hlmSelectPortal>
+                <hlm-select-item value="cursor">{{ 'SETTINGS.WINDOW_POSITION_CURSOR' | translate }}</hlm-select-item>
+                <hlm-select-item value="last">{{ 'SETTINGS.WINDOW_POSITION_LAST' | translate }}</hlm-select-item>
+              </hlm-select-content>
+            </div>
+          </div>
+
         </div>
       }
     </div>
@@ -199,6 +213,13 @@ export class SettingsComponent {
       case 'dark':  return this.translate.instant('SETTINGS.THEME_DARK');
       case 'light': return this.translate.instant('SETTINGS.THEME_LIGHT');
       default:      return this.translate.instant('SETTINGS.THEME_SYSTEM');
+    }
+  };
+
+  protected windowPositionLabel = (val: string): string => {
+    switch (val) {
+      case 'last': return this.translate.instant('SETTINGS.WINDOW_POSITION_LAST');
+      default:     return this.translate.instant('SETTINGS.WINDOW_POSITION_CURSOR');
     }
   };
 
@@ -266,6 +287,12 @@ export class SettingsComponent {
     const theme = (value as Theme) || 'system';
     this.settings.update(s => ({ ...s, theme }));
     this.themeService.applyTheme(theme);
+    this.persist();
+  }
+
+  protected onWindowPositionChange(value: string | null): void {
+    const windowPosition = (value as WindowPositionMode) || 'cursor';
+    this.settings.update(s => ({ ...s, windowPosition }));
     this.persist();
   }
 
