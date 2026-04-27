@@ -9,12 +9,13 @@ import {
   signal,
 } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
+import { HlmCheckboxImports } from '@spartan-ng/helm/checkbox';
 import { TransformService } from '../../core/services/transform.service';
 
 @Component({
   selector: 'app-transform-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TranslatePipe],
+  imports: [TranslatePipe, HlmCheckboxImports],
   host: {
     class: 'absolute left-0 right-0 z-50 mt-0.5 bg-popover border border-border rounded-lg shadow-xl outline-none',
     tabindex: '0',
@@ -35,12 +36,10 @@ import { TransformService } from '../../core/services/transform.service';
       <p class="text-[11px] text-destructive px-3 pb-1.5">{{ errorKey() | translate }}</p>
     }
     <div class="border-t border-border px-3 py-2 flex items-center gap-2">
-      <input
-        type="checkbox"
+      <hlm-checkbox
         id="picker-save"
-        class="accent-indigo-500 cursor-pointer"
         [checked]="saveToHistory()"
-        (change)="saveToHistory.set(getChecked($event)); $event.stopPropagation()"
+        (checkedChange)="saveToHistory.set($event)"
       />
       <label for="picker-save" class="text-[11px] text-muted-foreground select-none cursor-pointer">
         {{ 'TRANSFORM.SAVE_TO_HISTORY' | translate }}
@@ -95,10 +94,6 @@ export class TransformPickerComponent {
   protected confirm(index: number): void {
     this.cursor.set(index);
     this.apply();
-  }
-
-  protected getChecked(event: Event): boolean {
-    return (event.target as HTMLInputElement).checked;
   }
 
   private apply(): void {

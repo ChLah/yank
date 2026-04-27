@@ -6,6 +6,13 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --color-brand: oklch(0.585 0.213 270);
+  --color-brand-400: oklch(0.706 0.165 270);
+  --color-brand-300: oklch(0.773 0.152 270);
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
 @layer base {
   :root {
     --radius: 0.625rem;
@@ -125,5 +132,14 @@
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: #27272a transparent;
+  }
+
+  @keyframes slide-up-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-slide-up {
+    animation: slide-up-in 150ms ease-out;
   }
 }

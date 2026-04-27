@@ -62,7 +62,7 @@ type Filter = 'all' | 'text' | 'image';
       </app-page-header>
 
       <!-- Tab + filter row -->
-      <div class="flex items-center justify-between px-3.5 shrink-0 bg-card/50 border-b border-border" style="height:34px">
+      <div class="flex items-center justify-between px-3.5 h-[34px] shrink-0 bg-card/50 border-b border-border">
         <div hlmTabs [tab]="activeTab()" (tabActivated)="setTab($event)">
           <div hlmTabsList variant="line" class="h-8 rounded-none bg-transparent p-0">
             @for (tab of tabs; track tab.value) {
@@ -80,7 +80,7 @@ type Filter = 'all' | 'text' | 'image';
             <button
               class="text-[11px] px-2 py-0.5 rounded-full border transition-colors"
               [class]="activeFilter() === f.value
-                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                ? 'bg-brand/20 text-brand-300 border-brand/30'
                 : 'text-muted-foreground border-transparent hover:text-foreground'"
               (click)="setFilter(f.value)">
               {{ f.labelKey | translate }}
@@ -183,13 +183,13 @@ type Filter = 'all' | 'text' | 'image';
       </div>
 
       @if (duplicateError()) {
-        <div class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0">
+        <div class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0 animate-slide-up">
           {{ 'TRANSFORM.DUPLICATE_ERROR' | translate }}
         </div>
       }
 
       @if (editCopyFailed()) {
-        <div class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0">
+        <div class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0 animate-slide-up">
           {{ 'CLIPBOARD.EDIT_COPY_FAILED' | translate }}
         </div>
       }

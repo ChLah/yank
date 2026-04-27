@@ -32,14 +32,14 @@ interface TimeTranslation {
     <div
       class="flex items-center gap-2 pl-3.5 pr-3 group transition-colors border-l-2"
       [class.cursor-pointer]="!editMode()"
-      [class]="selected() ? 'border-l-indigo-500 bg-card' : 'border-l-transparent hover:bg-card/60'"
+      [class]="selected() ? 'border-l-brand bg-card' : 'border-l-transparent hover:bg-card/60'"
       (click)="onOuterClick()"
     >
       @if (editMode()) {
         <div class="flex-1 min-w-0 py-2" (click)="$event.stopPropagation()">
           <textarea
             #editTextarea
-            class="w-full bg-muted/50 text-[13px] text-foreground rounded-md px-2 py-1.5 resize-none outline-none focus:ring-1 focus:ring-indigo-500/50 min-h-[60px]"
+            class="w-full bg-muted/50 text-[13px] text-foreground rounded-md px-2 py-1.5 resize-none outline-none focus:ring-1 focus:ring-brand/50 min-h-[60px]"
             rows="3"
             [value]="entry().content ?? ''"
             (keydown)="onTextareaKeyDown($event)"
@@ -154,7 +154,7 @@ export class ClipboardEntryComponent {
     const alwaysVisible = this.selected() || this.entry().pinned;
     const visibility = alwaysVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100';
     const color = this.entry().pinned
-      ? 'text-indigo-400 hover:text-indigo-300'
+      ? 'text-brand-400 hover:text-brand-300'
       : 'text-muted-foreground hover:text-foreground';
     return `${visibility} transition-opacity ${color}`;
   });
