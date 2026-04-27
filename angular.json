@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "clipboard-manager": {
+    "yank": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -54,10 +54,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "clipboard-manager:build:production"
+              "buildTarget": "yank:build:production"
             },
             "development": {
-              "buildTarget": "clipboard-manager:build:development"
+              "buildTarget": "yank:build:development"
             }
           },
           "defaultConfiguration": "development"
