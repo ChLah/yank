@@ -25,15 +25,14 @@ import { TransformService } from '../../core/services/transform.service';
       @for (opt of transformService.options; track opt.id; let i = $index) {
         <button
           type="button"
-          class="w-full text-left text-[12px] px-2.5 py-1.5 rounded transition-colors"
-          [class]="cursor() === i ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-muted'"
+          [class]="'w-full text-left text-[12px] px-2.5 py-1.5 rounded transition-colors ' + (cursor() === i ? 'bg-accent text-accent-foreground' : 'text-foreground hover:bg-muted')"
           (click)="confirm(i)">
           {{ opt.labelKey | translate }}
         </button>
       }
     </div>
     @if (errorKey()) {
-      <p class="text-[11px] text-destructive px-3 pb-1.5">{{ errorKey()! | translate }}</p>
+      <p class="text-[11px] text-destructive px-3 pb-1.5">{{ errorKey() | translate }}</p>
     }
     <div class="border-t border-border px-3 py-2 flex items-center gap-2">
       <input
@@ -41,7 +40,7 @@ import { TransformService } from '../../core/services/transform.service';
         id="picker-save"
         class="accent-indigo-500 cursor-pointer"
         [checked]="saveToHistory()"
-        (change)="saveToHistory.set(getChecked($event))"
+        (change)="saveToHistory.set(getChecked($event)); $event.stopPropagation()"
       />
       <label for="picker-save" class="text-[11px] text-muted-foreground select-none cursor-pointer">
         {{ 'TRANSFORM.SAVE_TO_HISTORY' | translate }}
@@ -55,9 +54,9 @@ export class TransformPickerComponent {
   applied = output<{ transformedContent: string; saveToHistory: boolean }>();
   cancelled = output<void>();
 
-  cursor = signal(0);
-  saveToHistory = signal(false);
-  errorKey = signal<string | null>(null);
+  protected cursor = signal(0);
+  protected saveToHistory = signal(false);
+  protected errorKey = signal<string | null>(null);
 
   protected readonly transformService = inject(TransformService);
   private readonly el = inject(ElementRef);
@@ -66,7 +65,7 @@ export class TransformPickerComponent {
     afterNextRender(() => this.el.nativeElement.focus());
   }
 
-  onKeyDown(event: KeyboardEvent): void {
+  protected onKeyDown(event: KeyboardEvent): void {
     const lastIndex = this.transformService.options.length - 1;
 
     switch (event.key) {
@@ -93,7 +92,7 @@ export class TransformPickerComponent {
     }
   }
 
-  confirm(index: number): void {
+  protected confirm(index: number): void {
     this.cursor.set(index);
     this.apply();
   }
