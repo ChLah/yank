@@ -309,6 +309,8 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
   protected selectEntry(index: number): void {
     if (this.editingEntryId() !== null) {
+      const clickedEntry = this.filteredEntries()[index];
+      if (clickedEntry?.id === this.editingEntryId()) return; // same entry — ignore (spec: only *different* entry cancels)
       this.editingEntryId.set(null);
       this.selectedIndex.set(index);
       return;

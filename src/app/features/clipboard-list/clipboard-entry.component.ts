@@ -32,7 +32,7 @@ interface TimeTranslation {
     <div
       class="flex items-center gap-2 pl-3.5 pr-3 cursor-pointer group transition-colors border-l-2"
       [class]="selected() ? 'border-l-indigo-500 bg-card' : 'border-l-transparent hover:bg-card/60'"
-      (click)="select.emit()"
+      (click)="onOuterClick()"
     >
       @if (editMode()) {
         <div class="flex-1 min-w-0 py-2" (click)="$event.stopPropagation()">
@@ -119,6 +119,12 @@ export class ClipboardEntryComponent {
         }, { injector: this.injector });
       }
     });
+  }
+
+  protected onOuterClick(): void {
+    if (!this.editMode()) {
+      this.select.emit();
+    }
   }
 
   protected onTextareaKeyDown(event: KeyboardEvent): void {
