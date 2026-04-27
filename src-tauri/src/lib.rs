@@ -121,6 +121,8 @@ pub fn run() {
             commands::hide_popup,
             commands::toggle_pin,
             commands::save_window_position,
+            commands::set_clipboard_text,
+            commands::update_entry_content,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Tauri application");
