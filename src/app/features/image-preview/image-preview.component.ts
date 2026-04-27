@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Params, Router } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideCheck, lucideCopy, lucideLoader, lucideX } from '@ng-icons/lucide';
 import { HlmButton } from '@spartan-ng/helm/button';
@@ -99,7 +99,7 @@ export class ImagePreviewComponent {
   protected copying = signal(false);
   protected copied = signal(false);
 
-  private queryParams = toSignal(this.route.queryParams, { initialValue: {} });
+  private queryParams = toSignal(this.route.queryParams, { initialValue: {} as Params });
   private entryId = computed(() => {
     const id = this.queryParams()['id'];
     return id ? Number(id) : 0;
