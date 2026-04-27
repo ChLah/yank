@@ -5,7 +5,10 @@ mod shortcuts;
 mod store;
 mod windows;
 
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
 use tauri::{
     image::Image,
@@ -18,6 +21,12 @@ use store::SqliteStore;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Generation counter: incremented on every Focused(false). Each spawned hide
+    // thread captures its own generation; if the counter has moved on (because
+    // Moved or Focused(true) fired first) the hide is cancelled.
+    let hide_gen: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
+    let hide_gen_wev = hide_gen.clone();
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -78,10 +87,26 @@ pub fn run() {
 
             Ok(())
         })
-        .on_window_event(|window, event| {
+        .on_window_event(move |window, event| {
             if window.label() == "main" {
-                if let WindowEvent::Focused(false) = event {
-                    let _ = window.hide();
+                match event {
+                    WindowEvent::Focused(false) => {
+                        // startDragging() causes a transient WM_KILLFOCUS on Windows.
+                        // Delay the hide; cancel it if Moved (drag) or Focused(true) arrives first.
+                        let gen = hide_gen_wev.fetch_add(1, Ordering::Relaxed) + 1;
+                        let w = window.clone();
+                        let hg = hide_gen_wev.clone();
+                        std::thread::spawn(move || {
+                            std::thread::sleep(std::time::Duration::from_millis(100));
+                            if hg.load(Ordering::Relaxed) == gen {
+                                let _ = w.hide();
+                            }
+                        });
+                    }
+                    WindowEvent::Moved(_) | WindowEvent::Focused(true) => {
+                        hide_gen_wev.fetch_add(1, Ordering::Relaxed);
+                    }
+                    _ => {}
                 }
             }
         })
@@ -95,6 +120,7 @@ pub fn run() {
             commands::get_entry_image,
             commands::hide_popup,
             commands::toggle_pin,
+            commands::save_window_position,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Tauri application");
