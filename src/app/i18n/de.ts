@@ -19,6 +19,10 @@ export const de: Translation = {
     SAVE: 'Speichern',
     SAVING: 'Speichert…',
     SAVED: 'Einstellungen gespeichert',
+    AUTOSTART_LABEL: 'Beim Start ausführen',
+    DELETE_AFTER_MAX_LABEL: 'Verlauf begrenzen',
+    DELETE_AFTER_DAYS_LABEL: 'Alte Einträge löschen',
+    MAX_DAYS_RANGE: 'Tage ({{min}} – {{max}})',
   },
   CLIPBOARD: {
     TITLE: 'Zwischenablage',

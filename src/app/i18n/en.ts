@@ -19,6 +19,10 @@ export const en: Translation = {
     SAVE: 'Save',
     SAVING: 'Saving…',
     SAVED: 'Settings saved',
+    AUTOSTART_LABEL: 'Start at Login',
+    DELETE_AFTER_MAX_LABEL: 'Limit history size',
+    DELETE_AFTER_DAYS_LABEL: 'Auto-delete old entries',
+    MAX_DAYS_RANGE: 'days ({{min}} – {{max}})',
   },
   CLIPBOARD: {
     TITLE: 'Clipboard',

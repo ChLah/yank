@@ -18,6 +18,10 @@ export interface Translation {
     SAVE: string;
     SAVING: string;
     SAVED: string;
+    AUTOSTART_LABEL: string;
+    DELETE_AFTER_MAX_LABEL: string;
+    DELETE_AFTER_DAYS_LABEL: string;
+    MAX_DAYS_RANGE: string;
   };
   CLIPBOARD: {
     TITLE: string;
