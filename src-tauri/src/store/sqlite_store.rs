@@ -213,6 +213,26 @@ impl SqliteStore {
         Ok(new_val == 1)
     }
 
+    pub fn update_entry_content(&self, id: i64, content: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let new_hash = compute_hash(content.as_bytes());
+        let conn = self.conn.lock().unwrap();
+        let collision: Option<i64> = conn
+            .query_row(
+                "SELECT id FROM entries WHERE hash = ?1 AND id != ?2",
+                params![new_hash, id],
+                |row| row.get(0),
+            )
+            .ok();
+        if collision.is_some() {
+            return Err("duplicate".into());
+        }
+        conn.execute(
+            "UPDATE entries SET content = ?1, hash = ?2 WHERE id = ?3",
+            params![content.as_bytes(), new_hash, id],
+        )?;
+        Ok(())
+    }
+
     /// Returns the full image bytes (PNG) for clipboard restore or preview
     pub fn get_entry_image(&self, id: i64) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let conn = self.conn.lock().unwrap();
@@ -737,6 +757,30 @@ mod tests {
         // Negative coords (window on secondary monitor left of primary) are valid
         store.save_window_position(-500, 300).unwrap();
         assert_eq!(store.get_window_position().unwrap(), Some((-500, 300)));
+    }
+
+    #[test]
+    fn test_update_entry_content() {
+        let store = in_memory_store();
+        store.save_entry(&text_payload("original")).unwrap();
+        let id = store.get_all_entries().unwrap()[0].id;
+
+        store.update_entry_content(id, "updated").unwrap();
+
+        let entries = store.get_all_entries().unwrap();
+        assert_eq!(entries[0].content.as_deref(), Some("updated"));
+    }
+
+    #[test]
+    fn test_update_entry_content_hash_collision() {
+        let store = in_memory_store();
+        store.save_entry(&text_payload("first")).unwrap();
+        store.save_entry(&text_payload("second")).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        let first_id = entries.iter().find(|e| e.content.as_deref() == Some("first")).unwrap().id;
+
+        let err = store.update_entry_content(first_id, "second").unwrap_err();
+        assert!(err.to_string().contains("duplicate"));
     }
 
     #[test]

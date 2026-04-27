@@ -90,3 +90,8 @@ pub fn set_clipboard_text(text: String) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
     clipboard.set_text(text).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn update_entry_content(id: i64, content: String, store: StoreState) -> Result<(), String> {
+    store.update_entry_content(id, &content).map_err(|e| e.to_string())
+}
