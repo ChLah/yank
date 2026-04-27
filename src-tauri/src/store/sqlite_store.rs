@@ -226,9 +226,10 @@ impl SqliteStore {
         if collision.is_some() {
             return Err("duplicate".into());
         }
+        let now = chrono::Utc::now().timestamp();
         conn.execute(
-            "UPDATE entries SET content = ?1, hash = ?2 WHERE id = ?3",
-            params![content.as_bytes(), new_hash, id],
+            "UPDATE entries SET content = ?1, hash = ?2, last_used_at = ?3 WHERE id = ?4",
+            params![content.as_bytes(), new_hash, now, id],
         )?;
         Ok(())
     }

@@ -431,14 +431,19 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   }
 
   private openTransformPicker(): void {
+    if (this.duplicateErrorTimer) {
+      clearTimeout(this.duplicateErrorTimer);
+      this.duplicateErrorTimer = null;
+      this.duplicateError.set(false);
+    }
     const entry = this.filteredEntries()[this.selectedIndex()];
     if (!entry || entry.kind !== 'text') return;
     this.showTransformPicker.set(true);
   }
 
   protected async onTransformApplied(event: { transformedContent: string; saveToHistory: boolean }): Promise<void> {
-    this.showTransformPicker.set(false);
     const entry = this.filteredEntries()[this.selectedIndex()];
+    this.showTransformPicker.set(false);
     if (!entry) return;
 
     try {
