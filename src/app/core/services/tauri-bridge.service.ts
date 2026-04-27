@@ -54,4 +54,12 @@ export class TauriBridgeService {
   saveWindowPosition(x: number, y: number): Promise<void> {
     return invoke('save_window_position', { x, y });
   }
+
+  setClipboardText(text: string): Promise<void> {
+    return invoke('set_clipboard_text', { text });
+  }
+
+  updateEntryContent(id: number, content: string): Promise<void> {
+    return invoke('update_entry_content', { id, content });
+  }
 }
