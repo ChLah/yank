@@ -7,12 +7,11 @@ import {
 import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChevronLeft } from '@ng-icons/lucide';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
 import { HlmSelectImports } from '@spartan-ng/helm/select';
-import { TranslateService } from '@ngx-translate/core';
 import { toast } from '@spartan-ng/brain/sonner';
 import { SettingsService } from '../../core/services/settings.service';
 import { I18nService } from '../../core/services/i18n.service';
@@ -163,6 +162,7 @@ export class SettingsComponent {
   }
 
   protected onMaxEntriesBlur(value: number): void {
+    if (Number.isNaN(value)) return;
     const clamped = Math.min(100, Math.max(5, value));
     this.settings.update(s => ({ ...s, maxEntries: clamped }));
     this.persist();
