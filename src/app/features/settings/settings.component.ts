@@ -61,21 +61,83 @@ import { AppSettings, DEFAULT_SETTINGS, Language, Theme } from '../../core/model
             </p>
           </div>
 
-          <!-- Max entries -->
+          <!-- Start at Login -->
           <div class="space-y-1.5">
-            <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.MAX_ENTRIES_LABEL' | translate }}</label>
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="autostart-checkbox"
+                [checked]="settings().autostart"
+                (change)="onAutostartChange($event)"
+                class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              />
+              <label hlmLabel for="autostart-checkbox" class="uppercase tracking-wider cursor-pointer">
+                {{ 'SETTINGS.AUTOSTART_LABEL' | translate }}
+              </label>
+            </div>
+          </div>
+
+          <!-- Limit history size -->
+          <div class="space-y-1.5">
+            <div class="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="delete-max-checkbox"
+                [checked]="settings().deleteAfterMaxEntries"
+                (change)="onDeleteAfterMaxChange($event)"
+                class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              />
+              <label hlmLabel for="delete-max-checkbox" class="uppercase tracking-wider cursor-pointer">
+                {{ 'SETTINGS.DELETE_AFTER_MAX_LABEL' | translate }}
+              </label>
+            </div>
+            <div class="flex items-center gap-3" [class.opacity-50]="!settings().deleteAfterMaxEntries">
               <input
                 hlmInput
-                #maxInput
+                #maxEntriesInput
                 type="number"
                 [value]="settings().maxEntries"
-                (blur)="onMaxEntriesBlur(maxInput.valueAsNumber)"
+                (blur)="onMaxEntriesBlur(maxEntriesInput.valueAsNumber)"
+                [disabled]="!settings().deleteAfterMaxEntries"
                 min="5"
-                max="100"
+                max="999"
                 class="w-24"
               />
-              <span class="text-[12px] text-muted-foreground">{{ 'SETTINGS.MAX_ENTRIES_RANGE' | translate:{ min: 5, max: 100 } }}</span>
+              <span class="text-[12px] text-muted-foreground">
+                {{ 'SETTINGS.MAX_ENTRIES_RANGE' | translate:{ min: 5, max: 999 } }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Auto-delete old entries -->
+          <div class="space-y-1.5">
+            <div class="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="delete-days-checkbox"
+                [checked]="settings().deleteAfterDays"
+                (change)="onDeleteAfterDaysChange($event)"
+                class="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              />
+              <label hlmLabel for="delete-days-checkbox" class="uppercase tracking-wider cursor-pointer">
+                {{ 'SETTINGS.DELETE_AFTER_DAYS_LABEL' | translate }}
+              </label>
+            </div>
+            <div class="flex items-center gap-3" [class.opacity-50]="!settings().deleteAfterDays">
+              <input
+                hlmInput
+                #maxDaysInput
+                type="number"
+                [value]="settings().maxDays"
+                (blur)="onMaxDaysBlur(maxDaysInput.valueAsNumber)"
+                [disabled]="!settings().deleteAfterDays"
+                min="1"
+                max="365"
+                class="w-24"
+              />
+              <span class="text-[12px] text-muted-foreground">
+                {{ 'SETTINGS.MAX_DAYS_RANGE' | translate:{ min: 1, max: 365 } }}
+              </span>
             </div>
           </div>
 
@@ -163,8 +225,33 @@ export class SettingsComponent {
 
   protected onMaxEntriesBlur(value: number): void {
     if (Number.isNaN(value)) return;
-    const clamped = Math.min(100, Math.max(5, value));
+    const clamped = Math.min(999, Math.max(5, value));
     this.settings.update(s => ({ ...s, maxEntries: clamped }));
+    this.persist();
+  }
+
+  protected onMaxDaysBlur(value: number): void {
+    if (Number.isNaN(value)) return;
+    const clamped = Math.min(365, Math.max(1, value));
+    this.settings.update(s => ({ ...s, maxDays: clamped }));
+    this.persist();
+  }
+
+  protected onAutostartChange(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.settings.update(s => ({ ...s, autostart: checked }));
+    this.persist();
+  }
+
+  protected onDeleteAfterMaxChange(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.settings.update(s => ({ ...s, deleteAfterMaxEntries: checked }));
+    this.persist();
+  }
+
+  protected onDeleteAfterDaysChange(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.settings.update(s => ({ ...s, deleteAfterDays: checked }));
     this.persist();
   }
 
