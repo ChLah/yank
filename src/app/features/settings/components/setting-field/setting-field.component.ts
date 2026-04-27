@@ -4,6 +4,7 @@ import { HlmLabel } from '@spartan-ng/helm/label';
 @Component({
   selector: 'app-setting-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'block' },
   imports: [HlmLabel],
   template: `
     <div class="space-y-1.5">

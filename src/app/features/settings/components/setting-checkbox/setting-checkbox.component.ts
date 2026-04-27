@@ -5,6 +5,7 @@ import { HlmLabel } from '@spartan-ng/helm/label';
 @Component({
   selector: 'app-setting-checkbox',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { class: 'block' },
   imports: [HlmCheckboxImports, HlmLabel],
   template: `
     <div class="flex items-center gap-2">
