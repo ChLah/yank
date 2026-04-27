@@ -3,30 +3,28 @@ import {
   Component,
   inject,
   linkedSignal,
-  signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChevronLeft } from '@ng-icons/lucide';
 import { TranslatePipe } from '@ngx-translate/core';
-import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmLabel } from '@spartan-ng/helm/label';
-import { HlmAlert, HlmAlertDescription } from '@spartan-ng/helm/alert';
 import { HlmSelectImports } from '@spartan-ng/helm/select';
 import { TranslateService } from '@ngx-translate/core';
+import { toast } from '@spartan-ng/brain/sonner';
 import { SettingsService } from '../../core/services/settings.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ThemeService } from '../../core/services/theme.service';
-import { Language, Theme } from '../../core/models/settings.model';
+import { AppSettings, DEFAULT_SETTINGS, Language, Theme } from '../../core/models/settings.model';
 
 @Component({
   selector: 'app-settings',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterLink, NgIcon, HlmIcon, HlmButton, HlmInput, HlmLabel,
-    HlmAlert, HlmAlertDescription, TranslatePipe, HlmSelectImports,
+    RouterLink, NgIcon, HlmIcon, HlmInput, HlmLabel,
+    TranslatePipe, HlmSelectImports,
   ],
   providers: [provideIcons({ lucideChevronLeft })],
   template: `
@@ -45,7 +43,7 @@ import { Language, Theme } from '../../core/models/settings.model';
           <div class="w-5 h-5 border-2 border-muted border-t-muted-foreground rounded-full animate-spin"></div>
         </div>
       } @else {
-        <form (ngSubmit)="save()" class="flex-1 flex flex-col p-5 gap-5 overflow-y-auto">
+        <div class="flex-1 flex flex-col p-5 gap-5 overflow-y-auto">
 
           <!-- Global Shortcut -->
           <div class="space-y-1.5">
@@ -53,7 +51,7 @@ import { Language, Theme } from '../../core/models/settings.model';
             <input
               hlmInput
               type="text"
-              [value]="shortcut()"
+              [value]="settings().shortcut"
               class="w-full font-mono"
               [placeholder]="'SETTINGS.SHORTCUT_PLACEHOLDER' | translate"
               (keydown)="captureShortcut($event)"
@@ -72,8 +70,8 @@ import { Language, Theme } from '../../core/models/settings.model';
                 hlmInput
                 #maxInput
                 type="number"
-                [value]="maxEntries()"
-                (input)="maxEntries.set(maxInput.valueAsNumber)"
+                [value]="settings().maxEntries"
+                (blur)="onMaxEntriesBlur(maxInput.valueAsNumber)"
                 min="5"
                 max="100"
                 class="w-24"
@@ -85,7 +83,7 @@ import { Language, Theme } from '../../core/models/settings.model';
           <!-- Language -->
           <div class="space-y-1.5">
             <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.LANGUAGE_LABEL' | translate }}</label>
-            <div hlmSelect [value]="language() ?? ''" [itemToString]="languageLabel" (valueChange)="onLanguageChange($event)">
+            <div hlmSelect [value]="settings().language ?? ''" [itemToString]="languageLabel" (valueChange)="onLanguageChange($event)">
               <hlm-select-trigger class="w-full">
                 <hlm-select-value />
               </hlm-select-trigger>
@@ -100,7 +98,7 @@ import { Language, Theme } from '../../core/models/settings.model';
           <!-- Theme -->
           <div class="space-y-1.5">
             <label hlmLabel class="block uppercase tracking-wider">{{ 'SETTINGS.THEME_LABEL' | translate }}</label>
-            <div hlmSelect [value]="theme()" [itemToString]="themeLabel" (valueChange)="onThemeChange($event)">
+            <div hlmSelect [value]="settings().theme" [itemToString]="themeLabel" (valueChange)="onThemeChange($event)">
               <hlm-select-trigger class="w-full">
                 <hlm-select-value />
               </hlm-select-trigger>
@@ -112,41 +110,20 @@ import { Language, Theme } from '../../core/models/settings.model';
             </div>
           </div>
 
-          @if (error()) {
-            <hlm-alert variant="destructive">
-              <p hlmAlertDescription>{{ error() }}</p>
-            </hlm-alert>
-          }
-
-          @if (saved()) {
-            <hlm-alert>
-              <p hlmAlertDescription>{{ 'SETTINGS.SAVED' | translate }}</p>
-            </hlm-alert>
-          }
-
-          <div class="mt-auto">
-            <button hlmBtn type="submit" class="w-full" [disabled]="!shortcut() || saving()">
-              {{ (saving() ? 'SETTINGS.SAVING' : 'SETTINGS.SAVE') | translate }}
-            </button>
-          </div>
-        </form>
+        </div>
       }
     </div>
   `,
 })
 export class SettingsComponent {
   protected settingsService = inject(SettingsService);
-  protected i18nService = inject(I18nService);
-  protected themeService = inject(ThemeService);
+  private i18nService = inject(I18nService);
+  private themeService = inject(ThemeService);
   private translate = inject(TranslateService);
 
-  protected shortcut = linkedSignal(() => this.settingsService.settings.value()?.shortcut ?? '');
-  protected maxEntries = linkedSignal(() => this.settingsService.settings.value()?.maxEntries ?? 20);
-  protected language = linkedSignal(() => this.i18nService.currentLanguage());
-  protected theme = linkedSignal(() => this.settingsService.settings.value()?.theme ?? 'system');
-  protected saving = signal(false);
-  protected saved = signal(false);
-  protected error = signal<string | null>(null);
+  protected settings = linkedSignal<AppSettings>(
+    () => this.settingsService.settings.value() ?? DEFAULT_SETTINGS
+  );
 
   protected languageLabel = (val: string): string => {
     switch (val) {
@@ -180,40 +157,36 @@ export class SettingsComponent {
     }
 
     if (parts.length > 1) {
-      this.shortcut.set(parts.join('+'));
+      this.settings.update(s => ({ ...s, shortcut: parts.join('+') }));
+      this.persist();
     }
+  }
+
+  protected onMaxEntriesBlur(value: number): void {
+    const clamped = Math.min(100, Math.max(5, value));
+    this.settings.update(s => ({ ...s, maxEntries: clamped }));
+    this.persist();
   }
 
   protected onLanguageChange(value: string | null): void {
     const lang = value === '' || value === null ? null : (value as Language);
-    this.language.set(lang);
+    this.settings.update(s => ({ ...s, language: lang }));
     this.i18nService.setLanguage(lang);
+    this.persist();
   }
 
   protected onThemeChange(value: string | null): void {
     const theme = (value as Theme) || 'system';
-    this.theme.set(theme);
+    this.settings.update(s => ({ ...s, theme }));
     this.themeService.applyTheme(theme);
+    this.persist();
   }
 
-  protected async save(): Promise<void> {
-    if (!this.shortcut()) return;
-    this.saving.set(true);
-    this.error.set(null);
-    this.saved.set(false);
+  private async persist(): Promise<void> {
     try {
-      await this.settingsService.saveSettings({
-        shortcut: this.shortcut(),
-        maxEntries: this.maxEntries(),
-        language: this.language(),
-        theme: this.theme(),
-      });
-      this.saved.set(true);
-      setTimeout(() => this.saved.set(false), 2000);
+      await this.settingsService.saveSettings(this.settings());
     } catch (e) {
-      this.error.set(String(e));
-    } finally {
-      this.saving.set(false);
+      toast.error(String(e));
     }
   }
 }
