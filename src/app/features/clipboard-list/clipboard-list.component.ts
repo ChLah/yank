@@ -210,6 +210,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   private unlistenPopupShown?: UnlistenFn;
   private unlistenWindowMoved?: UnlistenFn;
   private moveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private duplicateErrorTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressPositionSave = false;
 
   protected selectedIndex = signal(0);
@@ -275,6 +276,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     this.unlistenPopupShown?.();
     this.unlistenWindowMoved?.();
     if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
+    if (this.duplicateErrorTimer) clearTimeout(this.duplicateErrorTimer);
   }
 
   protected setTab(tab: string): void {
@@ -439,23 +441,27 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     const entry = this.filteredEntries()[this.selectedIndex()];
     if (!entry) return;
 
-    await this.bridge.setClipboardText(event.transformedContent);
+    try {
+      await this.bridge.setClipboardText(event.transformedContent);
 
-    if (event.saveToHistory) {
-      try {
-        await this.bridge.updateEntryContent(entry.id, event.transformedContent);
-        this.clipboard.entries.reload();
-      } catch {
-        this.duplicateError.set(true);
-        setTimeout(() => {
-          this.duplicateError.set(false);
-          this.bridge.hidePopup();
-        }, 2000);
-        return;
+      if (event.saveToHistory) {
+        try {
+          await this.bridge.updateEntryContent(entry.id, event.transformedContent);
+          this.clipboard.entries.reload();
+        } catch {
+          this.duplicateError.set(true);
+          this.duplicateErrorTimer = setTimeout(() => {
+            this.duplicateError.set(false);
+            this.bridge.hidePopup();
+          }, 2000);
+          return;
+        }
       }
-    }
 
-    this.bridge.hidePopup();
+      this.bridge.hidePopup();
+    } catch {
+      this.bridge.hidePopup();
+    }
   }
 
   protected onTransformCancelled(): void {
