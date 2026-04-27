@@ -6,6 +6,10 @@ export interface AppSettings {
   maxEntries: number;
   language: Language | null;
   theme: Theme;
+  autostart: boolean;
+  deleteAfterMaxEntries: boolean;
+  deleteAfterDays: boolean;
+  maxDays: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -13,4 +17,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxEntries: 20,
   language: null,
   theme: 'system',
+  autostart: false,
+  deleteAfterMaxEntries: true,
+  deleteAfterDays: false,
+  maxDays: 30,
 };
