@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use tauri::{Manager, State};
+use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
     models::{AppSettings, ClipboardEntry},
@@ -37,11 +38,12 @@ pub fn save_settings(
 ) -> Result<(), String> {
     store.save_settings(&settings).map_err(|e| e.to_string())?;
 
+    // Re-register shortcut with new value. Non-fatal: settings are already saved.
     if let Err(e) = crate::shortcuts::register_shortcut(&app_handle, &settings.shortcut) {
         tracing::warn!("Failed to re-register shortcut '{}' after save: {}", settings.shortcut, e);
     }
 
-    use tauri_plugin_autostart::ManagerExt;
+    // Toggle OS autostart. Non-fatal: settings are already saved.
     if settings.autostart {
         if let Err(e) = app_handle.autolaunch().enable() {
             tracing::warn!("Failed to enable autostart: {}", e);
