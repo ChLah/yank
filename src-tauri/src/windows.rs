@@ -1,4 +1,8 @@
+use std::sync::Arc;
+
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+
+use crate::{models::WindowPositionMode, store::SqliteStore};
 
 pub fn toggle_popup(app: &AppHandle) {
     tracing::info!("toggle_popup called");
@@ -18,11 +22,31 @@ pub fn toggle_popup(app: &AppHandle) {
 
 pub fn show_popup(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        position_near_cursor(&window);
+        if !try_position_from_last(app, &window) {
+            position_near_cursor(&window);
+        }
         let _ = window.show();
         let _ = window.set_focus();
         // Emit event so Angular reloads entries and resets selection
         let _ = app.emit_to("main", "popup-shown", ());
+    }
+}
+
+fn try_position_from_last(app: &AppHandle, window: &tauri::WebviewWindow) -> bool {
+    let store = app.state::<Arc<SqliteStore>>();
+    let settings = match store.get_settings() {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+    if settings.window_position != WindowPositionMode::Last {
+        return false;
+    }
+    match store.get_window_position() {
+        Ok(Some((x, y))) => {
+            let _ = window.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+            true
+        }
+        _ => false,
     }
 }
 
