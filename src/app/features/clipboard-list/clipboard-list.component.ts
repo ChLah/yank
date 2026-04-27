@@ -18,6 +18,7 @@ import { ClipboardEntryComponent } from './clipboard-entry.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
 import { KeyboardHintComponent } from '../../shared/ui/keyboard-hint/keyboard-hint.component';
+import { TransformPickerComponent } from './transform-picker.component';
 import { ClipboardService } from '../../core/services/clipboard.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { SettingsService } from '../../core/services/settings.service';
@@ -33,12 +34,13 @@ type Filter = 'all' | 'text' | 'image';
 @Component({
   selector: 'app-clipboard-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ClipboardEntryComponent, RouterLink, NgIcon, HlmIcon, HlmButton, HlmBadge, HlmTabs, HlmTabsList, HlmTabsTrigger, TranslatePipe, PageHeaderComponent, EmptyStateComponent, KeyboardHintComponent],
+  imports: [ClipboardEntryComponent, RouterLink, NgIcon, HlmIcon, HlmButton, HlmBadge, HlmTabs, HlmTabsList, HlmTabsTrigger, TranslatePipe, PageHeaderComponent, EmptyStateComponent, KeyboardHintComponent, TransformPickerComponent],
   providers: [provideIcons({ lucideClipboard, lucideSettings, lucideSearch, lucideX })],
   host: {
     '(keydown)': 'onKeyDown($event)',
-    'tabindex': '0',
-    'class': 'block outline-none h-full',
+    '(click)':   'onHostClick()',
+    'tabindex':  '0',
+    'class':     'block outline-none h-full',
   },
   template: `
     <div class="flex flex-col h-full bg-background rounded-xl overflow-hidden border border-border shadow-2xl">
@@ -155,7 +157,7 @@ type Filter = 'all' | 'text' | 'image';
         } @else {
           <div class="py-1">
             @for (entry of filteredEntries(); track entry.id; let i = $index) {
-              <div class="entry-item">
+              <div class="entry-item relative">
                 <app-clipboard-entry
                   [entry]="entry"
                   [selected]="selectedIndex() === i"
@@ -163,17 +165,32 @@ type Filter = 'all' | 'text' | 'image';
                   (delete)="deleteEntry(i)"
                   (pin)="pinEntry(i)"
                 />
+                @if (showTransformPicker() && selectedIndex() === i && entry.kind === 'text') {
+                  <app-transform-picker
+                    [content]="entry.content ?? ''"
+                    (applied)="onTransformApplied($event)"
+                    (cancelled)="onTransformCancelled()"
+                    (click)="$event.stopPropagation()"
+                  />
+                }
               </div>
             }
           </div>
         }
       </div>
 
+      @if (duplicateError()) {
+        <div class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0">
+          {{ 'TRANSFORM.DUPLICATE_ERROR' | translate }}
+        </div>
+      }
+
       <!-- Footer -->
       <div class="h-9 px-3.5 flex items-center gap-2 shrink-0 bg-card border-t border-border">
         <!-- footer nav hints -->
         <app-keyboard-hint key="↑↓" [label]="'CLIPBOARD.HINT_NAV' | translate" />
         <app-keyboard-hint key="↵" [label]="'CLIPBOARD.HINT_PASTE' | translate" />
+        <app-keyboard-hint key="⇧↵" [label]="'TRANSFORM.HINT' | translate" />
         <app-keyboard-hint key="⌫" [label]="'CLIPBOARD.HINT_DELETE' | translate" />
         <app-keyboard-hint key="P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
         <span class="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
@@ -202,6 +219,8 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected activeFilter = signal<Filter>('all');
   protected searchQuery  = signal('');
   protected isSearching  = signal(false);
+  protected showTransformPicker = signal(false);
+  protected duplicateError      = signal(false);
 
   protected tabs = [
     { labelKey: 'CLIPBOARD.TAB_RECENT', value: 'recent' as Tab },
@@ -310,6 +329,8 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
+    if (this.showTransformPicker()) return;
+
     if (this.isSearching()) {
       switch (event.key) {
         case 'ArrowDown':
@@ -322,7 +343,11 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
           break;
         case 'Enter':
           event.preventDefault();
-          this.copySelected();
+          if (event.shiftKey) {
+            this.openTransformPicker();
+          } else {
+            this.copySelected();
+          }
           break;
         case 'Escape':
           event.preventDefault();
@@ -343,7 +368,11 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
         break;
       case 'Enter':
         event.preventDefault();
-        this.copySelected();
+        if (event.shiftKey) {
+          this.openTransformPicker();
+        } else {
+          this.copySelected();
+        }
         break;
       case 'Delete':
         event.preventDefault();
@@ -390,6 +419,48 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
   private copySelected(): void {
     this.selectEntry(this.selectedIndex());
+  }
+
+  protected onHostClick(): void {
+    if (this.showTransformPicker()) {
+      this.showTransformPicker.set(false);
+      this.hostEl.nativeElement.focus();
+    }
+  }
+
+  private openTransformPicker(): void {
+    const entry = this.filteredEntries()[this.selectedIndex()];
+    if (!entry || entry.kind !== 'text') return;
+    this.showTransformPicker.set(true);
+  }
+
+  protected async onTransformApplied(event: { transformedContent: string; saveToHistory: boolean }): Promise<void> {
+    this.showTransformPicker.set(false);
+    const entry = this.filteredEntries()[this.selectedIndex()];
+    if (!entry) return;
+
+    await this.bridge.setClipboardText(event.transformedContent);
+
+    if (event.saveToHistory) {
+      try {
+        await this.bridge.updateEntryContent(entry.id, event.transformedContent);
+        this.clipboard.entries.reload();
+      } catch {
+        this.duplicateError.set(true);
+        setTimeout(() => {
+          this.duplicateError.set(false);
+          this.bridge.hidePopup();
+        }, 2000);
+        return;
+      }
+    }
+
+    this.bridge.hidePopup();
+  }
+
+  protected onTransformCancelled(): void {
+    this.showTransformPicker.set(false);
+    this.hostEl.nativeElement.focus();
   }
 
   private scrollSelectedIntoView(): void {
