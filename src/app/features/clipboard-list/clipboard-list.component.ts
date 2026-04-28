@@ -277,6 +277,7 @@ type Filter = 'all' | 'text' | 'image';
                     [selected]="selectedIndex() === i"
                     [editMode]="editingEntryId() === entry.id"
                     [ocrLoading]="ocrLoadingEntryId() === entry.id"
+                    [shortcutIndex]="i < 9 ? i + 1 : null"
                     (select)="selectEntry(i)"
                     (delete)="deleteEntry(i)"
                     (pin)="pinEntry(i)"
