@@ -559,3 +559,10 @@ export function shouldCancelEditOnSelect(
 ): boolean {
   return clickedEntryId !== editingEntryId;
 }
+
+/** Returns the 1-based digit (1–9) if the event is a Ctrl-only digit shortcut, otherwise null. Exported for unit testing. */
+export function getQuickPasteDigit(event: KeyboardEvent): number | null {
+  if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return null;
+  const digit = parseInt(event.key, 10);
+  return digit >= 1 && digit <= 9 ? digit : null;
+}

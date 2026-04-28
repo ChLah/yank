@@ -1,4 +1,4 @@
-import { resolveEditModeAction, shouldCancelEditOnSelect } from './clipboard-list.component';
+import { getQuickPasteDigit, resolveEditModeAction, shouldCancelEditOnSelect } from './clipboard-list.component';
 
 describe('resolveEditModeAction', () => {
   it('returns cancel-navigate for ArrowDown', () => {
@@ -57,5 +57,49 @@ describe('shouldCancelEditOnSelect', () => {
   it('returns false for same ID regardless of value', () => {
     expect(shouldCancelEditOnSelect(1, 1)).toBe(false);
     expect(shouldCancelEditOnSelect(0, 0)).toBe(false);
+  });
+});
+
+describe('getQuickPasteDigit', () => {
+  function makeEvent(key: string, mods: Partial<KeyboardEvent> = {}): KeyboardEvent {
+    return {
+      key,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+      metaKey: false,
+      ...mods,
+    } as KeyboardEvent;
+  }
+
+  it('returns 1–9 for Ctrl+digit keys', () => {
+    for (let d = 1; d <= 9; d++) {
+      expect(getQuickPasteDigit(makeEvent(String(d), { ctrlKey: true }))).toBe(d);
+    }
+  });
+
+  it('returns null for Ctrl+0', () => {
+    expect(getQuickPasteDigit(makeEvent('0', { ctrlKey: true }))).toBeNull();
+  });
+
+  it('returns null when Ctrl is not held', () => {
+    expect(getQuickPasteDigit(makeEvent('1'))).toBeNull();
+  });
+
+  it('returns null for Ctrl+Shift+digit', () => {
+    expect(getQuickPasteDigit(makeEvent('1', { ctrlKey: true, shiftKey: true }))).toBeNull();
+  });
+
+  it('returns null for Ctrl+Alt+digit', () => {
+    expect(getQuickPasteDigit(makeEvent('1', { ctrlKey: true, altKey: true }))).toBeNull();
+  });
+
+  it('returns null for Ctrl+Meta+digit', () => {
+    expect(getQuickPasteDigit(makeEvent('1', { ctrlKey: true, metaKey: true }))).toBeNull();
+  });
+
+  it('returns null for Ctrl+non-digit', () => {
+    expect(getQuickPasteDigit(makeEvent('a', { ctrlKey: true }))).toBeNull();
+    expect(getQuickPasteDigit(makeEvent('Enter', { ctrlKey: true }))).toBeNull();
   });
 });
