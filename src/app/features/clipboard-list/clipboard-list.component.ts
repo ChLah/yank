@@ -372,7 +372,10 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     const quickPasteDigit = getQuickPasteDigit(event);
     if (quickPasteDigit !== null) {
       event.preventDefault();
-      this.selectEntry(quickPasteDigit - 1);
+      const idx = quickPasteDigit - 1;
+      if (idx < this.filteredEntries().length) {
+        this.selectEntry(idx);
+      }
       return;
     }
 
