@@ -24,7 +24,7 @@
       "@spartan-ng/helm/select": ["./src/libs/ui/select/src/index.ts"],
       "@spartan-ng/helm/checkbox": ["./src/libs/ui/checkbox/src/index.ts"],
       "@spartan-ng/helm/separator": ["./src/libs/ui/separator/src/index.ts"],
-      "@spartan-ng/helm/hover-card": ["./src/libs/ui/hover-card/hover-card/src/index.ts"]
+      "@spartan-ng/helm/hover-card": ["./src/libs/ui/hover-card/src/index.ts"]
     }
   },
   "angularCompilerOptions": {
