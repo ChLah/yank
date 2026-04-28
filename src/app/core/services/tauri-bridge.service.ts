@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { ClipboardEntry } from '../models/clipboard-entry.model';
 import { AppSettings } from '../models/settings.model';
+import { Snippet } from '../models/snippet.model';
 
 /** Single seam between Angular and Tauri. Mock this in tests. */
 @Injectable({ providedIn: 'root' })
@@ -61,5 +62,21 @@ export class TauriBridgeService {
 
   updateEntryContent(id: number, content: string): Promise<void> {
     return invoke('update_entry_content', { id, content });
+  }
+
+  getSnippets(): Promise<Snippet[]> {
+    return invoke<Snippet[]>('get_snippets');
+  }
+
+  createSnippet(title: string, content: string): Promise<Snippet> {
+    return invoke<Snippet>('create_snippet', { title, content });
+  }
+
+  updateSnippet(id: number, title: string, content: string): Promise<Snippet> {
+    return invoke<Snippet>('update_snippet', { id, title, content });
+  }
+
+  deleteSnippet(id: number): Promise<void> {
+    return invoke('delete_snippet', { id });
   }
 }

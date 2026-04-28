@@ -86,4 +86,20 @@ export interface Translation {
     HINT: string;
     DUPLICATE_ERROR: string;
   };
+  SNIPPETS: {
+    TAB: string;
+    EMPTY: string;
+    EMPTY_HINT: string;
+    TITLE_PLACEHOLDER: string;
+    BODY_PLACEHOLDER: string;
+    TITLE_REQUIRED: string;
+    SAVE: string;
+    CANCEL: string;
+    EDIT_HINT: string;
+    HINT_NEW: string;
+    HINT_EDIT: string;
+    HINT_DELETE: string;
+    HINT_PASTE: string;
+    PLACEHOLDER_OVERLAY_CONFIRM: string;
+  };
 }
