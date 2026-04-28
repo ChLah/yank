@@ -183,6 +183,7 @@ impl SqliteStore {
                 created_at: row.get(7)?,
                 last_used_at: row.get(8)?,
                 pinned: row.get::<_, i64>(9)? != 0,
+                source_app: None, // placeholder until Task 4 adds the SQL column
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -470,6 +471,7 @@ mod tests {
         ClipboardPayload {
             hash: compute_hash(text.as_bytes()),
             content: ClipboardContent::Text(text.to_string()),
+            source_app: None,
         }
     }
 

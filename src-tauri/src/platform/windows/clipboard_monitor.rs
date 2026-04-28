@@ -64,6 +64,7 @@ fn read_clipboard() -> Result<Option<ClipboardPayload>, Box<dyn std::error::Erro
         return Ok(Some(ClipboardPayload {
             hash,
             content: ClipboardContent::Text(text),
+            source_app: None,
         }));
     }
 
@@ -77,6 +78,7 @@ fn read_clipboard() -> Result<Option<ClipboardPayload>, Box<dyn std::error::Erro
                 width: img.width as u32,
                 height: img.height as u32,
             },
+            source_app: None,
         }));
     }
 

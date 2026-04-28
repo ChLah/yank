@@ -13,6 +13,7 @@ pub struct ClipboardEntry {
     pub created_at: i64,
     pub last_used_at: i64,
     pub pinned: bool,
+    pub source_app: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -86,4 +87,5 @@ pub enum ClipboardContent {
 pub struct ClipboardPayload {
     pub content: ClipboardContent,
     pub hash: String,
+    pub source_app: Option<String>,
 }
