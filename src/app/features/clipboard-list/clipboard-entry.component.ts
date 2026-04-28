@@ -157,11 +157,13 @@ interface TimeTranslation {
         }
       </div>
 
-      <ng-template hlmHoverCardPortal>
-        <div hlmHoverCardContent class="w-72">
-          <app-clipboard-entry-tooltip [entry]="entry()" />
-        </div>
-      </ng-template>
+      @if (!editMode()) {
+        <ng-template hlmHoverCardPortal>
+          <div hlmHoverCardContent class="w-72">
+            <app-clipboard-entry-tooltip [entry]="entry()" />
+          </div>
+        </ng-template>
+      }
     </div>
   `,
 })
