@@ -1,4 +1,4 @@
-import { getQuickPasteDigit, resolveEditModeAction, shouldCancelEditOnSelect } from './clipboard-list.component';
+import { getQuickPasteDigit, isOcrTrigger, resolveEditModeAction, shouldCancelEditOnSelect } from './clipboard-list.component';
 
 describe('resolveEditModeAction', () => {
   it('returns cancel-navigate for ArrowDown', () => {
@@ -101,5 +101,44 @@ describe('getQuickPasteDigit', () => {
   it('returns null for Ctrl+non-digit', () => {
     expect(getQuickPasteDigit(makeEvent('a', { ctrlKey: true }))).toBeNull();
     expect(getQuickPasteDigit(makeEvent('Enter', { ctrlKey: true }))).toBeNull();
+  });
+});
+
+describe('isOcrTrigger', () => {
+  function makeEvent(key: string, mods: Partial<KeyboardEvent> = {}): KeyboardEvent {
+    return {
+      key,
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+      metaKey: false,
+      ...mods,
+    } as KeyboardEvent;
+  }
+
+  it('returns true for lowercase o', () => {
+    expect(isOcrTrigger(makeEvent('o'))).toBe(true);
+  });
+
+  it('returns true for uppercase O', () => {
+    expect(isOcrTrigger(makeEvent('O'))).toBe(true);
+  });
+
+  it('returns false with Ctrl modifier', () => {
+    expect(isOcrTrigger(makeEvent('o', { ctrlKey: true }))).toBe(false);
+  });
+
+  it('returns false with Alt modifier', () => {
+    expect(isOcrTrigger(makeEvent('o', { altKey: true }))).toBe(false);
+  });
+
+  it('returns false with Meta modifier', () => {
+    expect(isOcrTrigger(makeEvent('o', { metaKey: true }))).toBe(false);
+  });
+
+  it('returns false for other keys', () => {
+    expect(isOcrTrigger(makeEvent('p'))).toBe(false);
+    expect(isOcrTrigger(makeEvent('e'))).toBe(false);
+    expect(isOcrTrigger(makeEvent('Enter'))).toBe(false);
   });
 });
