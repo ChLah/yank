@@ -87,3 +87,13 @@ pub struct ClipboardPayload {
     pub content: ClipboardContent,
     pub hash: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Snippet {
+    pub id: i64,
+    pub title: String,
+    pub content: String,
+    pub created_at: i64,
+    pub sort_order: i64,
+}

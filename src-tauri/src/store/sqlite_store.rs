@@ -5,7 +5,7 @@ use image::imageops::FilterType;
 use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
-use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language, Theme, WindowPositionMode};
+use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language, Snippet, Theme, WindowPositionMode};
 
 const THUMBNAIL_MAX_SIZE: u32 = 200;
 
@@ -71,6 +71,16 @@ impl SqliteStore {
                  PRAGMA user_version = 1;"
             )?;
         }
+
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS snippets (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                title       TEXT    NOT NULL,
+                content     TEXT    NOT NULL,
+                created_at  INTEGER NOT NULL,
+                sort_order  INTEGER NOT NULL DEFAULT 0
+            );"
+        )?;
 
         Ok(())
     }
