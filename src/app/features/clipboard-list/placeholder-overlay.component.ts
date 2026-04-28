@@ -69,7 +69,7 @@ export class PlaceholderOverlayComponent {
 
   constructor() {
     afterNextRender(() => {
-      this.el.nativeElement.querySelector<HTMLInputElement>('input')?.focus();
+      (this.el.nativeElement.querySelector('input') as HTMLInputElement | null)?.focus();
     });
   }
 
