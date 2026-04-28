@@ -11,4 +11,5 @@ export interface ClipboardEntry {
   createdAt: number;
   lastUsedAt: number;
   pinned: boolean;
+  sourceApp: string | null;
 }
