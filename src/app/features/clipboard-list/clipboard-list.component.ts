@@ -259,7 +259,7 @@ type Filter = 'all' | 'text' | 'image';
           <app-keyboard-hint key="Ctrl+P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
           <app-keyboard-hint key="Ctrl+E" [label]="'CLIPBOARD.HINT_EDIT' | translate" />
           @if (selectedEntryIsImage()) {
-            <app-keyboard-hint key="O" [label]="'OCR.KEYBOARD_HINT' | translate" />
+            <app-keyboard-hint key="Ctrl+O" [label]="'OCR.KEYBOARD_HINT' | translate" />
           }
           <app-keyboard-hint key="Ctrl+1–9" [label]="'CLIPBOARD.HINT_QUICK_PASTE' | translate" />
           <app-keyboard-hint
@@ -515,13 +515,11 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
           } else if (event.key.toLowerCase() === 'e') {
             event.preventDefault();
             this.enterEditMode();
-          }
-        } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
-          if (isOcrTrigger(event)) {
+          } else if (isOcrTrigger(event)) {
             event.preventDefault();
             this.triggerOcr();
-            return;
           }
+        } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
           this.isSearching.set(true);
           this.searchQuery.set(event.key);
           setTimeout(() => {
@@ -692,7 +690,7 @@ export function getQuickPasteDigit(event: KeyboardEvent): number | null {
   return digit >= 1 && digit <= 9 ? digit : null;
 }
 
-/** Returns true when the event is the O key without modifier keys. Exported for unit testing. */
+/** Returns true when the event is Ctrl+O (no other modifiers). Exported for unit testing. */
 export function isOcrTrigger(event: KeyboardEvent): boolean {
-  return event.key.toLowerCase() === 'o' && !event.ctrlKey && !event.altKey && !event.metaKey;
+  return event.key.toLowerCase() === 'o' && event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey;
 }

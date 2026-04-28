@@ -116,29 +116,28 @@ describe('isOcrTrigger', () => {
     } as KeyboardEvent;
   }
 
-  it('returns true for lowercase o', () => {
-    expect(isOcrTrigger(makeEvent('o'))).toBe(true);
+  it('returns true for Ctrl+o', () => {
+    expect(isOcrTrigger(makeEvent('o', { ctrlKey: true }))).toBe(true);
   });
 
-  it('returns true for uppercase O', () => {
-    expect(isOcrTrigger(makeEvent('O'))).toBe(true);
+  it('returns true for Ctrl+O (uppercase)', () => {
+    expect(isOcrTrigger(makeEvent('O', { ctrlKey: true }))).toBe(true);
   });
 
-  it('returns false with Ctrl modifier', () => {
-    expect(isOcrTrigger(makeEvent('o', { ctrlKey: true }))).toBe(false);
+  it('returns false without Ctrl', () => {
+    expect(isOcrTrigger(makeEvent('o'))).toBe(false);
+  });
+
+  it('returns false with Ctrl+Shift', () => {
+    expect(isOcrTrigger(makeEvent('o', { ctrlKey: true, shiftKey: true }))).toBe(false);
   });
 
   it('returns false with Alt modifier', () => {
-    expect(isOcrTrigger(makeEvent('o', { altKey: true }))).toBe(false);
-  });
-
-  it('returns false with Meta modifier', () => {
-    expect(isOcrTrigger(makeEvent('o', { metaKey: true }))).toBe(false);
+    expect(isOcrTrigger(makeEvent('o', { ctrlKey: true, altKey: true }))).toBe(false);
   });
 
   it('returns false for other keys', () => {
-    expect(isOcrTrigger(makeEvent('p'))).toBe(false);
-    expect(isOcrTrigger(makeEvent('e'))).toBe(false);
-    expect(isOcrTrigger(makeEvent('Enter'))).toBe(false);
+    expect(isOcrTrigger(makeEvent('p', { ctrlKey: true }))).toBe(false);
+    expect(isOcrTrigger(makeEvent('e', { ctrlKey: true }))).toBe(false);
   });
 });
