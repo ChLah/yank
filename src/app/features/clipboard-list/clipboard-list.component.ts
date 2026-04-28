@@ -16,7 +16,7 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideClipboard, lucideSearch, lucideSettings, lucideX } from '@ng-icons/lucide';
 import { ClipboardEntryComponent } from './clipboard-entry.component';
 import { SnippetItemComponent } from './snippet-item.component';
-import { PlaceholderOverlayComponent } from './placeholder-overlay.component';
+import { PlaceholderOverlayComponent, extractPlaceholders } from './placeholder-overlay.component';
 import { NewSnippetFormComponent } from './new-snippet-form.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
@@ -149,6 +149,15 @@ type Filter = 'all' | 'text' | 'image';
                 </div>
               }
             </div>
+          } @else if (snippetsService.snippets.error()) {
+            <app-empty-state
+              icon="lucideAlertCircle"
+              [title]="'CLIPBOARD.ERROR_LOAD' | translate"
+              variant="destructive">
+              <button hlmBtn variant="link" size="sm" (click)="snippetsService.snippets.reload()">
+                {{ 'CLIPBOARD.TRY_AGAIN' | translate }}
+              </button>
+            </app-empty-state>
           } @else if (allSnippets().length === 0 && !showNewSnippetForm()) {
             <app-empty-state
               icon="lucideClipboard"
@@ -716,7 +725,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   private pasteOrOverlaySnippet(): void {
     const snippet = this.allSnippets()[this.snippetSelectedIndex()];
     if (!snippet) return;
-    if (/\{\{[a-zA-Z0-9_-]+\}\}/.test(snippet.content)) {
+    if (extractPlaceholders(snippet.content).length > 0) {
       this.placeholderSnippet.set(snippet);
       this.showPlaceholderOverlay.set(true);
     } else {
@@ -748,8 +757,9 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
   protected async onSnippetCreated(data: { title: string; content: string }): Promise<void> {
     this.showNewSnippetForm.set(false);
+    const newIndex = this.allSnippets().length;
     await this.snippetsService.createSnippet(data.title, data.content);
-    this.snippetSelectedIndex.set(Math.max(0, this.allSnippets().length - 1));
+    this.snippetSelectedIndex.set(newIndex);
   }
 
   protected onSnippetFormCancelled(): void {

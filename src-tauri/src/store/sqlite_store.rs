@@ -480,10 +480,13 @@ impl SqliteStore {
 
     pub fn update_snippet(&self, id: i64, title: &str, content: &str) -> Result<Snippet, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
-        conn.execute(
+        let changed = conn.execute(
             "UPDATE snippets SET title = ?1, content = ?2 WHERE id = ?3",
             params![title, content, id],
         )?;
+        if changed == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows);
+        }
         conn.query_row(
             "SELECT id, title, content, created_at, sort_order FROM snippets WHERE id = ?1",
             params![id],
@@ -859,6 +862,54 @@ mod tests {
 
         let err = store.update_entry_content(first_id, "second").unwrap_err();
         assert!(err.to_string().contains("duplicate"));
+    }
+
+    #[test]
+    fn test_create_and_get_snippets() {
+        let store = in_memory_store();
+        // Create two snippets
+        let s1 = store.create_snippet("Alpha", "Content A").unwrap();
+        let s2 = store.create_snippet("Beta", "Content B").unwrap();
+        // Fields are set correctly
+        assert_eq!(s1.title, "Alpha");
+        assert_eq!(s1.content, "Content A");
+        assert_eq!(s2.title, "Beta");
+        // sort_order increments
+        assert_eq!(s1.sort_order, 0);
+        assert_eq!(s2.sort_order, 1);
+        // get_snippets returns both in order
+        let snippets = store.get_snippets().unwrap();
+        assert_eq!(snippets.len(), 2);
+        assert_eq!(snippets[0].id, s1.id);
+        assert_eq!(snippets[1].id, s2.id);
+    }
+
+    #[test]
+    fn test_update_snippet() {
+        let store = in_memory_store();
+        let original = store.create_snippet("Old Title", "Old Content").unwrap();
+        let updated = store.update_snippet(original.id, "New Title", "New Content").unwrap();
+        assert_eq!(updated.id, original.id);
+        assert_eq!(updated.title, "New Title");
+        assert_eq!(updated.content, "New Content");
+        assert_eq!(updated.created_at, original.created_at);
+        assert_eq!(updated.sort_order, original.sort_order);
+    }
+
+    #[test]
+    fn test_delete_snippet() {
+        let store = in_memory_store();
+        let s = store.create_snippet("Title", "Body").unwrap();
+        store.delete_snippet(s.id).unwrap();
+        let snippets = store.get_snippets().unwrap();
+        assert!(snippets.is_empty());
+    }
+
+    #[test]
+    fn test_update_snippet_unknown_id_returns_error() {
+        let store = in_memory_store();
+        let result = store.update_snippet(9999, "Title", "Body");
+        assert!(result.is_err());
     }
 
     #[test]
