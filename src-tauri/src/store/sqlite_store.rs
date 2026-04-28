@@ -117,18 +117,18 @@ impl SqliteStore {
         match &payload.content {
             ClipboardContent::Text(text) => {
                 conn.execute(
-                    "INSERT INTO entries (kind, content, thumbnail, width, height, hash, created_at, last_used_at)
-                     VALUES ('text', ?1, NULL, NULL, NULL, ?2, ?3, ?3)",
-                    params![text.as_bytes(), payload.hash, now],
+                    "INSERT INTO entries (kind, content, thumbnail, width, height, hash, created_at, last_used_at, source_app)
+                     VALUES ('text', ?1, NULL, NULL, NULL, ?2, ?3, ?3, ?4)",
+                    params![text.as_bytes(), payload.hash, now, payload.source_app],
                 )?;
             }
             ClipboardContent::Image { rgba_bytes, width, height } => {
                 let png_bytes = encode_rgba_to_png(rgba_bytes, *width, *height)?;
                 let thumbnail_bytes = generate_thumbnail(&png_bytes)?;
                 conn.execute(
-                    "INSERT INTO entries (kind, content, thumbnail, width, height, hash, created_at, last_used_at)
-                     VALUES ('image', ?1, ?2, ?3, ?4, ?5, ?6, ?6)",
-                    params![png_bytes, thumbnail_bytes, width, height, payload.hash, now],
+                    "INSERT INTO entries (kind, content, thumbnail, width, height, hash, created_at, last_used_at, source_app)
+                     VALUES ('image', ?1, ?2, ?3, ?4, ?5, ?6, ?6, ?7)",
+                    params![png_bytes, thumbnail_bytes, width, height, payload.hash, now, payload.source_app],
                 )?;
             }
         }
@@ -169,7 +169,7 @@ impl SqliteStore {
     pub fn get_all_entries(&self) -> Result<Vec<ClipboardEntry>, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, kind, content, thumbnail, width, height, hash, created_at, last_used_at, pinned
+            "SELECT id, kind, content, thumbnail, width, height, hash, created_at, last_used_at, pinned, source_app
              FROM entries ORDER BY last_used_at DESC",
         )?;
 
@@ -198,7 +198,7 @@ impl SqliteStore {
                 created_at: row.get(7)?,
                 last_used_at: row.get(8)?,
                 pinned: row.get::<_, i64>(9)? != 0,
-                source_app: None, // placeholder until Task 4 adds the SQL column
+                source_app: row.get(10)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -814,6 +814,27 @@ mod tests {
 
         let entries = store.get_all_entries().unwrap();
         assert_eq!(entries[0].content.as_deref(), Some("updated"));
+    }
+
+    #[test]
+    fn test_save_entry_persists_source_app() {
+        let store = in_memory_store();
+        let payload = ClipboardPayload {
+            hash: compute_hash(b"chrome text"),
+            content: ClipboardContent::Text("chrome text".to_string()),
+            source_app: Some("chrome.exe".to_string()),
+        };
+        store.save_entry(&payload).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        assert_eq!(entries[0].source_app.as_deref(), Some("chrome.exe"));
+    }
+
+    #[test]
+    fn test_save_entry_null_source_app() {
+        let store = in_memory_store();
+        store.save_entry(&text_payload("no app")).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        assert_eq!(entries[0].source_app, None);
     }
 
     #[test]
