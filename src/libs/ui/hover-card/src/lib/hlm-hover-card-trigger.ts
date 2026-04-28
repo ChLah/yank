@@ -12,7 +12,7 @@ import { BrnHoverCardTrigger } from '@spartan-ng/brain/hover-card';
         'animationDelay',
         'sideOffset',
         'align',
-        'brnHoverCardTriggerFor',
+        'brnHoverCardTriggerFor: hlmHoverCardTriggerFor',
       ],
     },
   ],
