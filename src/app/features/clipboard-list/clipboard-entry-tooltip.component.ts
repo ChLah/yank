@@ -93,5 +93,7 @@ export function formatAbsoluteDate(unixSeconds: number): string {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(new Date(unixSeconds * 1000));
 }
