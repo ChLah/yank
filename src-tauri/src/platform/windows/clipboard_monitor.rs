@@ -11,7 +11,7 @@ use crate::{
 /// 1. A Win32 message pump thread that listens for WM_CLIPBOARDUPDATE
 /// 2. A processor thread that reads the clipboard and saves to the store
 pub fn start(app_handle: tauri::AppHandle, store: Arc<SqliteStore>) {
-    let (trigger_tx, trigger_rx) = std::sync::mpsc::channel::<()>();
+    let (trigger_tx, trigger_rx) = std::sync::mpsc::channel::<Option<String>>();
 
     // Thread 1: Win32 message pump
     std::thread::Builder::new()
@@ -25,15 +25,19 @@ pub fn start(app_handle: tauri::AppHandle, store: Arc<SqliteStore>) {
     std::thread::Builder::new()
         .name("clipboard-processor".into())
         .spawn(move || {
-            while trigger_rx.recv().is_ok() {
-                process_clipboard_change(&app_handle, &store);
+            while let Ok(source_app) = trigger_rx.recv() {
+                process_clipboard_change(&app_handle, &store, source_app);
             }
         })
         .expect("Failed to spawn clipboard processor thread");
 }
 
-fn process_clipboard_change(app_handle: &tauri::AppHandle, store: &Arc<SqliteStore>) {
-    let payload = match read_clipboard() {
+fn process_clipboard_change(
+    app_handle: &tauri::AppHandle,
+    store: &Arc<SqliteStore>,
+    source_app: Option<String>,
+) {
+    let mut payload = match read_clipboard() {
         Ok(Some(p)) => p,
         Ok(None) => return, // empty or unsupported format
         Err(e) => {
@@ -41,6 +45,8 @@ fn process_clipboard_change(app_handle: &tauri::AppHandle, store: &Arc<SqliteSto
             return;
         }
     };
+
+    payload.source_app = source_app;
 
     if let Err(e) = store.save_entry(&payload) {
         tracing::error!("Failed to save clipboard entry: {}", e);
@@ -85,24 +91,58 @@ fn read_clipboard() -> Result<Option<ClipboardPayload>, Box<dyn std::error::Erro
     Ok(None)
 }
 
+fn get_foreground_process_name() -> Option<String> {
+    let hwnd = unsafe { GetForegroundWindow() };
+    if hwnd.is_invalid() {
+        return None;
+    }
+    let mut pid: u32 = 0;
+    let thread_id = unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
+    if thread_id == 0 {
+        return None;
+    }
+    unsafe {
+        let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, pid).ok()?;
+        let mut buf = [0u16; 260];
+        let len = GetModuleFileNameExW(handle, None, &mut buf);
+        let _ = CloseHandle(handle);
+        // len == 0 means failure; len == buf.len() means truncation
+        if len == 0 || len as usize >= buf.len() {
+            return None;
+        }
+        let path = String::from_utf16_lossy(&buf[..len as usize]);
+        std::path::Path::new(&path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .filter(|name| !name.eq_ignore_ascii_case("yank.exe"))
+            .map(|name| name.to_owned())
+    }
+}
+
 // ── Win32 message pump ──────────────────────────────────────────────────────
 
 use windows::Win32::{
-    Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
-    System::{DataExchange::AddClipboardFormatListener, LibraryLoader::GetModuleHandleW},
+    Foundation::{CloseHandle, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
+    System::{
+        DataExchange::AddClipboardFormatListener,
+        LibraryLoader::GetModuleHandleW,
+        ProcessStatus::GetModuleFileNameExW,
+        Threading::{OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ},
+    },
     UI::WindowsAndMessaging::{
-        CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, PostQuitMessage,
-        RegisterClassExW, TranslateMessage, HWND_MESSAGE, MSG, WINDOW_EX_STYLE, WINDOW_STYLE,
-        WM_CLIPBOARDUPDATE, WM_DESTROY, WNDCLASSEXW,
+        CreateWindowExW, DefWindowProcW, DispatchMessageW, GetForegroundWindow, GetMessageW,
+        GetWindowThreadProcessId, PostQuitMessage, RegisterClassExW, TranslateMessage,
+        HWND_MESSAGE, MSG, WINDOW_EX_STYLE, WINDOW_STYLE, WM_CLIPBOARDUPDATE, WM_DESTROY,
+        WNDCLASSEXW,
     },
 };
 
 thread_local! {
-    static TRIGGER_TX: std::cell::RefCell<Option<std::sync::mpsc::Sender<()>>> =
+    static TRIGGER_TX: std::cell::RefCell<Option<std::sync::mpsc::Sender<Option<String>>>> =
         std::cell::RefCell::new(None);
 }
 
-fn run_message_pump(trigger_tx: std::sync::mpsc::Sender<()>) {
+fn run_message_pump(trigger_tx: std::sync::mpsc::Sender<Option<String>>) {
     TRIGGER_TX.with(|cell| {
         *cell.borrow_mut() = Some(trigger_tx);
     });
@@ -157,9 +197,10 @@ unsafe extern "system" fn wnd_proc(
 ) -> LRESULT {
     match msg {
         WM_CLIPBOARDUPDATE => {
+            let proc_name = get_foreground_process_name();
             TRIGGER_TX.with(|cell| {
                 if let Some(tx) = cell.borrow().as_ref() {
-                    let _ = tx.send(());
+                    let _ = tx.send(proc_name);
                 }
             });
             LRESULT(0)
