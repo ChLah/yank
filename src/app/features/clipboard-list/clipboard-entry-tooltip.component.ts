@@ -28,11 +28,7 @@ import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
   ],
   template: `
     @if (entry().kind === 'text' && entry().content) {
-      <p
-        class="text-[11px] font-mono leading-relaxed line-clamp-8 break-all text-foreground/80 mb-3 whitespace-pre-wrap"
-      >
-        {{ entry().content }}
-      </p>
+      <p class="text-[11px] font-mono leading-relaxed line-clamp-8 break-all text-foreground/80 mb-3 whitespace-pre-wrap">{{ entry().content }}</p>
       <div class="border-t border-border -mx-4 mb-3"></div>
     }
 
