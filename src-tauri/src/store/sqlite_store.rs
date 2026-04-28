@@ -54,6 +54,21 @@ impl SqliteStore {
             )?;
         }
 
+        // Add source_app column to pre-existing entries tables that lack it.
+        let has_source_app: bool = {
+            let mut stmt = conn.prepare("PRAGMA table_info(entries)")?;
+            let cols: Vec<String> = stmt
+                .query_map([], |row| row.get::<_, String>(1))?
+                .filter_map(|r| r.ok())
+                .collect();
+            cols.iter().any(|name| name == "source_app")
+        };
+        if !has_source_app {
+            conn.execute_batch(
+                "ALTER TABLE entries ADD COLUMN source_app TEXT;"
+            )?;
+        }
+
         // Settings schema versioning via PRAGMA user_version.
         // v0: single `value TEXT` column (old schema, reset on upgrade)
         // v1: typed `value_text TEXT` / `value_int INTEGER` columns
@@ -102,18 +117,18 @@ impl SqliteStore {
         match &payload.content {
             ClipboardContent::Text(text) => {
                 conn.execute(
-                    "INSERT INTO entries (kind, content, thumbnail, width, height, hash, created_at, last_used_at)
-                     VALUES ('text', ?1, NULL, NULL, NULL, ?2, ?3, ?3)",
-                    params![text.as_bytes(), payload.hash, now],
+                    "INSERT INTO entries (kind, content, thumbnail, width, height, hash, created_at, last_used_at, source_app)
+                     VALUES ('text', ?1, NULL, NULL, NULL, ?2, ?3, ?3, ?4)",
+                    params![text.as_bytes(), payload.hash, now, payload.source_app],
                 )?;
             }
             ClipboardContent::Image { rgba_bytes, width, height } => {
                 let png_bytes = encode_rgba_to_png(rgba_bytes, *width, *height)?;
                 let thumbnail_bytes = generate_thumbnail(&png_bytes)?;
                 conn.execute(
-                    "INSERT INTO entries (kind, content, thumbnail, width, height, hash, created_at, last_used_at)
-                     VALUES ('image', ?1, ?2, ?3, ?4, ?5, ?6, ?6)",
-                    params![png_bytes, thumbnail_bytes, width, height, payload.hash, now],
+                    "INSERT INTO entries (kind, content, thumbnail, width, height, hash, created_at, last_used_at, source_app)
+                     VALUES ('image', ?1, ?2, ?3, ?4, ?5, ?6, ?6, ?7)",
+                    params![png_bytes, thumbnail_bytes, width, height, payload.hash, now, payload.source_app],
                 )?;
             }
         }
@@ -154,7 +169,7 @@ impl SqliteStore {
     pub fn get_all_entries(&self) -> Result<Vec<ClipboardEntry>, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, kind, content, thumbnail, width, height, hash, created_at, last_used_at, pinned
+            "SELECT id, kind, content, thumbnail, width, height, hash, created_at, last_used_at, pinned, source_app
              FROM entries ORDER BY last_used_at DESC",
         )?;
 
@@ -183,6 +198,7 @@ impl SqliteStore {
                 created_at: row.get(7)?,
                 last_used_at: row.get(8)?,
                 pinned: row.get::<_, i64>(9)? != 0,
+                source_app: row.get(10)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -470,6 +486,7 @@ mod tests {
         ClipboardPayload {
             hash: compute_hash(text.as_bytes()),
             content: ClipboardContent::Text(text.to_string()),
+            source_app: None,
         }
     }
 
@@ -629,6 +646,33 @@ mod tests {
     }
 
     #[test]
+    fn test_migration_adds_source_app_to_legacy_schema() {
+        let conn = Connection::open_in_memory().unwrap();
+        // Schema with pinned but WITHOUT source_app
+        conn.execute_batch(
+            "CREATE TABLE entries (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind         TEXT    NOT NULL,
+                content      BLOB    NOT NULL,
+                thumbnail    BLOB,
+                width        INTEGER,
+                height       INTEGER,
+                hash         TEXT    NOT NULL UNIQUE,
+                created_at   INTEGER NOT NULL,
+                last_used_at INTEGER NOT NULL,
+                pinned       INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);"
+        ).unwrap();
+        let store = SqliteStore { conn: Mutex::new(conn) };
+        store.run_migrations().unwrap();
+        // source_app column must now exist; save_entry should not error
+        store.save_entry(&text_payload("legacy")).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        assert_eq!(entries[0].source_app, None);
+    }
+
+    #[test]
     fn test_toggle_pin() {
         let store = in_memory_store();
         store.save_entry(&text_payload("hello")).unwrap();
@@ -770,6 +814,27 @@ mod tests {
 
         let entries = store.get_all_entries().unwrap();
         assert_eq!(entries[0].content.as_deref(), Some("updated"));
+    }
+
+    #[test]
+    fn test_save_entry_persists_source_app() {
+        let store = in_memory_store();
+        let payload = ClipboardPayload {
+            hash: compute_hash(b"chrome text"),
+            content: ClipboardContent::Text("chrome text".to_string()),
+            source_app: Some("chrome.exe".to_string()),
+        };
+        store.save_entry(&payload).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        assert_eq!(entries[0].source_app.as_deref(), Some("chrome.exe"));
+    }
+
+    #[test]
+    fn test_save_entry_null_source_app() {
+        let store = in_memory_store();
+        store.save_entry(&text_payload("no app")).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        assert_eq!(entries[0].source_app, None);
     }
 
     #[test]

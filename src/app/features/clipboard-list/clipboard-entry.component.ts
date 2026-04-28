@@ -59,21 +59,29 @@ interface TimeTranslation {
           </div>
           <div class="flex-1 min-w-0 py-2">
             <p class="text-[13px] font-medium text-foreground leading-snug">{{ 'ENTRY.IMAGE' | translate }}</p>
-            @if (imageDimensions()) {
-              <p class="text-[11px] text-muted-foreground mt-0.5">{{ imageDimensions() }}</p>
-            }
+            <p class="text-[11px] text-muted-foreground mt-0.5">
+              @if (entry().sourceApp) {
+                <span>{{ entry().sourceApp }} · </span>
+              }
+              @if (imageDimensions()) {
+                <span>{{ imageDimensions() }} · </span>
+              }
+              <span class="tabular-nums">{{ relativeTimeTranslation().key | translate:relativeTimeTranslation().params }}</span>
+            </p>
           </div>
         } @else {
-          <div class="flex-1 min-w-0 py-2.5">
+          <div class="flex-1 min-w-0 py-2">
             <p class="text-[13px] text-foreground truncate leading-snug">{{ entry().content }}</p>
+            <p class="text-[11px] text-muted-foreground mt-0.5">
+              @if (entry().sourceApp) {
+                <span>{{ entry().sourceApp }} · </span>
+              }
+              <span class="tabular-nums">{{ relativeTimeTranslation().key | translate:relativeTimeTranslation().params }}</span>
+            </p>
           </div>
         }
 
         <div class="flex items-center gap-1 shrink-0">
-          <span class="text-[11px] text-muted-foreground tabular-nums">
-            {{ relativeTimeTranslation().key | translate:relativeTimeTranslation().params }}
-          </span>
-
           <!-- Pin button -->
           <button
             hlmBtn variant="ghost" size="icon"
@@ -171,7 +179,7 @@ export function resolveTextareaKey(key: string, shiftKey: boolean): 'confirm' | 
   return null; // Shift+Enter, letters, arrows, etc. — let default behaviour run
 }
 
-function buildRelativeTimeTranslation(unixSeconds: number): TimeTranslation {
+export function buildRelativeTimeTranslation(unixSeconds: number): TimeTranslation {
   const diffMs = Date.now() - unixSeconds * 1000;
   const diffSec = Math.floor(diffMs / 1000);
   if (diffSec < 60) return { key: 'ENTRY.TIME_JUST_NOW', params: {} };
