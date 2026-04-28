@@ -50,7 +50,7 @@ interface TimeTranslation {
   template: `
     <div hlmHoverCard>
       <div
-        class="relative flex items-center gap-2 pl-3.5 pr-3 group transition-colors border-l-2"
+        class="relative flex items-center gap-2 pl-1 pr-3 group transition-colors border-l-2"
         [class.cursor-pointer]="!editMode()"
         [class]="selected() ? 'border-l-brand bg-card' : 'border-l-transparent hover:bg-card/60'"
         (click)="onOuterClick()"
@@ -58,6 +58,13 @@ interface TimeTranslation {
         [showDelay]="600"
         [hideDelay]="200"
       >
+        <span
+          class="w-4 shrink-0 text-[11px] text-muted-foreground font-mono tabular-nums text-right select-none"
+        >
+          @if (shortcutIndex() !== null) {
+            {{ shortcutIndex() }}
+          }
+        </span>
         @if (ocrLoading()) {
           <div
             class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 bg-background/60 rounded-sm"
@@ -172,6 +179,7 @@ export class ClipboardEntryComponent {
   selected = input(false);
   editMode = input(false);
   ocrLoading = input(false);
+  shortcutIndex = input<number | null>(null);
 
   select = output<void>();
   delete = output<void>();
