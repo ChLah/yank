@@ -2,15 +2,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  Injector,
   afterNextRender,
-  inject,
   output,
   signal,
   viewChild,
 } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { HlmButton } from '@spartan-ng/helm/button';
+import { resolveSnippetTitleKey, resolveSnippetContentKey } from './snippet-item.component';
 
 @Component({
   selector: 'app-new-snippet-form',
@@ -24,6 +23,7 @@ import { HlmButton } from '@spartan-ng/helm/button';
           type="text"
           [placeholder]="'SNIPPETS.TITLE_PLACEHOLDER' | translate"
           class="w-full bg-muted/50 text-[13px] text-foreground rounded-md px-2 py-1.5 outline-none focus:ring-1 focus:ring-brand/50"
+          (input)="titleError.set(false)"
           (keydown)="onTitleKeyDown($event)"
         />
         @if (titleError()) {
@@ -56,38 +56,28 @@ export class NewSnippetFormComponent {
 
   private titleInput      = viewChild<ElementRef<HTMLInputElement>>('titleInput');
   private contentTextarea = viewChild<ElementRef<HTMLTextAreaElement>>('contentTextarea');
-  private injector        = inject(Injector);
 
   constructor() {
-    afterNextRender(() => this.titleInput()?.nativeElement.focus(), { injector: this.injector });
+    afterNextRender(() => this.titleInput()?.nativeElement.focus());
   }
 
   protected onTitleKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      this.cancel();
-    } else if (event.key === 'Enter' && event.ctrlKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.submit();
-    } else if ((event.key === 'Enter' || event.key === 'Tab') && !event.ctrlKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.contentTextarea()?.nativeElement.focus();
-    }
+    const action = resolveSnippetTitleKey(event.key, event.ctrlKey);
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (action === 'cancel') this.cancel();
+    else if (action === 'submit') this.submit();
+    else this.contentTextarea()?.nativeElement.focus();
   }
 
   protected onContentKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      this.cancel();
-    } else if (event.key === 'Enter' && event.ctrlKey) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.submit();
-    }
+    const action = resolveSnippetContentKey(event.key, event.ctrlKey);
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (action === 'cancel') this.cancel();
+    else this.submit();
   }
 
   protected submit(): void {
