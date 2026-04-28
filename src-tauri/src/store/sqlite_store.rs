@@ -5,7 +5,7 @@ use image::imageops::FilterType;
 use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
-use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language, Theme, WindowPositionMode};
+use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language, Snippet, Theme, WindowPositionMode};
 
 const THUMBNAIL_MAX_SIZE: u32 = 200;
 
@@ -86,6 +86,16 @@ impl SqliteStore {
                  PRAGMA user_version = 1;"
             )?;
         }
+
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS snippets (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                title       TEXT    NOT NULL,
+                content     TEXT    NOT NULL,
+                created_at  INTEGER NOT NULL,
+                sort_order  INTEGER NOT NULL DEFAULT 0
+            );"
+        )?;
 
         Ok(())
     }
@@ -442,6 +452,76 @@ impl SqliteStore {
             map.insert(key, (text, int));
         }
         Ok(map)
+    }
+
+    pub fn get_snippets(&self) -> Result<Vec<Snippet>, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, title, content, created_at, sort_order \
+             FROM snippets ORDER BY sort_order ASC, id ASC",
+        )?;
+        let results = stmt.query_map([], |row| {
+            Ok(Snippet {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                content: row.get(2)?,
+                created_at: row.get(3)?,
+                sort_order: row.get(4)?,
+            })
+        })?.collect::<Result<Vec<_>, _>>()?;
+        Ok(results)
+    }
+
+    pub fn create_snippet(&self, title: &str, content: &str) -> Result<Snippet, rusqlite::Error> {
+        let now = chrono::Utc::now().timestamp();
+        let conn = self.conn.lock().unwrap();
+        let sort_order: i64 = conn.query_row(
+            "SELECT COALESCE(MAX(sort_order) + 1, 0) FROM snippets",
+            [],
+            |row| row.get(0),
+        )?;
+        conn.execute(
+            "INSERT INTO snippets (title, content, created_at, sort_order) VALUES (?1, ?2, ?3, ?4)",
+            params![title, content, now, sort_order],
+        )?;
+        let id = conn.last_insert_rowid();
+        Ok(Snippet {
+            id,
+            title: title.to_string(),
+            content: content.to_string(),
+            created_at: now,
+            sort_order,
+        })
+    }
+
+    pub fn update_snippet(&self, id: i64, title: &str, content: &str) -> Result<Snippet, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let changed = conn.execute(
+            "UPDATE snippets SET title = ?1, content = ?2 WHERE id = ?3",
+            params![title, content, id],
+        )?;
+        if changed == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows);
+        }
+        conn.query_row(
+            "SELECT id, title, content, created_at, sort_order FROM snippets WHERE id = ?1",
+            params![id],
+            |row| {
+                Ok(Snippet {
+                    id: row.get(0)?,
+                    title: row.get(1)?,
+                    content: row.get(2)?,
+                    created_at: row.get(3)?,
+                    sort_order: row.get(4)?,
+                })
+            },
+        )
+    }
+
+    pub fn delete_snippet(&self, id: i64) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM snippets WHERE id = ?1", params![id])?;
+        Ok(())
     }
 }
 
@@ -847,6 +927,54 @@ mod tests {
 
         let err = store.update_entry_content(first_id, "second").unwrap_err();
         assert!(err.to_string().contains("duplicate"));
+    }
+
+    #[test]
+    fn test_create_and_get_snippets() {
+        let store = in_memory_store();
+        // Create two snippets
+        let s1 = store.create_snippet("Alpha", "Content A").unwrap();
+        let s2 = store.create_snippet("Beta", "Content B").unwrap();
+        // Fields are set correctly
+        assert_eq!(s1.title, "Alpha");
+        assert_eq!(s1.content, "Content A");
+        assert_eq!(s2.title, "Beta");
+        // sort_order increments
+        assert_eq!(s1.sort_order, 0);
+        assert_eq!(s2.sort_order, 1);
+        // get_snippets returns both in order
+        let snippets = store.get_snippets().unwrap();
+        assert_eq!(snippets.len(), 2);
+        assert_eq!(snippets[0].id, s1.id);
+        assert_eq!(snippets[1].id, s2.id);
+    }
+
+    #[test]
+    fn test_update_snippet() {
+        let store = in_memory_store();
+        let original = store.create_snippet("Old Title", "Old Content").unwrap();
+        let updated = store.update_snippet(original.id, "New Title", "New Content").unwrap();
+        assert_eq!(updated.id, original.id);
+        assert_eq!(updated.title, "New Title");
+        assert_eq!(updated.content, "New Content");
+        assert_eq!(updated.created_at, original.created_at);
+        assert_eq!(updated.sort_order, original.sort_order);
+    }
+
+    #[test]
+    fn test_delete_snippet() {
+        let store = in_memory_store();
+        let s = store.create_snippet("Title", "Body").unwrap();
+        store.delete_snippet(s.id).unwrap();
+        let snippets = store.get_snippets().unwrap();
+        assert!(snippets.is_empty());
+    }
+
+    #[test]
+    fn test_update_snippet_unknown_id_returns_error() {
+        let store = in_memory_store();
+        let result = store.update_snippet(9999, "Title", "Body");
+        assert!(result.is_err());
     }
 
     #[test]

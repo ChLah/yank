@@ -125,6 +125,10 @@ pub fn run() {
             commands::set_clipboard_text,
             commands::update_entry_content,
             commands::ocr_image,
+            commands::get_snippets,
+            commands::create_snippet,
+            commands::update_snippet,
+            commands::delete_snippet,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Tauri application");
