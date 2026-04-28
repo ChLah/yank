@@ -111,4 +111,10 @@ export const en: Translation = {
     PLACEHOLDER_OVERLAY_CONFIRM: 'Enter to paste · Esc to cancel',
     PLACEHOLDER_OVERLAY_TITLE: 'Fill in placeholders',
   },
+  TOOLTIP: {
+    PINNED: 'Pinned',
+    CHARACTERS: '{{n}} characters',
+    LAST_USED: 'Last used',
+    ADDED: 'Added',
+  },
 };

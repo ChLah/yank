@@ -111,4 +111,10 @@ export const de: Translation = {
     PLACEHOLDER_OVERLAY_CONFIRM: 'Enter zum Einfügen · Esc zum Abbrechen',
     PLACEHOLDER_OVERLAY_TITLE: 'Platzhalter ausfüllen',
   },
+  TOOLTIP: {
+    PINNED: 'Angepinnt',
+    CHARACTERS: '{{n}} Zeichen',
+    LAST_USED: 'Zuletzt verwendet',
+    ADDED: 'Hinzugefügt',
+  },
 };

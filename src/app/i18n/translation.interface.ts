@@ -110,4 +110,10 @@ export interface Translation {
     PLACEHOLDER_OVERLAY_CONFIRM: string;
     PLACEHOLDER_OVERLAY_TITLE: string;
   };
+  TOOLTIP: {
+    PINNED: string;
+    CHARACTERS: string;
+    LAST_USED: string;
+    ADDED: string;
+  };
 }
