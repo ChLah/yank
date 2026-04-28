@@ -138,7 +138,6 @@ type Filter = 'all' | 'text' | 'image';
             />
           }
 
-          <!-- Snippet list -->
           @if (snippetsService.snippets.isLoading()) {
             <div class="py-1">
               @for (skeleton of skeletons; track $index) {
@@ -308,7 +307,6 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   private duplicateErrorTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressPositionSave = false;
 
-  // Clipboard tab state
   protected selectedIndex   = signal(0);
   protected editingEntryId  = signal<number | null>(null);
   protected editCopyFailed  = signal(false);
@@ -322,7 +320,6 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected showTransformPicker = signal(false);
   protected duplicateError      = signal(false);
 
-  // Snippets tab state
   protected snippetSelectedIndex   = signal(0);
   protected editingSnippetId       = signal<number | null>(null);
   protected showNewSnippetForm     = signal(false);
@@ -397,6 +394,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     this.clearSearch();
     this.activeTab.set(tab as Tab);
     this.selectedIndex.set(0);
+    this.snippetSelectedIndex.set(0);
     if (tab !== 'snippets') {
       this.editingSnippetId.set(null);
       this.showNewSnippetForm.set(false);
@@ -751,7 +749,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected async onSnippetCreated(data: { title: string; content: string }): Promise<void> {
     this.showNewSnippetForm.set(false);
     await this.snippetsService.createSnippet(data.title, data.content);
-    this.snippetSelectedIndex.set(0);
+    this.snippetSelectedIndex.set(Math.max(0, this.allSnippets().length - 1));
   }
 
   protected onSnippetFormCancelled(): void {
