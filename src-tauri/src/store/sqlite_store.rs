@@ -437,6 +437,73 @@ impl SqliteStore {
         }
         Ok(map)
     }
+
+    pub fn get_snippets(&self) -> Result<Vec<Snippet>, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, title, content, created_at, sort_order \
+             FROM snippets ORDER BY sort_order ASC, id ASC",
+        )?;
+        let results = stmt.query_map([], |row| {
+            Ok(Snippet {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                content: row.get(2)?,
+                created_at: row.get(3)?,
+                sort_order: row.get(4)?,
+            })
+        })?.collect::<Result<Vec<_>, _>>()?;
+        Ok(results)
+    }
+
+    pub fn create_snippet(&self, title: &str, content: &str) -> Result<Snippet, rusqlite::Error> {
+        let now = chrono::Utc::now().timestamp();
+        let conn = self.conn.lock().unwrap();
+        let sort_order: i64 = conn.query_row(
+            "SELECT COALESCE(MAX(sort_order) + 1, 0) FROM snippets",
+            [],
+            |row| row.get(0),
+        )?;
+        conn.execute(
+            "INSERT INTO snippets (title, content, created_at, sort_order) VALUES (?1, ?2, ?3, ?4)",
+            params![title, content, now, sort_order],
+        )?;
+        let id = conn.last_insert_rowid();
+        Ok(Snippet {
+            id,
+            title: title.to_string(),
+            content: content.to_string(),
+            created_at: now,
+            sort_order,
+        })
+    }
+
+    pub fn update_snippet(&self, id: i64, title: &str, content: &str) -> Result<Snippet, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE snippets SET title = ?1, content = ?2 WHERE id = ?3",
+            params![title, content, id],
+        )?;
+        conn.query_row(
+            "SELECT id, title, content, created_at, sort_order FROM snippets WHERE id = ?1",
+            params![id],
+            |row| {
+                Ok(Snippet {
+                    id: row.get(0)?,
+                    title: row.get(1)?,
+                    content: row.get(2)?,
+                    created_at: row.get(3)?,
+                    sort_order: row.get(4)?,
+                })
+            },
+        )
+    }
+
+    pub fn delete_snippet(&self, id: i64) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM snippets WHERE id = ?1", params![id])?;
+        Ok(())
+    }
 }
 
 pub fn compute_hash(data: &[u8]) -> String {
