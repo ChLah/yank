@@ -1,3 +1,3 @@
-pub mod sqlite_store;
+pub(crate) mod sqlite_store;
 
-pub use sqlite_store::SqliteStore;
+pub use sqlite_store::{compute_hash, SqliteStore};

@@ -1,5 +1,6 @@
 mod commands;
 mod models;
+mod ocr;
 mod platform;
 mod shortcuts;
 mod store;
