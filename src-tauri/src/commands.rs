@@ -4,7 +4,7 @@ use tauri::{Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
-    models::{AppSettings, ClipboardEntry},
+    models::{AppSettings, ClipboardEntry, Snippet},
     store::SqliteStore,
 };
 
@@ -94,4 +94,24 @@ pub fn set_clipboard_text(text: String) -> Result<(), String> {
 #[tauri::command]
 pub fn update_entry_content(id: i64, content: String, store: StoreState) -> Result<(), String> {
     store.update_entry_content(id, &content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_snippets(store: StoreState) -> Result<Vec<Snippet>, String> {
+    store.get_snippets().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn create_snippet(title: String, content: String, store: StoreState) -> Result<Snippet, String> {
+    store.create_snippet(&title, &content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn update_snippet(id: i64, title: String, content: String, store: StoreState) -> Result<Snippet, String> {
+    store.update_snippet(id, &title, &content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_snippet(id: i64, store: StoreState) -> Result<(), String> {
+    store.delete_snippet(id).map_err(|e| e.to_string())
 }

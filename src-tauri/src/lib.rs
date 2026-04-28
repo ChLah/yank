@@ -123,6 +123,10 @@ pub fn run() {
             commands::save_window_position,
             commands::set_clipboard_text,
             commands::update_entry_content,
+            commands::get_snippets,
+            commands::create_snippet,
+            commands::update_snippet,
+            commands::delete_snippet,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Tauri application");
