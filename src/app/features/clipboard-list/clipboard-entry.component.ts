@@ -32,11 +32,17 @@ interface TimeTranslation {
   providers: [provideIcons({ lucideImage, lucideBookmark, lucideX })],
   template: `
     <div
-      class="flex items-center gap-2 pl-3.5 pr-3 group transition-colors border-l-2"
+      class="relative flex items-center gap-2 pl-3.5 pr-3 group transition-colors border-l-2"
       [class.cursor-pointer]="!editMode()"
       [class]="selected() ? 'border-l-brand bg-card' : 'border-l-transparent hover:bg-card/60'"
       (click)="onOuterClick()"
     >
+      @if (ocrLoading()) {
+        <div class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 bg-background/60 rounded-sm">
+          <div class="w-4 h-4 border-2 border-brand/40 border-t-brand rounded-full animate-spin"></div>
+          <span class="text-[10px] text-muted-foreground">{{ 'OCR.EXTRACTING' | translate }}</span>
+        </div>
+      }
       @if (editMode()) {
         <div class="flex-1 min-w-0 py-2" (click)="$event.stopPropagation()">
           <textarea
@@ -108,9 +114,10 @@ interface TimeTranslation {
   `,
 })
 export class ClipboardEntryComponent {
-  entry    = input.required<ClipboardEntry>();
-  selected = input(false);
-  editMode = input(false);
+  entry      = input.required<ClipboardEntry>();
+  selected   = input(false);
+  editMode   = input(false);
+  ocrLoading = input(false);
 
   select      = output<void>();
   delete      = output<void>();

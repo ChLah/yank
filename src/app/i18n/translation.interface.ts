@@ -86,4 +86,11 @@ export interface Translation {
     HINT: string;
     DUPLICATE_ERROR: string;
   };
+  OCR: {
+    EXTRACTING: string;
+    SUCCESS: string;
+    NO_TEXT: string;
+    ERROR: string;
+    KEYBOARD_HINT: string;
+  };
 }

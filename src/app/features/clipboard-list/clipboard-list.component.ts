@@ -197,6 +197,7 @@ type Filter = 'all' | 'text' | 'image';
                   [entry]="entry"
                   [selected]="selectedIndex() === i"
                   [editMode]="editingEntryId() === entry.id"
+                  [ocrLoading]="ocrLoadingEntryId() === entry.id"
                   (select)="selectEntry(i)"
                   (delete)="deleteEntry(i)"
                   (pin)="pinEntry(i)"
@@ -233,6 +234,16 @@ type Filter = 'all' | 'text' | 'image';
         </div>
       }
 
+      @if (ocrToast()) {
+        <div
+          class="px-3.5 py-1.5 border-t text-[11px] shrink-0 animate-slide-up"
+          [class]="ocrToast()!.success
+            ? 'bg-brand/10 border-brand/20 text-brand-300'
+            : 'bg-destructive/10 border-destructive/20 text-destructive'">
+          {{ ocrToast()!.key | translate:ocrToast()!.params }}
+        </div>
+      }
+
       <!-- Footer -->
       <div class="px-3.5 py-1.5 flex flex-col gap-1 shrink-0 bg-card border-t border-border">
         <div class="flex items-center gap-2">
@@ -247,6 +258,9 @@ type Filter = 'all' | 'text' | 'image';
         <div class="flex items-center gap-2">
           <app-keyboard-hint key="Ctrl+P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
           <app-keyboard-hint key="Ctrl+E" [label]="'CLIPBOARD.HINT_EDIT' | translate" />
+          @if (selectedEntryIsImage()) {
+            <app-keyboard-hint key="O" [label]="'OCR.KEYBOARD_HINT' | translate" />
+          }
           <app-keyboard-hint key="Ctrl+1–9" [label]="'CLIPBOARD.HINT_QUICK_PASTE' | translate" />
           <app-keyboard-hint
             key="Esc"
@@ -274,6 +288,9 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected editingEntryId = signal<number | null>(null);
   protected editCopyFailed = signal(false);
   private editCopyFailedTimer: ReturnType<typeof setTimeout> | null = null;
+  protected ocrLoadingEntryId = signal<number | null>(null);
+  protected ocrToast = signal<{ key: string; params?: Record<string, unknown>; success: boolean } | null>(null);
+  private ocrToastTimer: ReturnType<typeof setTimeout> | null = null;
   protected skeletons = Array.from({ length: 5 });
 
   protected activeTab = signal<Tab>('recent');
@@ -297,6 +314,11 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected allEntries = computed(() => this.clipboard.entries.value() ?? []);
 
   protected pinnedCount = computed(() => this.allEntries().filter((e) => e.pinned).length);
+
+  protected selectedEntryIsImage = computed(() => {
+    const entry = this.filteredEntries()[this.selectedIndex()];
+    return entry != null && entry.kind === 'image';
+  });
 
   protected filteredEntries = computed(() => {
     let list = this.allEntries();
@@ -349,6 +371,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
     if (this.duplicateErrorTimer) clearTimeout(this.duplicateErrorTimer);
     if (this.editCopyFailedTimer) clearTimeout(this.editCopyFailedTimer);
+    if (this.ocrToastTimer) clearTimeout(this.ocrToastTimer);
   }
 
   protected setTab(tab: string): void {
@@ -494,6 +517,11 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
             this.enterEditMode();
           }
         } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+          if (isOcrTrigger(event)) {
+            event.preventDefault();
+            this.triggerOcr();
+            return;
+          }
           this.isSearching.set(true);
           this.searchQuery.set(event.key);
           setTimeout(() => {
@@ -530,6 +558,36 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected onEditCancel(): void {
     this.editingEntryId.set(null);
     this.hostEl.nativeElement.focus();
+  }
+
+  private async triggerOcr(): Promise<void> {
+    const entry = this.filteredEntries()[this.selectedIndex()];
+    if (!entry || entry.kind !== 'image') return;
+    if (this.ocrLoadingEntryId() !== null) return;
+
+    this.ocrLoadingEntryId.set(entry.id);
+    try {
+      const text = await this.bridge.ocrImage(entry.id);
+      if (text === '') {
+        this.showOcrToast('OCR.NO_TEXT', undefined, false);
+      } else {
+        this.clipboard.entries.reload();
+        this.activeTab.set('recent');
+        this.selectedIndex.set(0);
+        this.showOcrToast('OCR.SUCCESS', { count: text.length }, true);
+      }
+    } catch (err: unknown) {
+      const error = typeof err === 'string' ? err : 'Unknown error';
+      this.showOcrToast('OCR.ERROR', { error }, false);
+    } finally {
+      this.ocrLoadingEntryId.set(null);
+    }
+  }
+
+  private showOcrToast(key: string, params: Record<string, unknown> | undefined, success: boolean): void {
+    if (this.ocrToastTimer) clearTimeout(this.ocrToastTimer);
+    this.ocrToast.set({ key, params, success });
+    this.ocrToastTimer = setTimeout(() => this.ocrToast.set(null), 2500);
   }
 
   private pinSelected(): void {
@@ -632,4 +690,9 @@ export function getQuickPasteDigit(event: KeyboardEvent): number | null {
   if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return null;
   const digit = parseInt(event.key, 10);
   return digit >= 1 && digit <= 9 ? digit : null;
+}
+
+/** Returns true when the event is the O key without modifier keys. Exported for unit testing. */
+export function isOcrTrigger(event: KeyboardEvent): boolean {
+  return event.key.toLowerCase() === 'o' && !event.ctrlKey && !event.altKey && !event.metaKey;
 }

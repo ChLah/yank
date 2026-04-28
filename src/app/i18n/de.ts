@@ -87,4 +87,11 @@ export const de: Translation = {
     HINT: 'transformieren',
     DUPLICATE_ERROR: 'Ein identischer Eintrag existiert bereits.',
   },
+  OCR: {
+    EXTRACTING: 'Text wird extrahiert…',
+    SUCCESS: 'Text extrahiert — {{count}} Zeichen',
+    NO_TEXT: 'Kein Text im Bild gefunden.',
+    ERROR: 'OCR fehlgeschlagen: {{error}}',
+    KEYBOARD_HINT: 'Text extrahieren',
+  },
 };

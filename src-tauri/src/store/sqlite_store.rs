@@ -10,7 +10,7 @@ use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayl
 const THUMBNAIL_MAX_SIZE: u32 = 200;
 
 pub struct SqliteStore {
-    conn: Mutex<Connection>,
+    pub(crate) conn: Mutex<Connection>,
 }
 
 impl SqliteStore {
@@ -21,7 +21,7 @@ impl SqliteStore {
         Ok(store)
     }
 
-    fn run_migrations(&self) -> Result<(), rusqlite::Error> {
+    pub(crate) fn run_migrations(&self) -> Result<(), rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS entries (

@@ -1,5 +1,6 @@
 mod commands;
 mod models;
+mod ocr;
 mod platform;
 mod shortcuts;
 mod store;
@@ -123,6 +124,7 @@ pub fn run() {
             commands::save_window_position,
             commands::set_clipboard_text,
             commands::update_entry_content,
+            commands::ocr_image,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Tauri application");

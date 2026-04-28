@@ -62,4 +62,8 @@ export class TauriBridgeService {
   updateEntryContent(id: number, content: string): Promise<void> {
     return invoke('update_entry_content', { id, content });
   }
+
+  ocrImage(id: number): Promise<string> {
+    return invoke<string>('ocr_image', { id });
+  }
 }
