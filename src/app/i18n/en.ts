@@ -102,5 +102,6 @@ export const en: Translation = {
     HINT_DELETE: 'del',
     HINT_PASTE: 'paste',
     PLACEHOLDER_OVERLAY_CONFIRM: 'Enter to paste · Esc to cancel',
+    PLACEHOLDER_OVERLAY_TITLE: 'Fill in placeholders',
   },
 };

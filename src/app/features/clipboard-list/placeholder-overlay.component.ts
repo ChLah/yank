@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   afterNextRender,
+  computed,
   inject,
   input,
   output,
@@ -36,8 +37,8 @@ export function fillPlaceholders(content: string, values: Record<string, string>
       'absolute inset-0 z-50 bg-background/95 backdrop-blur-sm flex flex-col gap-3 p-4 overflow-y-auto',
   },
   template: `
-    <p class="text-[12px] font-semibold text-foreground">Fill in placeholders</p>
-    @for (name of placeholderNames; track name) {
+    <p class="text-[12px] font-semibold text-foreground">{{ 'SNIPPETS.PLACEHOLDER_OVERLAY_TITLE' | translate }}</p>
+    @for (name of placeholderNames(); track name) {
       <div class="flex flex-col gap-1">
         <label class="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
           {{ name }}
@@ -64,9 +65,7 @@ export class PlaceholderOverlayComponent {
   private readonly el     = inject(ElementRef<HTMLElement>);
   private values: Record<string, string> = {};
 
-  protected get placeholderNames(): string[] {
-    return extractPlaceholders(this.content());
-  }
+  protected readonly placeholderNames = computed(() => extractPlaceholders(this.content()));
 
   constructor() {
     afterNextRender(() => {

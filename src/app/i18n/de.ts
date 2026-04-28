@@ -102,5 +102,6 @@ export const de: Translation = {
     HINT_DELETE: 'löschen',
     HINT_PASTE: 'einfügen',
     PLACEHOLDER_OVERLAY_CONFIRM: 'Enter zum Einfügen · Esc zum Abbrechen',
+    PLACEHOLDER_OVERLAY_TITLE: 'Platzhalter ausfüllen',
   },
 };

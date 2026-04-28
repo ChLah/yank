@@ -101,5 +101,6 @@ export interface Translation {
     HINT_DELETE: string;
     HINT_PASTE: string;
     PLACEHOLDER_OVERLAY_CONFIRM: string;
+    PLACEHOLDER_OVERLAY_TITLE: string;
   };
 }
