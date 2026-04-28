@@ -33,52 +33,76 @@ import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmTabs, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs';
 import { TranslatePipe } from '@ngx-translate/core';
 
-type Tab    = 'recent' | 'pinned' | 'snippets';
+type Tab = 'recent' | 'pinned' | 'snippets';
 type Filter = 'all' | 'text' | 'image';
 
 @Component({
   selector: 'app-clipboard-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    ClipboardEntryComponent, SnippetItemComponent, PlaceholderOverlayComponent, NewSnippetFormComponent,
-    RouterLink, NgIcon, HlmIcon, HlmButton, HlmBadge, HlmTabs, HlmTabsList, HlmTabsTrigger,
-    TranslatePipe, PageHeaderComponent, EmptyStateComponent, KeyboardHintComponent, TransformPickerComponent,
+    ClipboardEntryComponent,
+    SnippetItemComponent,
+    PlaceholderOverlayComponent,
+    NewSnippetFormComponent,
+    RouterLink,
+    NgIcon,
+    HlmIcon,
+    HlmButton,
+    HlmBadge,
+    HlmTabs,
+    HlmTabsList,
+    HlmTabsTrigger,
+    TranslatePipe,
+    PageHeaderComponent,
+    EmptyStateComponent,
+    KeyboardHintComponent,
+    TransformPickerComponent,
   ],
   providers: [provideIcons({ lucideClipboard, lucideSettings, lucideSearch, lucideX })],
   host: {
     '(keydown)': 'onKeyDown($event)',
-    '(click)':   'onHostClick()',
-    'tabindex':  '0',
-    'class':     'block outline-none h-full',
+    '(click)': 'onHostClick()',
+    tabindex: '0',
+    class: 'block outline-none h-full',
   },
   template: `
-    <div class="flex flex-col h-full bg-background rounded-xl overflow-hidden border border-border shadow-2xl">
-
+    <div
+      class="flex flex-col h-full bg-background rounded-xl overflow-hidden border border-border shadow-2xl"
+    >
       <!-- Header -->
       <app-page-header>
         <ng-container start>
           <ng-icon hlm size="sm" name="lucideClipboard" class="text-muted-foreground shrink-0" />
-          <span class="text-[13px] font-semibold text-foreground tracking-tight">{{ 'CLIPBOARD.TITLE' | translate }}</span>
+          <span class="text-[13px] font-semibold text-foreground tracking-tight">{{
+            'CLIPBOARD.TITLE' | translate
+          }}</span>
           @if (activeTab() !== 'snippets' && allEntries().length > 0) {
             <span hlmBadge variant="secondary">{{ allEntries().length }}</span>
           }
         </ng-container>
         <ng-container end>
-          <a routerLink="/settings" class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+          <a
+            routerLink="/settings"
+            class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
             <ng-icon hlm size="sm" name="lucideSettings" />
           </a>
         </ng-container>
       </app-page-header>
 
       <!-- Tab + filter row -->
-      <div class="flex items-center justify-between px-3.5 h-[34px] shrink-0 bg-card/50 border-b border-border">
+      <div
+        class="flex items-center justify-between px-3.5 h-[34px] shrink-0 bg-card/50 border-b border-border"
+      >
         <div hlmTabs [tab]="activeTab()" (tabActivated)="setTab($event)">
           <div hlmTabsList variant="line" class="h-8 rounded-none bg-transparent p-0">
             @for (tab of tabs; track tab.value) {
               <button [hlmTabsTrigger]="tab.value" class="text-[12px] gap-1.5 px-1">
                 {{ tab.labelKey | translate }}
                 @if (tab.value === 'pinned' && pinnedCount() > 0) {
-                  <span hlmBadge variant="secondary" class="text-[10px] h-4 min-w-0 px-1">{{ pinnedCount() }}</span>
+                  <span hlmBadge variant="secondary" class="text-[10px] h-4 min-w-0 px-1">{{
+                    pinnedCount()
+                  }}</span>
                 }
               </button>
             }
@@ -89,10 +113,13 @@ type Filter = 'all' | 'text' | 'image';
             @for (f of filters; track f.value) {
               <button
                 class="text-[11px] px-2 py-0.5 rounded-full border transition-colors"
-                [class]="activeFilter() === f.value
-                  ? 'bg-brand/20 text-brand-300 border-brand/30'
-                  : 'text-muted-foreground border-transparent hover:text-foreground'"
-                (click)="setFilter(f.value)">
+                [class]="
+                  activeFilter() === f.value
+                    ? 'bg-brand/20 text-brand-300 border-brand/30'
+                    : 'text-muted-foreground border-transparent hover:text-foreground'
+                "
+                (click)="setFilter(f.value)"
+              >
                 {{ f.labelKey | translate }}
               </button>
             }
@@ -103,7 +130,10 @@ type Filter = 'all' | 'text' | 'image';
       <!-- Search bar (animated slide-in, hidden in Snippets tab) -->
       <div
         class="overflow-hidden transition-all duration-150 ease-out shrink-0"
-        [class]="isSearching() ? 'max-h-10 opacity-100 border-b border-border' : 'max-h-0 opacity-0'">
+        [class]="
+          isSearching() ? 'max-h-10 opacity-100 border-b border-border' : 'max-h-0 opacity-0'
+        "
+      >
         <div class="flex items-center gap-2 px-3.5 h-9">
           <ng-icon hlm size="sm" name="lucideSearch" class="text-muted-foreground shrink-0" />
           <input
@@ -117,7 +147,8 @@ type Filter = 'all' | 'text' | 'image';
           @if (searchQuery()) {
             <button
               class="text-muted-foreground hover:text-foreground transition-colors"
-              (click)="clearSearch()">
+              (click)="clearSearch()"
+            >
               <ng-icon hlm size="sm" name="lucideX" />
             </button>
           }
@@ -126,9 +157,7 @@ type Filter = 'all' | 'text' | 'image';
 
       <!-- Content -->
       <div class="relative flex-1 overflow-y-auto scrollbar-thin" #listContainer>
-
         @if (activeTab() === 'snippets') {
-
           <!-- Placeholder fill-in overlay -->
           @if (showPlaceholderOverlay() && placeholderSnippet()) {
             <app-placeholder-overlay
@@ -141,9 +170,14 @@ type Filter = 'all' | 'text' | 'image';
           @if (snippetsService.snippets.isLoading()) {
             <div class="py-1">
               @for (skeleton of skeletons; track $index) {
-                <div class="flex items-center gap-3 pl-5 pr-4 py-2.5 border-l-2 border-l-transparent">
+                <div
+                  class="flex items-center gap-3 pl-5 pr-4 py-2.5 border-l-2 border-l-transparent"
+                >
                   <div class="flex-1 space-y-1.5">
-                    <div class="h-3 bg-muted rounded animate-pulse" [style.width.%]="55 + ($index % 3) * 15"></div>
+                    <div
+                      class="h-3 bg-muted rounded animate-pulse"
+                      [style.width.%]="55 + ($index % 3) * 15"
+                    ></div>
                     <div class="h-2 bg-muted rounded animate-pulse w-20 opacity-50"></div>
                   </div>
                 </div>
@@ -153,7 +187,8 @@ type Filter = 'all' | 'text' | 'image';
             <app-empty-state
               icon="lucideAlertCircle"
               [title]="'CLIPBOARD.ERROR_LOAD' | translate"
-              variant="destructive">
+              variant="destructive"
+            >
               <button hlmBtn variant="link" size="sm" (click)="snippetsService.snippets.reload()">
                 {{ 'CLIPBOARD.TRY_AGAIN' | translate }}
               </button>
@@ -187,16 +222,19 @@ type Filter = 'all' | 'text' | 'image';
               }
             </div>
           }
-
         } @else {
-
           <!-- Clipboard list (Recent / Pinned) -->
           @if (clipboard.entries.isLoading()) {
             <div class="py-1">
               @for (skeleton of skeletons; track $index) {
-                <div class="flex items-center gap-3 pl-5 pr-4 py-2.5 border-l-2 border-l-transparent">
+                <div
+                  class="flex items-center gap-3 pl-5 pr-4 py-2.5 border-l-2 border-l-transparent"
+                >
                   <div class="flex-1 space-y-1.5">
-                    <div class="h-3 bg-muted rounded animate-pulse" [style.width.%]="65 + ($index % 3) * 10"></div>
+                    <div
+                      class="h-3 bg-muted rounded animate-pulse"
+                      [style.width.%]="65 + ($index % 3) * 10"
+                    ></div>
                     <div class="h-2 bg-muted rounded animate-pulse w-12 opacity-50"></div>
                   </div>
                 </div>
@@ -206,7 +244,8 @@ type Filter = 'all' | 'text' | 'image';
             <app-empty-state
               icon="lucideAlertCircle"
               [title]="'CLIPBOARD.ERROR_LOAD' | translate"
-              variant="destructive">
+              variant="destructive"
+            >
               <button hlmBtn variant="link" size="sm" (click)="clipboard.entries.reload()">
                 {{ 'CLIPBOARD.TRY_AGAIN' | translate }}
               </button>
@@ -221,7 +260,7 @@ type Filter = 'all' | 'text' | 'image';
             } @else if (searchQuery()) {
               <app-empty-state
                 icon="lucideClipboard"
-                [title]="'CLIPBOARD.EMPTY_NO_MATCHES' | translate:{ term: searchQuery() }"
+                [title]="'CLIPBOARD.EMPTY_NO_MATCHES' | translate: { term: searchQuery() }"
               />
             } @else {
               <app-empty-state
@@ -256,18 +295,21 @@ type Filter = 'all' | 'text' | 'image';
               }
             </div>
           }
-
         }
       </div>
 
       @if (duplicateError()) {
-        <div class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0 animate-slide-up">
+        <div
+          class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0 animate-slide-up"
+        >
           {{ 'TRANSFORM.DUPLICATE_ERROR' | translate }}
         </div>
       }
 
       @if (editCopyFailed()) {
-        <div class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0 animate-slide-up">
+        <div
+          class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0 animate-slide-up"
+        >
           {{ 'CLIPBOARD.EDIT_COPY_FAILED' | translate }}
         </div>
       }
@@ -275,10 +317,13 @@ type Filter = 'all' | 'text' | 'image';
       @if (ocrToast()) {
         <div
           class="px-3.5 py-1.5 border-t text-[11px] shrink-0 animate-slide-up"
-          [class]="ocrToast()!.success
-            ? 'bg-brand/10 border-brand/20 text-brand-300'
-            : 'bg-destructive/10 border-destructive/20 text-destructive'">
-          {{ ocrToast()!.key | translate:ocrToast()!.params }}
+          [class]="
+            ocrToast()!.success
+              ? 'bg-brand/10 border-brand/20 text-brand-300'
+              : 'bg-destructive/10 border-destructive/20 text-destructive'
+          "
+        >
+          {{ ocrToast()!.key | translate: ocrToast()!.params }}
         </div>
       }
 
@@ -291,7 +336,11 @@ type Filter = 'all' | 'text' | 'image';
             <app-keyboard-hint key="E" [label]="'SNIPPETS.HINT_EDIT' | translate" />
             <app-keyboard-hint key="⌫" [label]="'SNIPPETS.HINT_DELETE' | translate" />
             <app-keyboard-hint key="N" [label]="'SNIPPETS.HINT_NEW' | translate" />
-            <app-keyboard-hint key="Esc" [label]="'CLIPBOARD.HINT_CLOSE' | translate" class="ml-auto" />
+            <app-keyboard-hint
+              key="Esc"
+              [label]="'CLIPBOARD.HINT_CLOSE' | translate"
+              class="ml-auto"
+            />
           </div>
         } @else {
           <div class="flex items-center gap-2">
@@ -310,7 +359,11 @@ type Filter = 'all' | 'text' | 'image';
               <app-keyboard-hint key="Ctrl+O" [label]="'OCR.KEYBOARD_HINT' | translate" />
             }
             <app-keyboard-hint key="Ctrl+1–9" [label]="'CLIPBOARD.HINT_QUICK_PASTE' | translate" />
-            <app-keyboard-hint key="Esc" [label]="'CLIPBOARD.HINT_CLOSE' | translate" class="ml-auto" />
+            <app-keyboard-hint
+              key="Esc"
+              [label]="'CLIPBOARD.HINT_CLOSE' | translate"
+              class="ml-auto"
+            />
           </div>
         }
       </div>
@@ -318,55 +371,59 @@ type Filter = 'all' | 'text' | 'image';
   `,
 })
 export class ClipboardListComponent implements OnInit, OnDestroy {
-  protected clipboard        = inject(ClipboardService);
-  protected snippetsService  = inject(SnippetsService);
-  private bridge             = inject(TauriBridgeService);
-  private settings           = inject(SettingsService);
-  private router             = inject(Router);
-  private hostEl             = inject(ElementRef);
+  protected clipboard = inject(ClipboardService);
+  protected snippetsService = inject(SnippetsService);
+  private bridge = inject(TauriBridgeService);
+  private settings = inject(SettingsService);
+  private router = inject(Router);
+  private hostEl = inject(ElementRef);
   private unlistenPopupShown?: UnlistenFn;
   private unlistenWindowMoved?: UnlistenFn;
   private moveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private duplicateErrorTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressPositionSave = false;
 
-  protected selectedIndex   = signal(0);
-  protected editingEntryId  = signal<number | null>(null);
-  protected editCopyFailed  = signal(false);
+  protected selectedIndex = signal(0);
+  protected editingEntryId = signal<number | null>(null);
+  protected editCopyFailed = signal(false);
   private editCopyFailedTimer: ReturnType<typeof setTimeout> | null = null;
   protected ocrLoadingEntryId = signal<number | null>(null);
-  protected ocrToast = signal<{ key: string; params?: Record<string, unknown>; success: boolean } | null>(null);
+  protected ocrToast = signal<{
+    key: string;
+    params?: Record<string, unknown>;
+    success: boolean;
+  } | null>(null);
   private ocrToastTimer: ReturnType<typeof setTimeout> | null = null;
   protected skeletons = Array.from({ length: 5 });
 
-  protected activeTab    = signal<Tab>('recent');
+  protected activeTab = signal<Tab>('recent');
   protected activeFilter = signal<Filter>('all');
-  protected searchQuery  = signal('');
-  protected isSearching  = signal(false);
+  protected searchQuery = signal('');
+  protected isSearching = signal(false);
   protected showTransformPicker = signal(false);
-  protected duplicateError      = signal(false);
+  protected duplicateError = signal(false);
 
-  protected snippetSelectedIndex   = signal(0);
-  protected editingSnippetId       = signal<number | null>(null);
-  protected showNewSnippetForm     = signal(false);
+  protected snippetSelectedIndex = signal(0);
+  protected editingSnippetId = signal<number | null>(null);
+  protected showNewSnippetForm = signal(false);
   protected showPlaceholderOverlay = signal(false);
-  protected placeholderSnippet     = signal<Snippet | null>(null);
+  protected placeholderSnippet = signal<Snippet | null>(null);
 
   protected tabs = [
-    { labelKey: 'CLIPBOARD.TAB_RECENT',  value: 'recent'   as Tab },
-    { labelKey: 'CLIPBOARD.TAB_PINNED',  value: 'pinned'   as Tab },
-    { labelKey: 'SNIPPETS.TAB',          value: 'snippets' as Tab },
+    { labelKey: 'CLIPBOARD.TAB_RECENT', value: 'recent' as Tab },
+    { labelKey: 'CLIPBOARD.TAB_PINNED', value: 'pinned' as Tab },
+    { labelKey: 'SNIPPETS.TAB', value: 'snippets' as Tab },
   ];
 
   protected filters = [
-    { labelKey: 'CLIPBOARD.FILTER_ALL',   value: 'all'   as Filter },
-    { labelKey: 'CLIPBOARD.FILTER_TEXT',  value: 'text'  as Filter },
+    { labelKey: 'CLIPBOARD.FILTER_ALL', value: 'all' as Filter },
+    { labelKey: 'CLIPBOARD.FILTER_TEXT', value: 'text' as Filter },
     { labelKey: 'CLIPBOARD.FILTER_IMAGE', value: 'image' as Filter },
   ];
 
-  protected allEntries  = computed(() => this.clipboard.entries.value() ?? []);
+  protected allEntries = computed(() => this.clipboard.entries.value() ?? []);
   protected allSnippets = computed(() => this.snippetsService.snippets.value() ?? []);
-  protected pinnedCount = computed(() => this.allEntries().filter(e => e.pinned).length);
+  protected pinnedCount = computed(() => this.allEntries().filter((e) => e.pinned).length);
 
   protected selectedEntryIsImage = computed(() => {
     const entry = this.filteredEntries()[this.selectedIndex()];
@@ -375,41 +432,51 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
   protected filteredEntries = computed(() => {
     let list = this.allEntries();
-    if (this.activeTab() === 'pinned')  list = list.filter(e => e.pinned);
-    if (this.activeFilter() !== 'all') list = list.filter(e => e.kind === this.activeFilter());
+    if (this.activeTab() === 'pinned') list = list.filter((e) => e.pinned);
+    if (this.activeFilter() !== 'all') list = list.filter((e) => e.kind === this.activeFilter());
     const q = this.searchQuery().toLowerCase().trim();
-    if (q) list = list.filter(e => e.content?.toLowerCase().includes(q));
+    if (q) list = list.filter((e) => e.content?.toLowerCase().includes(q));
     return list;
   });
 
   private listContainer = viewChild.required<ElementRef<HTMLElement>>('listContainer');
-  private searchInput   = viewChild<ElementRef<HTMLInputElement>>('searchInput');
+  private searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
   ngOnInit(): void {
     this.hostEl.nativeElement.focus();
-    this.bridge.onPopupShown(() => {
-      this.editingEntryId.set(null);
-      this.activeTab.set('recent');
-      this.activeFilter.set('all');
-      this.clearSearch();
-      this.editingSnippetId.set(null);
-      this.showNewSnippetForm.set(false);
-      this.showPlaceholderOverlay.set(false);
-      this.placeholderSnippet.set(null);
-      this.snippetSelectedIndex.set(0);
-      this.suppressPositionSave = true;
-      setTimeout(() => { this.suppressPositionSave = false; }, 600);
-    }).then(fn => { this.unlistenPopupShown = fn; });
+    this.bridge
+      .onPopupShown(() => {
+        this.editingEntryId.set(null);
+        this.activeTab.set('recent');
+        this.activeFilter.set('all');
+        this.clearSearch();
+        this.editingSnippetId.set(null);
+        this.showNewSnippetForm.set(false);
+        this.showPlaceholderOverlay.set(false);
+        this.placeholderSnippet.set(null);
+        this.snippetSelectedIndex.set(0);
+        this.suppressPositionSave = true;
+        setTimeout(() => {
+          this.suppressPositionSave = false;
+        }, 600);
+      })
+      .then((fn) => {
+        this.unlistenPopupShown = fn;
+      });
 
-    getCurrentWindow().onMoved(({ payload }) => {
-      if (this.suppressPositionSave) return;
-      if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
-      this.moveDebounceTimer = setTimeout(() => {
-        if (this.settings.settings.value()?.windowPosition === 'last') {
-          this.bridge.saveWindowPosition(payload.x, payload.y);
-        }
-      }, 300);
-    }).then(fn => { this.unlistenWindowMoved = fn; });
+    getCurrentWindow()
+      .onMoved(({ payload }) => {
+        if (this.suppressPositionSave) return;
+        if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
+        this.moveDebounceTimer = setTimeout(() => {
+          if (this.settings.settings.value()?.windowPosition === 'last') {
+            this.bridge.saveWindowPosition(payload.x, payload.y);
+          }
+        }, 300);
+      })
+      .then((fn) => {
+        this.unlistenWindowMoved = fn;
+      });
   }
 
   ngOnDestroy(): void {
@@ -696,7 +763,11 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     }
   }
 
-  private showOcrToast(key: string, params: Record<string, unknown> | undefined, success: boolean): void {
+  private showOcrToast(
+    key: string,
+    params: Record<string, unknown> | undefined,
+    success: boolean,
+  ): void {
     if (this.ocrToastTimer) clearTimeout(this.ocrToastTimer);
     this.ocrToast.set({ key, params, success });
     this.ocrToastTimer = setTimeout(() => this.ocrToast.set(null), 2500);
@@ -738,30 +809,12 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     this.showTransformPicker.set(true);
   }
 
-  protected async onTransformApplied(event: { transformedContent: string; saveToHistory: boolean }): Promise<void> {
-    const entry = this.filteredEntries()[this.selectedIndex()];
+  protected async onTransformApplied(event: { transformedContent: string }): Promise<void> {
     this.showTransformPicker.set(false);
-    if (!entry) return;
 
     try {
       await this.bridge.setClipboardText(event.transformedContent);
-
-      if (event.saveToHistory) {
-        try {
-          await this.bridge.updateEntryContent(entry.id, event.transformedContent);
-          this.clipboard.entries.reload();
-        } catch {
-          this.duplicateError.set(true);
-          this.duplicateErrorTimer = setTimeout(() => {
-            this.duplicateError.set(false);
-            this.bridge.hidePopup();
-          }, 2000);
-          return;
-        }
-      }
-
-      this.bridge.hidePopup();
-    } catch {
+    } finally {
       this.bridge.hidePopup();
     }
   }
@@ -773,7 +826,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
   private cycleTab(direction: 1 | -1): void {
     const allTabs: Tab[] = ['recent', 'pinned', 'snippets'];
-    const idx  = allTabs.indexOf(this.activeTab());
+    const idx = allTabs.indexOf(this.activeTab());
     const next = allTabs[(idx + direction + allTabs.length) % allTabs.length];
     this.setTab(next);
   }
@@ -858,7 +911,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
   private scrollSnippetSelectedIntoView(): void {
     const items = this.listContainer().nativeElement.querySelectorAll<HTMLElement>('.snippet-item');
-    const item  = items[this.snippetSelectedIndex()];
+    const item = items[this.snippetSelectedIndex()];
     item?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
@@ -871,7 +924,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
 /** Arrow keys cancel-then-navigate; all other keys are blocked while in edit mode. Exported for unit testing. */
 export function resolveEditModeAction(key: string): 'cancel-navigate' | 'block' {
-  return (key === 'ArrowDown' || key === 'ArrowUp') ? 'cancel-navigate' : 'block';
+  return key === 'ArrowDown' || key === 'ArrowUp' ? 'cancel-navigate' : 'block';
 }
 
 /**
@@ -894,5 +947,11 @@ export function getQuickPasteDigit(event: KeyboardEvent): number | null {
 
 /** Returns true when the event is Ctrl+O (no other modifiers). Exported for unit testing. */
 export function isOcrTrigger(event: KeyboardEvent): boolean {
-  return event.key.toLowerCase() === 'o' && event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey;
+  return (
+    event.key.toLowerCase() === 'o' &&
+    event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey &&
+    !event.metaKey
+  );
 }

@@ -80,7 +80,6 @@ export interface Translation {
     URL_DECODE: string;
     JSON_FORMAT: string;
     STRIP_HTML: string;
-    SAVE_TO_HISTORY: string;
     ERROR_JSON: string;
     ERROR_URL_DECODE: string;
     HINT: string;

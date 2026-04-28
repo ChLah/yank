@@ -81,7 +81,6 @@ export const de: Translation = {
     URL_DECODE: 'URL dekodieren',
     JSON_FORMAT: 'JSON formatieren',
     STRIP_HTML: 'HTML entfernen',
-    SAVE_TO_HISTORY: 'Im Verlauf speichern',
     ERROR_JSON: 'Ungültiges JSON',
     ERROR_URL_DECODE: 'Ungültige URL-Kodierung',
     HINT: 'transformieren',
