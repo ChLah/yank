@@ -206,8 +206,8 @@ type Filter = 'all' | 'text' | 'image';
         </div>
         <div class="flex items-center gap-2">
           <app-keyboard-hint key="⌫" [label]="'CLIPBOARD.HINT_DELETE' | translate" />
-          <app-keyboard-hint key="P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
-          <app-keyboard-hint key="E" [label]="'CLIPBOARD.HINT_EDIT' | translate" />
+          <app-keyboard-hint key="Ctrl+P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
+          <app-keyboard-hint key="Ctrl+E" [label]="'CLIPBOARD.HINT_EDIT' | translate" />
           <app-keyboard-hint key="Ctrl+1–9" [label]="'CLIPBOARD.HINT_QUICK_PASTE' | translate" />
           <app-keyboard-hint key="Esc" [label]="'CLIPBOARD.HINT_CLOSE' | translate" class="ml-auto" />
         </div>
@@ -432,25 +432,25 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
         this.bridge.hidePopup();
         break;
       default:
-        if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        if (event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
           if (event.key.toLowerCase() === 'p') {
             event.preventDefault();
             this.pinSelected();
           } else if (event.key.toLowerCase() === 'e') {
             event.preventDefault();
             this.enterEditMode();
-          } else {
-            this.isSearching.set(true);
-            this.searchQuery.set(event.key);
-            setTimeout(() => {
-              const input = this.searchInput()?.nativeElement;
-              if (input) {
-                input.value = this.searchQuery();
-                input.focus();
-                input.setSelectionRange(input.value.length, input.value.length);
-              }
-            }, 0);
           }
+        } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+          this.isSearching.set(true);
+          this.searchQuery.set(event.key);
+          setTimeout(() => {
+            const input = this.searchInput()?.nativeElement;
+            if (input) {
+              input.value = this.searchQuery();
+              input.focus();
+              input.setSelectionRange(input.value.length, input.value.length);
+            }
+          }, 0);
         }
     }
   }

@@ -40,7 +40,7 @@ export const de: Translation = {
     ERROR_LOAD: 'Verlauf konnte nicht geladen werden',
     TRY_AGAIN: 'Erneut versuchen',
     EMPTY_PINNED: 'Noch keine angepinnten Einträge',
-    EMPTY_PINNED_HINT: 'Eintrag wählen und P drücken',
+    EMPTY_PINNED_HINT: 'Eintrag wählen und Ctrl+P drücken',
     EMPTY_NO_MATCHES: 'Keine Treffer für „{{term}}"',
     EMPTY_NOTHING: 'Noch nichts kopiert',
     HINT_NAV: 'nav',
@@ -56,7 +56,7 @@ export const de: Translation = {
   },
   ENTRY: {
     IMAGE: 'Bild',
-    TOGGLE_PIN: 'Pinnen umschalten (P)',
+    TOGGLE_PIN: 'Pinnen umschalten (Ctrl+P)',
     DELETE: 'Löschen (Entf)',
     TIME_JUST_NOW: 'gerade eben',
     TIME_MINUTES: 'vor {{n}}m',

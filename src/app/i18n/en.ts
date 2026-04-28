@@ -40,7 +40,7 @@ export const en: Translation = {
     ERROR_LOAD: 'Failed to load history',
     TRY_AGAIN: 'Try again',
     EMPTY_PINNED: 'No pinned items yet',
-    EMPTY_PINNED_HINT: 'Select an entry and press P',
+    EMPTY_PINNED_HINT: 'Select an entry and press Ctrl+P',
     EMPTY_NO_MATCHES: 'No matches for "{{term}}"',
     EMPTY_NOTHING: 'Nothing copied yet',
     HINT_NAV: 'nav',
@@ -56,7 +56,7 @@ export const en: Translation = {
   },
   ENTRY: {
     IMAGE: 'Image',
-    TOGGLE_PIN: 'Toggle pin (P)',
+    TOGGLE_PIN: 'Toggle pin (Ctrl+P)',
     DELETE: 'Delete (Del)',
     TIME_JUST_NOW: 'just now',
     TIME_MINUTES: '{{n}}m ago',
