@@ -38,8 +38,9 @@ interface TimeTranslation {
       (click)="onOuterClick()"
     >
       @if (ocrLoading()) {
-        <div class="absolute inset-0 z-10 flex items-center justify-center bg-background/60 rounded-sm">
+        <div class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 bg-background/60 rounded-sm">
           <div class="w-4 h-4 border-2 border-brand/40 border-t-brand rounded-full animate-spin"></div>
+          <span class="text-[10px] text-muted-foreground">{{ 'OCR.EXTRACTING' | translate }}</span>
         </div>
       }
       @if (editMode()) {

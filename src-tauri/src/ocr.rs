@@ -48,6 +48,16 @@ async fn run_ocr_on_png_bytes(png_bytes: &[u8]) -> Result<String, String> {
             .get()
             .map_err(|e| e.to_string())?;
 
+        // Guard: Windows OCR silently returns zero lines for images larger than MaxImageDimension
+        let max_dim = OcrEngine::MaxImageDimension().map_err(|e| e.to_string())?;
+        let width = bitmap.PixelWidth().map_err(|e| e.to_string())?;
+        let height = bitmap.PixelHeight().map_err(|e| e.to_string())?;
+        if width as u32 > max_dim || height as u32 > max_dim {
+            return Err(format!(
+                "Image too large for OCR ({width}×{height}). Maximum dimension is {max_dim}px."
+            ));
+        }
+
         // Create OCR engine — user profile language, fallback to en-US
         let engine = OcrEngine::TryCreateFromUserProfileLanguages()
             .or_else(|_| {
