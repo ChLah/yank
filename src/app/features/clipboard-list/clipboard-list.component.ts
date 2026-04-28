@@ -208,6 +208,7 @@ type Filter = 'all' | 'text' | 'image';
           <app-keyboard-hint key="⌫" [label]="'CLIPBOARD.HINT_DELETE' | translate" />
           <app-keyboard-hint key="P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
           <app-keyboard-hint key="E" [label]="'CLIPBOARD.HINT_EDIT' | translate" />
+          <app-keyboard-hint key="Ctrl+1–9" [label]="'CLIPBOARD.HINT_QUICK_PASTE' | translate" />
           <app-keyboard-hint key="Esc" [label]="'CLIPBOARD.HINT_CLOSE' | translate" class="ml-auto" />
         </div>
       </div>

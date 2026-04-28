@@ -50,6 +50,7 @@ export const en: Translation = {
     HINT_SEARCH: 'type to search',
     HINT_CLOSE: 'close',
     HINT_EDIT: 'edit',
+    HINT_QUICK_PASTE: 'quick paste',
     EDIT_HINT: 'Enter to paste · Esc to cancel',
     EDIT_COPY_FAILED: 'Failed to copy to clipboard.',
   },

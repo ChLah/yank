@@ -49,6 +49,7 @@ export interface Translation {
     HINT_SEARCH: string;
     HINT_CLOSE: string;
     HINT_EDIT: string;
+    HINT_QUICK_PASTE: string;
     EDIT_HINT: string;
     EDIT_COPY_FAILED: string;
   };
