@@ -369,6 +369,13 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
       }
     }
 
+    const quickPasteDigit = getQuickPasteDigit(event);
+    if (quickPasteDigit !== null) {
+      event.preventDefault();
+      this.selectEntry(quickPasteDigit - 1);
+      return;
+    }
+
     if (this.isSearching()) {
       switch (event.key) {
         case 'ArrowDown':
