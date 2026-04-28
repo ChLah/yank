@@ -108,13 +108,13 @@ export class SnippetItemComponent {
   }
 
   protected onContentKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
+    const action = resolveSnippetContentKey(event.key, event.ctrlKey);
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (action === 'cancel') {
       this.editCancel.emit();
-    } else if (event.key === 'Enter' && event.ctrlKey) {
-      event.preventDefault();
-      event.stopPropagation();
+    } else {
       this.emitConfirm();
     }
   }
@@ -126,7 +126,6 @@ export class SnippetItemComponent {
   }
 }
 
-/** Maps a title-field keydown to an edit action. Exported for unit testing. */
 export function resolveSnippetTitleKey(
   key: string,
   ctrlKey: boolean,
@@ -134,5 +133,14 @@ export function resolveSnippetTitleKey(
   if (key === 'Escape') return 'cancel';
   if (key === 'Enter' && ctrlKey) return 'submit';
   if ((key === 'Enter' || key === 'Tab') && !ctrlKey) return 'move-to-content';
+  return null;
+}
+
+export function resolveSnippetContentKey(
+  key: string,
+  ctrlKey: boolean,
+): 'submit' | 'cancel' | null {
+  if (key === 'Escape') return 'cancel';
+  if (key === 'Enter' && ctrlKey) return 'submit';
   return null;
 }
