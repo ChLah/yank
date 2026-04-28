@@ -59,7 +59,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            shortcut: "Ctrl+Quote".to_string(),
+            shortcut: "Ctrl+Semicolon".to_string(),
             max_entries: 20,
             language: None,
             theme: Theme::System,

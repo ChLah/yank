@@ -15,7 +15,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  shortcut: 'Ctrl+SEMICOLON',
+  shortcut: 'Ctrl+Semicolon',
   maxEntries: 20,
   language: null,
   theme: 'system',
