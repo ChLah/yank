@@ -54,6 +54,21 @@ impl SqliteStore {
             )?;
         }
 
+        // Add source_app column to pre-existing entries tables that lack it.
+        let has_source_app: bool = {
+            let mut stmt = conn.prepare("PRAGMA table_info(entries)")?;
+            let cols: Vec<String> = stmt
+                .query_map([], |row| row.get::<_, String>(1))?
+                .filter_map(|r| r.ok())
+                .collect();
+            cols.iter().any(|name| name == "source_app")
+        };
+        if !has_source_app {
+            conn.execute_batch(
+                "ALTER TABLE entries ADD COLUMN source_app TEXT;"
+            )?;
+        }
+
         // Settings schema versioning via PRAGMA user_version.
         // v0: single `value TEXT` column (old schema, reset on upgrade)
         // v1: typed `value_text TEXT` / `value_int INTEGER` columns
@@ -628,6 +643,33 @@ mod tests {
         store.save_entry(&text_payload("legacy")).unwrap();
         let entries = store.get_all_entries().unwrap();
         assert!(!entries[0].pinned);
+    }
+
+    #[test]
+    fn test_migration_adds_source_app_to_legacy_schema() {
+        let conn = Connection::open_in_memory().unwrap();
+        // Schema with pinned but WITHOUT source_app
+        conn.execute_batch(
+            "CREATE TABLE entries (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind         TEXT    NOT NULL,
+                content      BLOB    NOT NULL,
+                thumbnail    BLOB,
+                width        INTEGER,
+                height       INTEGER,
+                hash         TEXT    NOT NULL UNIQUE,
+                created_at   INTEGER NOT NULL,
+                last_used_at INTEGER NOT NULL,
+                pinned       INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);"
+        ).unwrap();
+        let store = SqliteStore { conn: Mutex::new(conn) };
+        store.run_migrations().unwrap();
+        // source_app column must now exist; save_entry should not error
+        store.save_entry(&text_payload("legacy")).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        assert_eq!(entries[0].source_app, None);
     }
 
     #[test]
