@@ -108,11 +108,10 @@ type TabType = 'snippets' | ClipboardTabType;
 
       <!-- Active tab -->
       @if (activeTab() === 'snippets') {
-        <app-snippets-tab #activeTabEl class="flex-1 min-h-0" />
+        <app-snippets-tab class="flex-1 min-h-0" />
       } @else {
         <app-clipboard-tab
-          #activeTabEl
-          [tab]="activeTab()"
+          [tab]="activeClipboardTab()"
           class="flex-1 min-h-0"
           (selectedEntry)="onSelectedEntry($event)"
         />
@@ -141,6 +140,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   private suppressPositionSave = false;
 
   protected activeTab = signal<TabType>('recent');
+  protected activeClipboardTab = computed(() => this.activeTab() as ClipboardTabType);
   protected captureIsPaused = signal(false);
 
   private selectedEntrySignal = signal<ClipboardEntry | null>(null);
@@ -150,7 +150,8 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected entryCount = computed(() => this.allEntries().length);
   protected pinnedCount = computed(() => this.allEntries().filter((e) => e.pinned).length);
 
-  private activeTabRef = viewChild<ElementRef>('activeTabEl', { read: ElementRef });
+  private clipboardTabRef = viewChild(ClipboardTabComponent);
+  private snippetsTabRef = viewChild(SnippetsTabComponent);
 
   protected readonly tabs = [
     { labelKey: 'CLIPBOARD.TAB_RECENT', value: 'recent' as TabType },
@@ -231,6 +232,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   }
 
   private focusActiveTab(): void {
-    this.activeTabRef()?.nativeElement.focus();
+    this.clipboardTabRef()?.focus();
+    this.snippetsTabRef()?.focus();
   }
 }

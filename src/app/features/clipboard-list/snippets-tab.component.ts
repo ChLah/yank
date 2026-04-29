@@ -332,6 +332,10 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
     this.unlistenPopupShown?.();
   }
 
+  focus(): void {
+    this.hostEl.nativeElement.focus();
+  }
+
   private resetState(): void {
     this.editingSnippetId.set(null);
     this.showNewSnippetForm.set(false);
@@ -576,7 +580,9 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
   }
 
   private scrollSnippetSelectedIntoView(): void {
-    const items = this.hostEl.nativeElement.querySelectorAll<HTMLElement>('.snippet-item');
+    const items = (this.hostEl.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
+      '.snippet-item',
+    );
     items[this.snippetSelectedIndex()]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 }

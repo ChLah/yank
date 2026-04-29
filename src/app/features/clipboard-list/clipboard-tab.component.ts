@@ -210,6 +210,10 @@ export class ClipboardTabComponent implements OnInit, OnDestroy {
     this.unlistenPopupShown?.();
   }
 
+  focus(): void {
+    this.hostEl.nativeElement.focus();
+  }
+
   private resetState(): void {
     this.editingEntryId.set(null);
     this.activeFilter.set('all');
