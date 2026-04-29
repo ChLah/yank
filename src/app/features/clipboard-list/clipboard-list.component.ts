@@ -940,7 +940,11 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
   protected async onCaptureSwitchChange(checked: boolean): Promise<void> {
     this.captureIsPaused.set(!checked);
-    await this.bridge.toggleCapturePaused();
+    try {
+      await this.bridge.toggleCapturePaused();
+    } catch {
+      this.captureIsPaused.set(!this.captureIsPaused());
+    }
   }
 
   private moveSnippetSelection(delta: number): void {
