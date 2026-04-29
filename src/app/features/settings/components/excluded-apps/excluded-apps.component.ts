@@ -5,6 +5,7 @@ import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideX } from '@ng-icons/lucide';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmInput } from '@spartan-ng/helm/input';
+import { toast } from '@spartan-ng/brain/sonner';
 import { ExcludedAppsService } from '../../../../core/services/excluded-apps.service';
 
 @Component({
@@ -58,10 +59,17 @@ export class ExcludedAppsComponent {
   protected add(): void {
     const value = this.inputValue().trim();
     if (!value) return;
-    this.service.addExcludedApp(value).then(() => this.inputValue.set(''));
+    this.service
+      .addExcludedApp(value)
+      .then(() => this.inputValue.set(''))
+      .catch((e: unknown) => toast.error(String(e)));
   }
 
-  protected remove(id: number): void {
-    this.service.removeExcludedApp(id);
+  protected async remove(id: number): Promise<void> {
+    try {
+      await this.service.removeExcludedApp(id);
+    } catch (e: unknown) {
+      toast.error(String(e));
+    }
   }
 }
