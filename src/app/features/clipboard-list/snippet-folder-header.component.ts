@@ -81,6 +81,10 @@ import { SnippetFolder } from '../../core/models/snippet-folder.model';
           >
             <ng-icon hlm size="xs" name="lucideTrash2" />
           </button>
+        } @else {
+          <span aria-hidden="true" class="shrink-0 p-0.5 opacity-0 pointer-events-none">
+            <ng-icon hlm size="xs" name="lucideTrash2" />
+          </span>
         }
       }
     </div>
