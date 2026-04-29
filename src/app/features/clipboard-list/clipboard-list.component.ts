@@ -215,7 +215,7 @@ type Filter = 'all' | 'text' | 'image';
                   class="snippet-item"
                   cdkDrag
                   [cdkDragData]="snippet"
-                  [cdkDragDisabled]="editingSnippetId() !== null"
+                  [cdkDragDisabled]="editingSnippetId() !== null || showNewSnippetForm()"
                 >
                   <app-snippet-item
                     [snippet]="snippet"
@@ -902,6 +902,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     const snippet = event.item.data as Snippet;
     const reordered = [...this.allSnippets()];
     moveItemInArray(reordered, event.previousIndex, event.currentIndex);
+    this.snippetSelectedIndex.set(event.currentIndex);
     this.snippetsService.reorderSnippet(reordered, snippet.id, event.currentIndex);
   }
 
