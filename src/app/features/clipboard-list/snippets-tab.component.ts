@@ -409,8 +409,8 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
         const idx = reordered.findIndex((r) => r.id === s.id);
         return idx !== -1 ? { ...s, sortOrder: idx } : s;
       });
-      this.snippetSelectedIndex.set(this.allSnippets().findIndex((s) => s.id === snippet.id));
       this.snippetsService.reorderSnippet(updated, snippet.id, event.currentIndex);
+      this.snippetSelectedIndex.set(this.allSnippets().findIndex((s) => s.id === snippet.id));
     } else {
       const updated = all
         .filter((s) => s.id !== snippet.id)
