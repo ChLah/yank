@@ -1492,4 +1492,19 @@ mod tests {
         let general: Vec<_> = snippets.iter().filter(|s| s.folder_id.is_none()).collect();
         assert_eq!(general[0].id, s3.id);
     }
+
+    #[test]
+    fn test_rename_snippet_folder_unknown_id_returns_error() {
+        let store = in_memory_store();
+        let result = store.rename_snippet_folder(9999, "New Name");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_move_snippet_to_folder_unknown_snippet_returns_error() {
+        let store = in_memory_store();
+        let folder = store.create_snippet_folder("Work").unwrap();
+        let result = store.move_snippet_to_folder(9999, Some(folder.id));
+        assert!(result.is_err());
+    }
 }
