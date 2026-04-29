@@ -116,6 +116,13 @@ export const de: Translation = {
     HINT_PASTE: 'einfügen',
     PLACEHOLDER_OVERLAY_CONFIRM: 'Enter zum Einfügen · Esc zum Abbrechen',
     PLACEHOLDER_OVERLAY_TITLE: 'Platzhalter ausfüllen',
+    FOLDER_GENERAL: 'Allgemein',
+    FOLDER_ADD: '+ Ordner hinzufügen',
+    FOLDER_NAME_PLACEHOLDER: 'Ordnername',
+    FOLDER_DELETE_CONFIRM:
+      'Alle Snippets in „{{name}}" nach Allgemein verschieben und Ordner löschen?',
+    FOLDER_DELETE_YES: 'Löschen',
+    FOLDER_DELETE_CANCEL: 'Abbrechen',
   },
   TOOLTIP: {
     PINNED: 'Angepinnt',

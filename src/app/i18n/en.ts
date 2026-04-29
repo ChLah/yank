@@ -116,6 +116,12 @@ export const en: Translation = {
     HINT_PASTE: 'paste',
     PLACEHOLDER_OVERLAY_CONFIRM: 'Enter to paste · Esc to cancel',
     PLACEHOLDER_OVERLAY_TITLE: 'Fill in placeholders',
+    FOLDER_GENERAL: 'General',
+    FOLDER_ADD: '+ Add folder',
+    FOLDER_NAME_PLACEHOLDER: 'Folder name',
+    FOLDER_DELETE_CONFIRM: 'Move all snippets in "{{name}}" to General and delete this folder?',
+    FOLDER_DELETE_YES: 'Delete',
+    FOLDER_DELETE_CANCEL: 'Cancel',
   },
   TOOLTIP: {
     PINNED: 'Pinned',

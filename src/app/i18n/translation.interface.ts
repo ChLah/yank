@@ -115,6 +115,12 @@ export interface Translation {
     HINT_PASTE: string;
     PLACEHOLDER_OVERLAY_CONFIRM: string;
     PLACEHOLDER_OVERLAY_TITLE: string;
+    FOLDER_GENERAL: string;
+    FOLDER_ADD: string;
+    FOLDER_NAME_PLACEHOLDER: string;
+    FOLDER_DELETE_CONFIRM: string;
+    FOLDER_DELETE_YES: string;
+    FOLDER_DELETE_CANCEL: string;
   };
   TOOLTIP: {
     PINNED: string;

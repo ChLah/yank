@@ -4,4 +4,5 @@ export interface Snippet {
   content: string;
   createdAt: number;
   sortOrder: number;
+  folderId: number | null;
 }
