@@ -2,10 +2,8 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  Injector,
   OnDestroy,
   OnInit,
-  afterNextRender,
   computed,
   inject,
   signal,
@@ -13,83 +11,48 @@ import {
 } from '@angular/core';
 import { UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { Router, RouterLink } from '@angular/router';
-import { resolveEditModeAction } from './keyboard.utils';
+import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import {
-  lucideClipboard,
-  lucideGripVertical,
-  lucideSearch,
-  lucideSettings,
-  lucideX,
-} from '@ng-icons/lucide';
-import { ClipboardEntryComponent } from './clipboard-entry.component';
-import { SnippetItemComponent } from './snippet-item.component';
-import { SnippetFolderHeaderComponent } from './snippet-folder-header.component';
-import { PlaceholderOverlayComponent, extractPlaceholders } from './placeholder-overlay.component';
-import { NewSnippetFormComponent } from './new-snippet-form.component';
+import { lucideClipboard, lucideSettings } from '@ng-icons/lucide';
+import { TranslatePipe } from '@ngx-translate/core';
+import { HlmIcon } from '@spartan-ng/helm/icon';
+import { HlmBadge } from '@spartan-ng/helm/badge';
+import { HlmTabs, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs';
+import { HlmSwitchImports } from '@spartan-ng/helm/switch';
+import { ClipboardTabComponent, ClipboardTabType } from './clipboard-tab.component';
+import { SnippetsTabComponent } from './snippets-tab.component';
+import { ClipboardFooterHintsComponent } from './clipboard-footer-hints.component';
+import { SnippetsFooterHintsComponent } from './snippets-footer-hints.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
-import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
-import { KeyboardHintComponent } from '../../shared/ui/keyboard-hint/keyboard-hint.component';
-import { TransformPickerComponent } from './transform-picker.component';
 import { ClipboardService } from '../../core/services/clipboard.service';
-import { SnippetsService } from '../../core/services/snippets.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { SettingsService } from '../../core/services/settings.service';
-import { Snippet } from '../../core/models/snippet.model';
-import { SnippetFolder } from '../../core/models/snippet-folder.model';
-import { HlmButton } from '@spartan-ng/helm/button';
-import { HlmBadge } from '@spartan-ng/helm/badge';
-import { HlmIcon } from '@spartan-ng/helm/icon';
-import { HlmSwitchImports } from '@spartan-ng/helm/switch';
-import { HlmTabs, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs';
-import {
-  CdkDropList,
-  CdkDrag,
-  CdkDragDrop,
-  CdkDragHandle,
-  CdkDragPlaceholder,
-  moveItemInArray,
-} from '@angular/cdk/drag-drop';
-import { TranslatePipe } from '@ngx-translate/core';
+import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
 
-type Tab = 'recent' | 'pinned' | 'snippets';
-type Filter = 'all' | 'text' | 'image';
+type TabType = 'snippets' | ClipboardTabType;
 
 @Component({
   selector: 'app-clipboard-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CdkDropList,
-    CdkDrag,
-    CdkDragHandle,
-    CdkDragPlaceholder,
-    ClipboardEntryComponent,
-    SnippetItemComponent,
-    SnippetFolderHeaderComponent,
-    PlaceholderOverlayComponent,
-    NewSnippetFormComponent,
+    ClipboardTabComponent,
+    SnippetsTabComponent,
+    ClipboardFooterHintsComponent,
+    SnippetsFooterHintsComponent,
     RouterLink,
     NgIcon,
     HlmIcon,
-    HlmButton,
     HlmBadge,
     HlmTabs,
     HlmTabsList,
     HlmTabsTrigger,
     TranslatePipe,
     PageHeaderComponent,
-    EmptyStateComponent,
-    KeyboardHintComponent,
-    TransformPickerComponent,
     ...HlmSwitchImports,
   ],
-  providers: [
-    provideIcons({ lucideClipboard, lucideGripVertical, lucideSettings, lucideSearch, lucideX }),
-  ],
+  providers: [provideIcons({ lucideClipboard, lucideSettings })],
   host: {
     '(keydown)': 'onKeyDown($event)',
-    '(click)': 'onHostClick()',
     tabindex: '0',
     class: 'block outline-none h-full',
   },
@@ -104,8 +67,8 @@ type Filter = 'all' | 'text' | 'image';
           <span class="text-[13px] font-semibold text-foreground tracking-tight">{{
             'CLIPBOARD.TITLE' | translate
           }}</span>
-          @if (activeTab() !== 'snippets' && allEntries().length > 0) {
-            <span hlmBadge variant="secondary">{{ allEntries().length }}</span>
+          @if (activeTab() !== 'snippets' && entryCount() > 0) {
+            <span hlmBadge variant="secondary">{{ entryCount() }}</span>
           }
         </ng-container>
         <ng-container end>
@@ -125,10 +88,8 @@ type Filter = 'all' | 'text' | 'image';
         </ng-container>
       </app-page-header>
 
-      <!-- Tab + filter row -->
-      <div
-        class="flex items-center justify-between px-3.5 h-[34px] shrink-0 bg-card/50 border-b border-border"
-      >
+      <!-- Tab switcher row -->
+      <div class="flex items-center px-3.5 h-[34px] shrink-0 bg-card/50 border-b border-border">
         <div hlmTabs [tab]="activeTab()" (tabActivated)="setTab($event)">
           <div hlmTabsList variant="line" class="h-8 rounded-none bg-transparent p-0">
             @for (tab of tabs; track tab.value) {
@@ -143,579 +104,75 @@ type Filter = 'all' | 'text' | 'image';
             }
           </div>
         </div>
-        @if (activeTab() !== 'snippets') {
-          <div class="flex items-center gap-1">
-            @for (f of filters; track f.value) {
-              <button
-                class="text-[11px] px-2 py-0.5 rounded-full border transition-colors"
-                [class]="
-                  activeFilter() === f.value
-                    ? 'bg-brand/20 text-brand-300 border-brand/30'
-                    : 'text-muted-foreground border-transparent hover:text-foreground'
-                "
-                (click)="setFilter(f.value)"
-              >
-                {{ f.labelKey | translate }}
-              </button>
-            }
-          </div>
-        }
       </div>
 
-      <!-- Search bar (animated slide-in, hidden in Snippets tab) -->
-      <div
-        class="overflow-hidden transition-all duration-150 ease-out shrink-0"
-        [class]="
-          isSearching() ? 'max-h-10 opacity-100 border-b border-border' : 'max-h-0 opacity-0'
-        "
-      >
-        <div class="flex items-center gap-2 px-3.5 h-9">
-          <ng-icon hlm size="sm" name="lucideSearch" class="text-muted-foreground shrink-0" />
-          <input
-            #searchInput
-            type="text"
-            [value]="searchQuery()"
-            (input)="onSearchInput($event)"
-            [placeholder]="'CLIPBOARD.SEARCH_PLACEHOLDER' | translate"
-            class="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground outline-none"
-          />
-          @if (searchQuery()) {
-            <button
-              class="text-muted-foreground hover:text-foreground transition-colors"
-              (click)="clearSearch()"
-            >
-              <ng-icon hlm size="sm" name="lucideX" />
-            </button>
-          }
-        </div>
-      </div>
-
-      <!-- Content -->
-      <div class="relative flex-1 overflow-y-auto scrollbar-thin" #listContainer>
-        @if (activeTab() === 'snippets') {
-          <!-- Placeholder fill-in overlay -->
-          @if (showPlaceholderOverlay() && placeholderSnippet()) {
-            <app-placeholder-overlay
-              [content]="placeholderSnippet()!.content"
-              (confirmed)="onPlaceholderConfirmed($event)"
-              (cancelled)="onPlaceholderCancelled()"
-            />
-          }
-
-          @if (snippetsService.snippets.isLoading()) {
-            <div class="py-1">
-              @for (skeleton of skeletons; track $index) {
-                <div
-                  class="flex items-center gap-3 pl-5 pr-4 py-2.5 border-l-2 border-l-transparent"
-                >
-                  <div class="flex-1 space-y-1.5">
-                    <div
-                      class="h-3 bg-muted rounded animate-pulse"
-                      [style.width.%]="55 + ($index % 3) * 15"
-                    ></div>
-                    <div class="h-2 bg-muted rounded animate-pulse w-20 opacity-50"></div>
-                  </div>
-                </div>
-              }
-            </div>
-          } @else if (snippetsService.snippets.error()) {
-            <app-empty-state
-              icon="lucideAlertCircle"
-              [title]="'CLIPBOARD.ERROR_LOAD' | translate"
-              variant="destructive"
-            >
-              <button hlmBtn variant="link" size="sm" (click)="snippetsService.snippets.reload()">
-                {{ 'CLIPBOARD.TRY_AGAIN' | translate }}
-              </button>
-            </app-empty-state>
-          } @else if (allSnippets().length === 0 && !showNewSnippetForm()) {
-            <app-empty-state
-              icon="lucideClipboard"
-              [title]="'SNIPPETS.EMPTY' | translate"
-              [hint]="'SNIPPETS.EMPTY_HINT' | translate"
-            />
-          } @else {
-            <!-- Snippet folders -->
-            <div class="py-1">
-              <!-- General folder section (always first, not reorderable) -->
-              <div class="folder-section relative group/folder border-b border-border/20">
-                <div
-                  class="relative"
-                  cdkDropList
-                  id="folder-header-general"
-                  [cdkDropListConnectedTo]="snippetBodyIds()"
-                  [cdkDropListSortingDisabled]="true"
-                  (cdkDropListDropped)="onSnippetDroppedOnFolderHeader($event, null)"
-                >
-                  <div class="flex items-center">
-                    <!-- Spacer matching the drag handle width so General aligns with user folders -->
-                    <span aria-hidden="true" class="shrink-0 pl-1 opacity-0 pointer-events-none">
-                      <ng-icon hlm size="xs" name="lucideGripVertical" />
-                    </span>
-                    <app-snippet-folder-header
-                      class="flex-1 min-w-0"
-                      [folder]="generalFolder"
-                      [isGeneral]="true"
-                      [isExpanded]="isFolderExpanded('general')"
-                      [count]="generalSnippets().length"
-                      (toggleCollapse)="toggleFolder('general')"
-                    />
-                  </div>
-                </div>
-                @if (isFolderExpanded('general')) {
-                  <div
-                    cdkDropList
-                    id="folder-body-general"
-                    class="pl-3"
-                    [cdkDropListConnectedTo]="allSnippetTargetIds()"
-                    [cdkDropListData]="null"
-                    (cdkDropListDropped)="onSnippetDrop($any($event))"
-                  >
-                    @if (showNewSnippetForm()) {
-                      <app-new-snippet-form
-                        (saved)="onSnippetCreated($event)"
-                        (cancelled)="onSnippetFormCancelled()"
-                      />
-                    }
-                    @for (snippet of generalSnippets(); track snippet.id; let i = $index) {
-                      <div
-                        class="snippet-item"
-                        cdkDrag
-                        [cdkDragData]="snippet"
-                        [cdkDragDisabled]="editingSnippetId() !== null || showNewSnippetForm()"
-                      >
-                        <app-snippet-item
-                          [snippet]="snippet"
-                          [selected]="snippetSelectedIndex() === allSnippets().indexOf(snippet)"
-                          [editMode]="editingSnippetId() === snippet.id"
-                          (select)="selectSnippet(allSnippets().indexOf(snippet))"
-                          (delete)="deleteSnippetByIndex(allSnippets().indexOf(snippet))"
-                          (editConfirm)="onSnippetEditConfirm($event)"
-                          (editCancel)="onSnippetEditCancel()"
-                        />
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-
-              <!-- User folder sections (reorderable) -->
-              <div cdkDropList id="folder-reorder" (cdkDropListDropped)="onFolderDrop($event)">
-                @for (folder of userFolders(); track folder.id) {
-                  <div
-                    cdkDrag
-                    [cdkDragData]="folder"
-                    class="folder-section group/folder border-b border-border/20"
-                  >
-                    <div
-                      *cdkDragPlaceholder
-                      class="h-7 mx-2 my-0.5 rounded border border-dashed border-border/50 bg-muted/20"
-                    ></div>
-
-                    <!-- Folder header: also a drop zone for snippets -->
-                    <div
-                      class="relative flex items-center"
-                      cdkDropList
-                      [id]="'folder-header-' + folder.id"
-                      [cdkDropListConnectedTo]="snippetBodyIds()"
-                      [cdkDropListSortingDisabled]="true"
-                      (cdkDropListDropped)="onSnippetDroppedOnFolderHeader($event, folder.id)"
-                    >
-                      <span
-                        cdkDragHandle
-                        class="opacity-0 group-hover/folder:opacity-100 cursor-grab active:cursor-grabbing shrink-0 text-muted-foreground transition-opacity pl-1"
-                      >
-                        <ng-icon hlm size="xs" name="lucideGripVertical" />
-                      </span>
-                      <app-snippet-folder-header
-                        class="flex-1 min-w-0"
-                        [folder]="folder"
-                        [isGeneral]="false"
-                        [isExpanded]="isFolderExpanded(folder.id)"
-                        [count]="getSnippetsByFolder(folder.id).length"
-                        (toggleCollapse)="toggleFolder(folder.id)"
-                        (rename)="onFolderRename(folder.id, $event)"
-                        (delete)="onFolderDelete(folder.id)"
-                      />
-                    </div>
-
-                    @if (isFolderExpanded(folder.id)) {
-                      <div
-                        cdkDropList
-                        [id]="'folder-body-' + folder.id"
-                        class="pl-3"
-                        [cdkDropListConnectedTo]="allSnippetTargetIds()"
-                        [cdkDropListData]="folder.id"
-                        (cdkDropListDropped)="onSnippetDrop($any($event))"
-                      >
-                        @for (snippet of getSnippetsByFolder(folder.id); track snippet.id) {
-                          <div
-                            class="snippet-item"
-                            cdkDrag
-                            [cdkDragData]="snippet"
-                            [cdkDragDisabled]="editingSnippetId() !== null || showNewSnippetForm()"
-                          >
-                            <app-snippet-item
-                              [snippet]="snippet"
-                              [selected]="snippetSelectedIndex() === allSnippets().indexOf(snippet)"
-                              [editMode]="editingSnippetId() === snippet.id"
-                              (select)="selectSnippet(allSnippets().indexOf(snippet))"
-                              (delete)="deleteSnippetByIndex(allSnippets().indexOf(snippet))"
-                              (editConfirm)="onSnippetEditConfirm($event)"
-                              (editCancel)="onSnippetEditCancel()"
-                            />
-                          </div>
-                        }
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-
-              <!-- Add folder button / inline new folder input -->
-              @if (addingFolder()) {
-                <div class="flex items-center gap-1.5 px-3 py-1">
-                  <input
-                    #newFolderInput
-                    type="text"
-                    [value]="newFolderName()"
-                    (input)="newFolderName.set($any($event.target).value)"
-                    (keydown)="onNewFolderKeyDown($event)"
-                    (blur)="saveNewFolder()"
-                    [placeholder]="'SNIPPETS.FOLDER_NAME_PLACEHOLDER' | translate"
-                    class="flex-1 min-w-0 bg-muted/50 text-[12px] text-foreground rounded px-2 py-1 outline-none focus:ring-1 focus:ring-brand/50"
-                  />
-                </div>
-              } @else {
-                <button
-                  class="w-full text-left px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                  (click)="startAddFolder()"
-                >
-                  {{ 'SNIPPETS.FOLDER_ADD' | translate }}
-                </button>
-              }
-            </div>
-          }
-        } @else {
-          <!-- Clipboard list (Recent / Pinned) -->
-          @if (clipboard.entries.isLoading()) {
-            <div class="py-1">
-              @for (skeleton of skeletons; track $index) {
-                <div
-                  class="flex items-center gap-3 pl-5 pr-4 py-2.5 border-l-2 border-l-transparent"
-                >
-                  <div class="flex-1 space-y-1.5">
-                    <div
-                      class="h-3 bg-muted rounded animate-pulse"
-                      [style.width.%]="65 + ($index % 3) * 10"
-                    ></div>
-                    <div class="h-2 bg-muted rounded animate-pulse w-12 opacity-50"></div>
-                  </div>
-                </div>
-              }
-            </div>
-          } @else if (clipboard.entries.error()) {
-            <app-empty-state
-              icon="lucideAlertCircle"
-              [title]="'CLIPBOARD.ERROR_LOAD' | translate"
-              variant="destructive"
-            >
-              <button hlmBtn variant="link" size="sm" (click)="clipboard.entries.reload()">
-                {{ 'CLIPBOARD.TRY_AGAIN' | translate }}
-              </button>
-            </app-empty-state>
-          } @else if (filteredEntries().length === 0) {
-            @if (activeTab() === 'pinned') {
-              <app-empty-state
-                icon="lucideBookmark"
-                [title]="'CLIPBOARD.EMPTY_PINNED' | translate"
-                [hint]="'CLIPBOARD.EMPTY_PINNED_HINT' | translate"
-              />
-            } @else if (searchQuery()) {
-              <app-empty-state
-                icon="lucideClipboard"
-                [title]="'CLIPBOARD.EMPTY_NO_MATCHES' | translate: { term: searchQuery() }"
-              />
-            } @else {
-              <app-empty-state
-                icon="lucideClipboard"
-                [title]="'CLIPBOARD.EMPTY_NOTHING' | translate"
-              />
-            }
-          } @else {
-            <div class="py-1">
-              @for (entry of filteredEntries(); track entry.id; let i = $index) {
-                <div class="entry-item relative">
-                  <app-clipboard-entry
-                    [entry]="entry"
-                    [selected]="selectedIndex() === i"
-                    [editMode]="editingEntryId() === entry.id"
-                    [ocrLoading]="ocrLoadingEntryId() === entry.id"
-                    [shortcutIndex]="i < 9 ? i + 1 : null"
-                    (select)="selectEntry(i)"
-                    (delete)="deleteEntry(i)"
-                    (pin)="pinEntry(i)"
-                    (editConfirm)="onEditConfirm($event)"
-                    (editCancel)="onEditCancel()"
-                  />
-                  @if (showTransformPicker() && selectedIndex() === i && entry.kind === 'text') {
-                    <app-transform-picker
-                      [content]="entry.content ?? ''"
-                      (applied)="onTransformApplied($event)"
-                      (cancelled)="onTransformCancelled()"
-                      (click)="$event.stopPropagation()"
-                    />
-                  }
-                </div>
-              }
-            </div>
-          }
-        }
-      </div>
-
-      @if (duplicateError()) {
-        <div
-          class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0 animate-slide-up"
-        >
-          {{ 'TRANSFORM.DUPLICATE_ERROR' | translate }}
-        </div>
-      }
-
-      @if (editCopyFailed()) {
-        <div
-          class="px-3.5 py-1.5 bg-destructive/10 border-t border-destructive/20 text-[11px] text-destructive shrink-0 animate-slide-up"
-        >
-          {{ 'CLIPBOARD.EDIT_COPY_FAILED' | translate }}
-        </div>
-      }
-
-      @if (ocrToast()) {
-        <div
-          class="px-3.5 py-1.5 border-t text-[11px] shrink-0 animate-slide-up"
-          [class]="
-            ocrToast()!.success
-              ? 'bg-brand/10 border-brand/20 text-brand-300'
-              : 'bg-destructive/10 border-destructive/20 text-destructive'
-          "
-        >
-          {{ ocrToast()!.key | translate: ocrToast()!.params }}
-        </div>
+      <!-- Active tab -->
+      @if (activeTab() === 'snippets') {
+        <app-snippets-tab #activeTabEl class="flex-1 min-h-0" />
+      } @else {
+        <app-clipboard-tab
+          #activeTabEl
+          [tab]="activeTab()"
+          class="flex-1 min-h-0"
+          (selectedEntry)="onSelectedEntry($event)"
+        />
       }
 
       <!-- Footer -->
       <div class="px-3.5 py-1.5 flex flex-col gap-1 shrink-0 bg-card border-t border-border">
         @if (activeTab() === 'snippets') {
-          <div class="flex items-center gap-2">
-            <app-keyboard-hint key="↑↓" [label]="'CLIPBOARD.HINT_NAV' | translate" />
-            <app-keyboard-hint key="↵" [label]="'SNIPPETS.HINT_PASTE' | translate" />
-            <app-keyboard-hint key="E" [label]="'SNIPPETS.HINT_EDIT' | translate" />
-            <app-keyboard-hint key="⌫" [label]="'SNIPPETS.HINT_DELETE' | translate" />
-            <app-keyboard-hint key="N" [label]="'SNIPPETS.HINT_NEW' | translate" />
-            <app-keyboard-hint
-              key="Esc"
-              [label]="'CLIPBOARD.HINT_CLOSE' | translate"
-              class="ml-auto"
-            />
-          </div>
+          <app-snippets-footer-hints />
         } @else {
-          <div class="flex items-center gap-2">
-            <app-keyboard-hint key="↑↓" [label]="'CLIPBOARD.HINT_NAV' | translate" />
-            <app-keyboard-hint key="↵" [label]="'CLIPBOARD.HINT_PASTE' | translate" />
-            <app-keyboard-hint key="⇧↵" [label]="'TRANSFORM.HINT' | translate" />
-            <app-keyboard-hint key="⌫" [label]="'CLIPBOARD.HINT_DELETE' | translate" />
-            <span class="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">
-              {{ 'CLIPBOARD.HINT_SEARCH' | translate }}
-            </span>
-          </div>
-          <div class="flex items-center gap-2">
-            <app-keyboard-hint key="Ctrl+P" [label]="'CLIPBOARD.HINT_PIN' | translate" />
-            <app-keyboard-hint key="Ctrl+E" [label]="'CLIPBOARD.HINT_EDIT' | translate" />
-            @if (selectedEntryIsImage()) {
-              <app-keyboard-hint key="Ctrl+O" [label]="'OCR.KEYBOARD_HINT' | translate" />
-            }
-            <app-keyboard-hint key="Ctrl+1–9" [label]="'CLIPBOARD.HINT_QUICK_PASTE' | translate" />
-            <app-keyboard-hint
-              key="Esc"
-              [label]="'CLIPBOARD.HINT_CLOSE' | translate"
-              class="ml-auto"
-            />
-          </div>
+          <app-clipboard-footer-hints [showOcrHint]="showOcrHint()" />
         }
       </div>
     </div>
   `,
 })
 export class ClipboardListComponent implements OnInit, OnDestroy {
-  protected clipboard = inject(ClipboardService);
-  protected snippetsService = inject(SnippetsService);
+  private clipboard = inject(ClipboardService);
   private bridge = inject(TauriBridgeService);
   private settings = inject(SettingsService);
-  private router = inject(Router);
   private hostEl = inject(ElementRef);
-  private injector = inject(Injector);
   private unlistenPopupShown?: UnlistenFn;
   private unlistenWindowMoved?: UnlistenFn;
   private unlistenCapturePaused?: UnlistenFn;
   private moveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-  private duplicateErrorTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressPositionSave = false;
 
-  protected selectedIndex = signal(0);
-  protected editingEntryId = signal<number | null>(null);
-  protected editCopyFailed = signal(false);
-  private editCopyFailedTimer: ReturnType<typeof setTimeout> | null = null;
-  protected ocrLoadingEntryId = signal<number | null>(null);
-  protected ocrToast = signal<{
-    key: string;
-    params?: Record<string, unknown>;
-    success: boolean;
-  } | null>(null);
-  private ocrToastTimer: ReturnType<typeof setTimeout> | null = null;
-  protected skeletons = Array.from({ length: 5 });
-
-  protected activeTab = signal<Tab>('recent');
-  protected activeFilter = signal<Filter>('all');
-  protected searchQuery = signal('');
-  protected isSearching = signal(false);
-  protected showTransformPicker = signal(false);
-  protected duplicateError = signal(false);
-
-  protected snippetSelectedIndex = signal(0);
-  protected editingSnippetId = signal<number | null>(null);
-  protected showNewSnippetForm = signal(false);
-  protected showPlaceholderOverlay = signal(false);
-  protected placeholderSnippet = signal<Snippet | null>(null);
+  protected activeTab = signal<TabType>('recent');
   protected captureIsPaused = signal(false);
 
-  protected expandedFolderIds = signal<Set<string>>(new Set(['general']));
-  protected addingFolder = signal(false);
-  protected newFolderName = signal('');
+  private selectedEntrySignal = signal<ClipboardEntry | null>(null);
+  protected showOcrHint = computed(() => this.selectedEntrySignal()?.kind === 'image');
 
-  protected tabs = [
-    { labelKey: 'CLIPBOARD.TAB_RECENT', value: 'recent' as Tab },
-    { labelKey: 'CLIPBOARD.TAB_PINNED', value: 'pinned' as Tab },
-    { labelKey: 'SNIPPETS.TAB', value: 'snippets' as Tab },
-  ];
-
-  protected filters = [
-    { labelKey: 'CLIPBOARD.FILTER_ALL', value: 'all' as Filter },
-    { labelKey: 'CLIPBOARD.FILTER_TEXT', value: 'text' as Filter },
-    { labelKey: 'CLIPBOARD.FILTER_IMAGE', value: 'image' as Filter },
-  ];
-
-  protected allEntries = computed(() => this.clipboard.entries.value() ?? []);
-
-  protected allSnippets = computed(() => {
-    const snippets = this.snippetsService.snippets.value() ?? [];
-    const folders = this.snippetsService.folders.value() ?? [];
-    const general = snippets
-      .filter((s) => s.folderId === null)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    const folderSnippets = folders
-      .slice()
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .flatMap((f) =>
-        snippets.filter((s) => s.folderId === f.id).sort((a, b) => a.sortOrder - b.sortOrder),
-      );
-    return [...general, ...folderSnippets];
-  });
-
-  protected userFolders = computed(() =>
-    (this.snippetsService.folders.value() ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder),
-  );
-
-  protected generalSnippets = computed(() =>
-    (this.snippetsService.snippets.value() ?? [])
-      .filter((s) => s.folderId === null)
-      .sort((a, b) => a.sortOrder - b.sortOrder),
-  );
-
-  protected snippetBodyIds = computed(() => [
-    'folder-body-general',
-    ...this.userFolders().map((f) => 'folder-body-' + f.id),
-  ]);
-
-  protected allSnippetTargetIds = computed(() => [
-    ...this.snippetBodyIds(),
-    'folder-header-general',
-    ...this.userFolders().map((f) => 'folder-header-' + f.id),
-  ]);
-
-  protected getSnippetsByFolder(folderId: number): Snippet[] {
-    return (this.snippetsService.snippets.value() ?? [])
-      .filter((s) => s.folderId === folderId)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-  }
-
-  protected isFolderExpanded(key: string | number): boolean {
-    return this.expandedFolderIds().has(String(key));
-  }
-
-  protected toggleFolder(key: string | number): void {
-    const id = String(key);
-    const set = new Set(this.expandedFolderIds());
-    if (set.has(id)) {
-      set.delete(id);
-    } else {
-      set.add(id);
-    }
-    this.expandedFolderIds.set(set);
-  }
-
-  protected readonly generalFolder: SnippetFolder = { id: -1, name: '', sortOrder: -1 };
-
+  private allEntries = computed(() => this.clipboard.entries.value() ?? []);
+  protected entryCount = computed(() => this.allEntries().length);
   protected pinnedCount = computed(() => this.allEntries().filter((e) => e.pinned).length);
 
-  protected selectedEntryIsImage = computed(() => {
-    const entry = this.filteredEntries()[this.selectedIndex()];
-    return entry != null && entry.kind === 'image';
-  });
+  private activeTabRef = viewChild<ElementRef>('activeTabEl', { read: ElementRef });
 
-  protected filteredEntries = computed(() => {
-    let list = this.allEntries();
-    if (this.activeTab() === 'pinned') list = list.filter((e) => e.pinned);
-    if (this.activeFilter() !== 'all') list = list.filter((e) => e.kind === this.activeFilter());
-    const q = this.searchQuery().toLowerCase().trim();
-    if (q) list = list.filter((e) => e.content?.toLowerCase().includes(q));
-    return list;
-  });
-
-  private listContainer = viewChild.required<ElementRef<HTMLElement>>('listContainer');
-  private searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
-  private newFolderInputRef = viewChild<ElementRef>('newFolderInput');
+  protected readonly tabs = [
+    { labelKey: 'CLIPBOARD.TAB_RECENT', value: 'recent' as TabType },
+    { labelKey: 'CLIPBOARD.TAB_PINNED', value: 'pinned' as TabType },
+    { labelKey: 'SNIPPETS.TAB', value: 'snippets' as TabType },
+  ];
 
   ngOnInit(): void {
-    this.hostEl.nativeElement.focus();
     this.bridge
       .onPopupShown(() => {
-        this.editingEntryId.set(null);
         this.activeTab.set('recent');
-        this.activeFilter.set('all');
-        this.clearSearch();
-        this.editingSnippetId.set(null);
-        this.showNewSnippetForm.set(false);
-        this.showPlaceholderOverlay.set(false);
-        this.placeholderSnippet.set(null);
-        this.snippetSelectedIndex.set(0);
-        this.addingFolder.set(false);
-        this.newFolderName.set('');
-        this.expandedFolderIds.set(new Set(['general']));
-        this.snippetsService.folders.reload();
+        this.selectedEntrySignal.set(null);
         this.bridge.getCapturePaused().then((paused) => this.captureIsPaused.set(paused));
         this.suppressPositionSave = true;
-        setTimeout(() => {
-          this.suppressPositionSave = false;
-        }, 600);
+        setTimeout(() => (this.suppressPositionSave = false), 600);
+        setTimeout(() => this.focusActiveTab());
       })
-      .then((fn) => {
-        this.unlistenPopupShown = fn;
-      });
+      .then((fn) => (this.unlistenPopupShown = fn));
 
     this.bridge
       .onCapturePausedChanged((paused) => this.captureIsPaused.set(paused))
-      .then((fn) => {
-        this.unlistenCapturePaused = fn;
-      });
+      .then((fn) => (this.unlistenCapturePaused = fn));
 
     getCurrentWindow()
       .onMoved(({ payload }) => {
@@ -727,9 +184,10 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
           }
         }, 300);
       })
-      .then((fn) => {
-        this.unlistenWindowMoved = fn;
-      });
+      .then((fn) => (this.unlistenWindowMoved = fn));
+
+    this.bridge.getCapturePaused().then((paused) => this.captureIsPaused.set(paused));
+    this.focusActiveTab();
   }
 
   ngOnDestroy(): void {
@@ -737,524 +195,24 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     this.unlistenWindowMoved?.();
     this.unlistenCapturePaused?.();
     if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
-    if (this.duplicateErrorTimer) clearTimeout(this.duplicateErrorTimer);
-    if (this.editCopyFailedTimer) clearTimeout(this.editCopyFailedTimer);
-    if (this.ocrToastTimer) clearTimeout(this.ocrToastTimer);
   }
 
   protected setTab(tab: string): void {
-    this.editingEntryId.set(null);
-    this.clearSearch();
-    this.activeTab.set(tab as Tab);
-    this.selectedIndex.set(0);
-    this.snippetSelectedIndex.set(0);
-    if (tab !== 'snippets') {
-      this.editingSnippetId.set(null);
-      this.showNewSnippetForm.set(false);
-      this.showPlaceholderOverlay.set(false);
-      this.placeholderSnippet.set(null);
-    }
+    this.activeTab.set(tab as TabType);
+    this.selectedEntrySignal.set(null);
+    setTimeout(() => this.focusActiveTab());
   }
 
-  protected setFilter(filter: Filter): void {
-    this.editingEntryId.set(null);
-    this.activeFilter.set(filter);
-    this.selectedIndex.set(0);
-  }
-
-  protected selectEntry(index: number): void {
-    if (this.editingEntryId() !== null) {
-      const clickedEntry = this.filteredEntries()[index];
-      if (!shouldCancelEditOnSelect(clickedEntry?.id, this.editingEntryId()!)) return;
-      this.editingEntryId.set(null);
-      this.selectedIndex.set(index);
-      return;
-    }
-    this.selectedIndex.set(index);
-    const entry = this.filteredEntries()[index];
-    if (!entry) return;
-    if (entry.kind === 'image') {
-      this.router.navigate(['/preview'], { queryParams: { id: entry.id } });
-    } else {
-      this.clipboard.setClipboard(entry.id);
-    }
-  }
-
-  protected deleteEntry(index: number): void {
-    const entry = this.filteredEntries()[index];
-    if (!entry) return;
-    const newLen = this.filteredEntries().length - 1;
-    this.clipboard.deleteEntry(entry.id);
-    if (newLen <= 0) {
-      this.selectedIndex.set(0);
-    } else if (this.selectedIndex() >= newLen) {
-      this.selectedIndex.set(newLen - 1);
-    }
-  }
-
-  protected pinEntry(index: number): void {
-    const entry = this.filteredEntries()[index];
-    if (!entry) return;
-    this.clipboard.togglePin(entry.id);
-  }
-
-  protected onSearchInput(event: Event): void {
-    this.searchQuery.set((event.target as HTMLInputElement).value);
-    this.selectedIndex.set(0);
-  }
-
-  protected clearSearch(): void {
-    this.searchQuery.set('');
-    this.isSearching.set(false);
-    this.selectedIndex.set(0);
-    this.hostEl.nativeElement.focus();
+  protected onSelectedEntry(entry: ClipboardEntry | null): void {
+    this.selectedEntrySignal.set(entry);
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
     if (event.ctrlKey && event.key === 'Tab') {
       event.preventDefault();
+      event.stopPropagation();
       this.cycleTab(event.shiftKey ? -1 : 1);
-      return;
     }
-
-    if (this.activeTab() === 'snippets') {
-      this.onSnippetKeyDown(event);
-    } else {
-      this.onClipboardKeyDown(event);
-    }
-  }
-
-  private onClipboardKeyDown(event: KeyboardEvent): void {
-    if (this.showTransformPicker()) return;
-
-    if (this.editingEntryId() !== null) {
-      if (resolveEditModeAction(event.key) === 'cancel-navigate') {
-        this.editingEntryId.set(null);
-      } else {
-        return;
-      }
-    }
-
-    const quickPasteDigit = getQuickPasteDigit(event);
-    if (quickPasteDigit !== null) {
-      event.preventDefault();
-      const idx = quickPasteDigit - 1;
-      if (idx < this.filteredEntries().length) {
-        this.selectEntry(idx);
-      }
-      return;
-    }
-
-    if (this.isSearching()) {
-      switch (event.key) {
-        case 'ArrowDown':
-          event.preventDefault();
-          this.moveSelection(1);
-          break;
-        case 'ArrowUp':
-          event.preventDefault();
-          this.moveSelection(-1);
-          break;
-        case 'Enter':
-          event.preventDefault();
-          if (event.shiftKey) {
-            this.openTransformPicker();
-          } else {
-            this.copySelected();
-          }
-          break;
-        case 'Escape':
-          event.preventDefault();
-          this.clearSearch();
-          break;
-      }
-      return;
-    }
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        this.moveSelection(1);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        this.moveSelection(-1);
-        break;
-      case 'Enter':
-        event.preventDefault();
-        if (event.shiftKey) {
-          this.openTransformPicker();
-        } else {
-          this.copySelected();
-        }
-        break;
-      case 'Delete':
-        event.preventDefault();
-        this.deleteEntry(this.selectedIndex());
-        break;
-      case 'Escape':
-        event.preventDefault();
-        this.bridge.hidePopup();
-        break;
-      default:
-        if (event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
-          if (event.key.toLowerCase() === 'p') {
-            event.preventDefault();
-            this.pinSelected();
-          } else if (event.key.toLowerCase() === 'e') {
-            event.preventDefault();
-            this.enterEditMode();
-          } else if (isOcrTrigger(event)) {
-            event.preventDefault();
-            this.triggerOcr();
-          }
-        } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
-          this.isSearching.set(true);
-          this.searchQuery.set(event.key);
-          setTimeout(() => {
-            const input = this.searchInput()?.nativeElement;
-            if (input) {
-              input.value = this.searchQuery();
-              input.focus();
-              input.setSelectionRange(input.value.length, input.value.length);
-            }
-          }, 0);
-        }
-    }
-  }
-
-  private onSnippetKeyDown(event: KeyboardEvent): void {
-    if (this.showNewSnippetForm()) return;
-    if (this.showPlaceholderOverlay()) return;
-
-    if (this.editingSnippetId() !== null) {
-      if (resolveEditModeAction(event.key) === 'cancel-navigate') {
-        this.editingSnippetId.set(null);
-      } else {
-        return;
-      }
-    }
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        this.moveSnippetSelection(1);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        this.moveSnippetSelection(-1);
-        break;
-      case 'Enter':
-        event.preventDefault();
-        this.pasteOrOverlaySnippet();
-        break;
-      case 'Delete':
-        event.preventDefault();
-        this.deleteSnippetByIndex(this.snippetSelectedIndex());
-        break;
-      case 'Escape':
-        event.preventDefault();
-        this.bridge.hidePopup();
-        break;
-      default:
-        if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
-          if (event.key.toLowerCase() === 'e') {
-            event.preventDefault();
-            this.enterSnippetEditMode();
-          } else if (event.key.toLowerCase() === 'n') {
-            event.preventDefault();
-            this.showNewSnippetForm.set(true);
-          }
-        }
-    }
-  }
-
-  private enterEditMode(): void {
-    const entry = this.filteredEntries()[this.selectedIndex()];
-    if (!entry || entry.kind !== 'text') return;
-    this.editingEntryId.set(entry.id);
-  }
-
-  protected async onEditConfirm(text: string): Promise<void> {
-    this.editingEntryId.set(null);
-    try {
-      await this.bridge.setClipboardText(text);
-      this.bridge.hidePopup();
-    } catch {
-      this.editCopyFailed.set(true);
-      this.editCopyFailedTimer = setTimeout(() => {
-        this.editCopyFailed.set(false);
-      }, 2000);
-    }
-  }
-
-  protected onEditCancel(): void {
-    this.editingEntryId.set(null);
-    this.hostEl.nativeElement.focus();
-  }
-
-  private async triggerOcr(): Promise<void> {
-    const entry = this.filteredEntries()[this.selectedIndex()];
-    if (!entry || entry.kind !== 'image') return;
-    if (this.ocrLoadingEntryId() !== null) return;
-
-    this.ocrLoadingEntryId.set(entry.id);
-    try {
-      const text = await this.bridge.ocrImage(entry.id);
-      if (text === '') {
-        this.showOcrToast('OCR.NO_TEXT', undefined, false);
-      } else {
-        this.clipboard.entries.reload();
-        this.activeTab.set('recent');
-        this.selectedIndex.set(0);
-        this.showOcrToast('OCR.SUCCESS', { count: text.length }, true);
-      }
-    } catch (err: unknown) {
-      const error = typeof err === 'string' ? err : 'Unknown error';
-      this.showOcrToast('OCR.ERROR', { error }, false);
-    } finally {
-      this.ocrLoadingEntryId.set(null);
-    }
-  }
-
-  private showOcrToast(
-    key: string,
-    params: Record<string, unknown> | undefined,
-    success: boolean,
-  ): void {
-    if (this.ocrToastTimer) clearTimeout(this.ocrToastTimer);
-    this.ocrToast.set({ key, params, success });
-    this.ocrToastTimer = setTimeout(() => this.ocrToast.set(null), 2500);
-  }
-
-  private pinSelected(): void {
-    const entry = this.filteredEntries()[this.selectedIndex()];
-    if (!entry) return;
-    this.clipboard.togglePin(entry.id);
-  }
-
-  private moveSelection(delta: number): void {
-    const len = this.filteredEntries().length;
-    if (len === 0) return;
-    const next = Math.max(0, Math.min(len - 1, this.selectedIndex() + delta));
-    this.selectedIndex.set(next);
-    this.scrollSelectedIntoView();
-  }
-
-  private copySelected(): void {
-    this.selectEntry(this.selectedIndex());
-  }
-
-  protected onHostClick(): void {
-    if (this.showTransformPicker()) {
-      this.showTransformPicker.set(false);
-      this.hostEl.nativeElement.focus();
-    }
-  }
-
-  private openTransformPicker(): void {
-    if (this.duplicateErrorTimer) {
-      clearTimeout(this.duplicateErrorTimer);
-      this.duplicateErrorTimer = null;
-      this.duplicateError.set(false);
-    }
-    const entry = this.filteredEntries()[this.selectedIndex()];
-    if (!entry || entry.kind !== 'text') return;
-    this.showTransformPicker.set(true);
-  }
-
-  protected async onTransformApplied(event: { transformedContent: string }): Promise<void> {
-    this.showTransformPicker.set(false);
-
-    try {
-      await this.bridge.setClipboardText(event.transformedContent);
-    } finally {
-      this.bridge.hidePopup();
-    }
-  }
-
-  protected onTransformCancelled(): void {
-    this.showTransformPicker.set(false);
-    this.hostEl.nativeElement.focus();
-  }
-
-  private cycleTab(direction: 1 | -1): void {
-    const allTabs: Tab[] = ['recent', 'pinned', 'snippets'];
-    const idx = allTabs.indexOf(this.activeTab());
-    const next = allTabs[(idx + direction + allTabs.length) % allTabs.length];
-    this.setTab(next);
-  }
-
-  private pasteOrOverlaySnippet(): void {
-    const snippet = this.allSnippets()[this.snippetSelectedIndex()];
-    if (!snippet) return;
-    if (extractPlaceholders(snippet.content).length > 0) {
-      this.placeholderSnippet.set(snippet);
-      this.showPlaceholderOverlay.set(true);
-    } else {
-      this.bridge.setClipboardText(snippet.content).then(() => this.bridge.hidePopup());
-    }
-  }
-
-  private enterSnippetEditMode(): void {
-    const snippet = this.allSnippets()[this.snippetSelectedIndex()];
-    if (!snippet) return;
-    this.editingSnippetId.set(snippet.id);
-  }
-
-  protected selectSnippet(index: number): void {
-    this.snippetSelectedIndex.set(index);
-  }
-
-  protected deleteSnippetByIndex(index: number): void {
-    const snippet = this.allSnippets()[index];
-    if (!snippet) return;
-    const newLen = this.allSnippets().length - 1;
-    this.snippetsService.deleteSnippet(snippet.id);
-    if (newLen <= 0) {
-      this.snippetSelectedIndex.set(0);
-    } else if (this.snippetSelectedIndex() >= newLen) {
-      this.snippetSelectedIndex.set(newLen - 1);
-    }
-  }
-
-  protected async onSnippetCreated(data: { title: string; content: string }): Promise<void> {
-    this.showNewSnippetForm.set(false);
-    const newIndex = this.allSnippets().length;
-    await this.snippetsService.createSnippet(data.title, data.content);
-    this.snippetSelectedIndex.set(newIndex);
-  }
-
-  protected onSnippetFormCancelled(): void {
-    this.showNewSnippetForm.set(false);
-    this.hostEl.nativeElement.focus();
-  }
-
-  protected async onSnippetEditConfirm(data: { title: string; content: string }): Promise<void> {
-    const id = this.editingSnippetId();
-    if (id === null) return;
-    this.editingSnippetId.set(null);
-    await this.snippetsService.updateSnippet(id, data.title, data.content);
-  }
-
-  protected onSnippetEditCancel(): void {
-    this.editingSnippetId.set(null);
-    this.hostEl.nativeElement.focus();
-  }
-
-  protected onSnippetDrop(event: CdkDragDrop<number | null>): void {
-    if (
-      event.previousIndex === event.currentIndex &&
-      event.container.id === event.previousContainer.id
-    )
-      return;
-    const snippet = event.item.data as Snippet;
-    const targetFolderId = event.container.data as number | null;
-    const sourceFolderId = event.previousContainer.data as number | null;
-    const all = this.snippetsService.snippets.value() ?? [];
-
-    if (sourceFolderId === targetFolderId) {
-      const folderItems =
-        sourceFolderId === null
-          ? all.filter((s) => s.folderId === null).sort((a, b) => a.sortOrder - b.sortOrder)
-          : all
-              .filter((s) => s.folderId === sourceFolderId)
-              .sort((a, b) => a.sortOrder - b.sortOrder);
-      const reordered = [...folderItems];
-      moveItemInArray(reordered, event.previousIndex, event.currentIndex);
-      const updated = all.map((s) => {
-        const idx = reordered.findIndex((r) => r.id === s.id);
-        return idx !== -1 ? { ...s, sortOrder: idx } : s;
-      });
-      this.snippetSelectedIndex.set(this.allSnippets().findIndex((s) => s.id === snippet.id));
-      this.snippetsService.reorderSnippet(updated, snippet.id, event.currentIndex);
-    } else {
-      const updated = all
-        .filter((s) => s.id !== snippet.id)
-        .concat([{ ...snippet, folderId: targetFolderId }]);
-      this.snippetsService.moveAndReorderSnippet(
-        updated,
-        snippet.id,
-        targetFolderId,
-        event.currentIndex,
-      );
-    }
-  }
-
-  protected onSnippetDroppedOnFolderHeader(
-    event: CdkDragDrop<number | null>,
-    targetFolderId: number | null,
-  ): void {
-    const snippet = event.item.data as Snippet;
-    if (snippet.folderId === targetFolderId) return;
-    const all = this.snippetsService.snippets.value() ?? [];
-    const updated = all.map((s) => (s.id === snippet.id ? { ...s, folderId: targetFolderId } : s));
-    this.snippetsService.moveSnippetToFolder(updated, snippet.id, targetFolderId);
-  }
-
-  protected onFolderDrop(event: CdkDragDrop<SnippetFolder[]>): void {
-    if (event.previousIndex === event.currentIndex) return;
-    const folder = event.item.data as SnippetFolder;
-    const folders = [...this.userFolders()];
-    moveItemInArray(folders, event.previousIndex, event.currentIndex);
-    this.snippetsService.reorderFolder(folders, folder.id, event.currentIndex);
-  }
-
-  protected onFolderRename(id: number, name: string): void {
-    this.snippetsService.renameFolder(id, name);
-  }
-
-  protected onFolderDelete(id: number): void {
-    this.snippetsService.deleteFolder(id);
-  }
-
-  protected startAddFolder(): void {
-    this.newFolderName.set('');
-    this.addingFolder.set(true);
-    afterNextRender(
-      () => {
-        this.newFolderInputRef()?.nativeElement?.focus();
-      },
-      { injector: this.injector },
-    );
-  }
-
-  protected saveNewFolder(): void {
-    const name = this.newFolderName().trim();
-    this.addingFolder.set(false);
-    if (name) {
-      this.snippetsService.createFolder(name).then(() => {
-        const folders = this.snippetsService.folders.value() ?? [];
-        if (folders.length > 0) {
-          const newest = folders[folders.length - 1];
-          this.toggleFolder(newest.id);
-        }
-      });
-    }
-  }
-
-  protected onNewFolderKeyDown(event: KeyboardEvent): void {
-    event.stopPropagation();
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      (event.target as HTMLInputElement).blur();
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      this.addingFolder.set(false);
-    }
-  }
-
-  protected async onPlaceholderConfirmed(text: string): Promise<void> {
-    this.showPlaceholderOverlay.set(false);
-    this.placeholderSnippet.set(null);
-    await this.bridge.setClipboardText(text);
-    this.bridge.hidePopup();
-  }
-
-  protected onPlaceholderCancelled(): void {
-    this.showPlaceholderOverlay.set(false);
-    this.placeholderSnippet.set(null);
-    this.hostEl.nativeElement.focus();
   }
 
   protected async onCaptureSwitchChange(checked: boolean): Promise<void> {
@@ -1266,24 +224,14 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     }
   }
 
-  private moveSnippetSelection(delta: number): void {
-    const len = this.allSnippets().length;
-    if (len === 0) return;
-    const next = Math.max(0, Math.min(len - 1, this.snippetSelectedIndex() + delta));
-    this.snippetSelectedIndex.set(next);
-    this.scrollSnippetSelectedIntoView();
+  private cycleTab(direction: 1 | -1): void {
+    const allTabs: TabType[] = ['recent', 'pinned', 'snippets'];
+    const idx = allTabs.indexOf(this.activeTab());
+    this.setTab(allTabs[(idx + direction + allTabs.length) % allTabs.length]);
   }
 
-  private scrollSnippetSelectedIntoView(): void {
-    const items = this.listContainer().nativeElement.querySelectorAll<HTMLElement>('.snippet-item');
-    const item = items[this.snippetSelectedIndex()];
-    item?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }
-
-  private scrollSelectedIntoView(): void {
-    const items = this.listContainer().nativeElement.querySelectorAll<HTMLElement>('.entry-item');
-    const item = items[this.selectedIndex()];
-    item?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  private focusActiveTab(): void {
+    this.activeTabRef()?.nativeElement.focus();
   }
 }
 
