@@ -33,6 +33,7 @@ An optional global shortcut that toggles capture without opening the popup. Defa
 - Existing history entries are unaffected (not hidden, not deleted).
 - The paused state is **not persisted**. On every app start Yank always resumes in recording mode (switch checked, green).
 - If a hotkey is configured and fired while the popup is open, the header switch updates in real time.
+- While paused, the system tray icon switches to a distinct paused-state variant (`32x32-paused.png`) so the user can tell at a glance — without opening the popup — that capture is inactive. The icon reverts to the normal variant the moment capture resumes.
 
 ---
 
@@ -62,6 +63,8 @@ The shortcut is registered/unregistered via the same global-shortcut mechanism a
 |---|---|
 | Rust (`monitor.rs`) | Check paused flag before writing entry; expose `toggle_capture_paused` and `get_capture_paused` Tauri commands |
 | Rust (`settings` / state) | Add `capture_paused: bool` to a shared `AppState` struct (runtime only, not persisted) |
+| Rust (`windows.rs`) | Add `set_tray_icon(app, paused)` helper; called from shortcut handler and `toggle_capture_paused` command |
+| `src-tauri/icons/32x32-paused.png` | New icon asset for the paused state (distinct visual from the normal icon) |
 | `TauriBridgeService` | Add `toggleCapturePaused()`, `getCapturePaused()`, and `onCapturePausedChanged()` methods |
 | `ClipboardListComponent` | Add `hlm-switch` + "Capture" label to header; bind to paused state; toggle on change |
 | `SettingsComponent` / Privacy group | Add pause shortcut input field |
@@ -72,6 +75,5 @@ The shortcut is registered/unregistered via the same global-shortcut mechanism a
 
 ## Out of Scope
 
-- Tray icon change when paused
 - Visual banner/warning when app opens (state always resets to recording)
 - Per-app pause rules (that's covered by capture exclusion rules)
