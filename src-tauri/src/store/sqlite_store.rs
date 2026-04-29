@@ -532,6 +532,39 @@ impl SqliteStore {
         Ok(())
     }
 
+    pub fn reorder_snippet(&self, id: i64, new_index: usize) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+
+        // Collect ordered IDs; statement is dropped before the updates
+        let ids: Vec<i64> = {
+            let mut stmt = conn.prepare(
+                "SELECT id FROM snippets ORDER BY sort_order ASC, id ASC",
+            )?;
+            let rows = stmt.query_map([], |row| row.get(0))?
+                .collect::<Result<Vec<_>, _>>()?;
+            rows
+        };
+
+        let current_pos = ids
+            .iter()
+            .position(|&x| x == id)
+            .ok_or(rusqlite::Error::QueryReturnedNoRows)?;
+
+        let mut ids = ids;
+        ids.remove(current_pos);
+        let clamped = new_index.min(ids.len());
+        ids.insert(clamped, id);
+
+        for (i, &snippet_id) in ids.iter().enumerate() {
+            conn.execute(
+                "UPDATE snippets SET sort_order = ?1 WHERE id = ?2",
+                params![i as i64, snippet_id],
+            )?;
+        }
+
+        Ok(())
+    }
+
     pub fn get_excluded_apps(&self) -> Result<Vec<ExcludedApp>, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
@@ -1032,6 +1065,89 @@ mod tests {
         let store = in_memory_store();
         let result = store.update_snippet(9999, "Title", "Body");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_reorder_snippet_move_to_end() {
+        let store = in_memory_store();
+        let s1 = store.create_snippet("A", "a").unwrap();
+        let s2 = store.create_snippet("B", "b").unwrap();
+        let s3 = store.create_snippet("C", "c").unwrap();
+
+        store.reorder_snippet(s1.id, 2).unwrap();
+
+        let snippets = store.get_snippets().unwrap();
+        assert_eq!(snippets[0].id, s2.id);
+        assert_eq!(snippets[1].id, s3.id);
+        assert_eq!(snippets[2].id, s1.id);
+        // sort_orders are dense 0-based
+        assert_eq!(snippets[0].sort_order, 0);
+        assert_eq!(snippets[1].sort_order, 1);
+        assert_eq!(snippets[2].sort_order, 2);
+    }
+
+    #[test]
+    fn test_reorder_snippet_move_to_front() {
+        let store = in_memory_store();
+        let s1 = store.create_snippet("A", "a").unwrap();
+        let s2 = store.create_snippet("B", "b").unwrap();
+        let s3 = store.create_snippet("C", "c").unwrap();
+
+        store.reorder_snippet(s3.id, 0).unwrap();
+
+        let snippets = store.get_snippets().unwrap();
+        assert_eq!(snippets[0].id, s3.id);
+        assert_eq!(snippets[1].id, s1.id);
+        assert_eq!(snippets[2].id, s2.id);
+    }
+
+    #[test]
+    fn test_reorder_snippet_normalizes_duplicates() {
+        let store = in_memory_store();
+        // Manually create snippets with the same sort_order to simulate duplicates
+        let conn = store.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO snippets (title, content, created_at, sort_order) VALUES ('A', 'a', 0, 5)",
+            [],
+        ).unwrap();
+        let id_a = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO snippets (title, content, created_at, sort_order) VALUES ('B', 'b', 1, 5)",
+            [],
+        ).unwrap();
+        let id_b = conn.last_insert_rowid();
+        drop(conn);
+
+        // Reorder: move id_b to index 0
+        store.reorder_snippet(id_b, 0).unwrap();
+
+        let snippets = store.get_snippets().unwrap();
+        assert_eq!(snippets[0].id, id_b);
+        assert_eq!(snippets[1].id, id_a);
+        assert_eq!(snippets[0].sort_order, 0);
+        assert_eq!(snippets[1].sort_order, 1);
+    }
+
+    #[test]
+    fn test_reorder_snippet_unknown_id_returns_error() {
+        let store = in_memory_store();
+        store.create_snippet("A", "a").unwrap();
+        let result = store.reorder_snippet(9999, 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_reorder_snippet_clamps_out_of_bounds_index() {
+        let store = in_memory_store();
+        let s1 = store.create_snippet("A", "a").unwrap();
+        let s2 = store.create_snippet("B", "b").unwrap();
+
+        // new_index 99 should clamp to last valid position (1)
+        store.reorder_snippet(s1.id, 99).unwrap();
+
+        let snippets = store.get_snippets().unwrap();
+        assert_eq!(snippets[0].id, s2.id);
+        assert_eq!(snippets[1].id, s1.id);
     }
 
     #[test]
