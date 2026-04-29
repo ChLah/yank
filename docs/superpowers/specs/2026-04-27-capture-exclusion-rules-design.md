@@ -12,27 +12,65 @@ Users can maintain a list of process names that YANK will never capture clipboar
 
 - Match is against the **process name** of the foreground window at the moment the clipboard change is detected (e.g. `KeePass.exe`, `1Password.exe`).
 - Case-insensitive, exact match (no wildcards in this version).
-- YANK's own process (`yank.exe`) is always excluded implicitly — YANK-triggered clipboard writes (paste operations) must never be stored.
 
-## Settings Model
+## Data Model
 
-Add one field to `AppSettings`:
+### SQLite Table
 
-```ts
-excludedApps: string[]   // default: []
+```sql
+CREATE TABLE IF NOT EXISTS excluded_apps (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    process_name TEXT    NOT NULL UNIQUE,
+    created_at   INTEGER NOT NULL
+);
 ```
 
-Rust:
+`created_at` is a Unix timestamp in milliseconds, consistent with `entries.created_at`. The `UNIQUE` constraint enforces deduplication at the DB level. No entry in the `settings` table — excluded apps are fully independent of `AppSettings`.
+
+### Rust Model
 
 ```rust
-pub excluded_apps: Vec<String>   // default: vec![]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExcludedApp {
+    pub id: i64,
+    pub process_name: String,
+    pub created_at: i64,
+}
 ```
 
-Stored in SQLite as a JSON array in `value_text` for the key `excluded_apps`.
+`AppSettings` has **no** `excluded_apps` field.
+
+### TypeScript Model
+
+```typescript
+export interface ExcludedApp {
+  id: number;
+  processName: string;
+  createdAt: number;
+}
+```
+
+`AppSettings` has **no** `excludedApps` field.
+
+## Store Methods
+
+```rust
+pub fn get_excluded_apps(&self) -> Result<Vec<ExcludedApp>>
+pub fn add_excluded_app(&self, process_name: &str) -> Result<ExcludedApp>
+pub fn remove_excluded_app(&self, id: i64) -> Result<()>
+pub fn is_app_excluded(&self, process_name: &str) -> Result<bool>
+```
+
+- `add_excluded_app` trims the input before insert. Empty string after trim returns an error without touching the DB. UNIQUE violation also returns an error.
+- `is_app_excluded` uses a targeted existence query — no full list load:
+
+```sql
+SELECT EXISTS(SELECT 1 FROM excluded_apps WHERE process_name = ? COLLATE NOCASE)
+```
 
 ## Rust: Foreground Process Name
 
-At clipboard-change time (inside `clipboard_monitor.rs`), before emitting the payload:
+At clipboard-change time (inside `clipboard_monitor.rs`), before saving the entry:
 
 ```rust
 fn get_foreground_process_name() -> Option<String> {
@@ -41,38 +79,56 @@ fn get_foreground_process_name() -> Option<String> {
 }
 ```
 
-Returns `None` if any WinAPI call fails (treated as no exclusion). The result is threaded through to the store layer for the exclusion check and also used for source-app tracking (see Source App Tracking spec).
+Returns `None` if any WinAPI call fails (treated as no exclusion).
 
 ## Exclusion Check
 
-In `lib.rs` where the clipboard payload is processed:
+In the clipboard monitor, after reading the foreground process name:
 
 ```rust
 if let Some(proc) = &foreground_process {
-    let excluded = settings.excluded_apps.iter()
-        .any(|e| e.eq_ignore_ascii_case(proc));
-    if excluded { return; }
+    if store.is_app_excluded(proc).unwrap_or(false) {
+        return;
+    }
 }
 ```
 
+Single targeted DB query per clipboard event. No caching.
+
+## Tauri Commands
+
+```rust
+#[tauri::command] get_excluded_apps()                    -> Result<Vec<ExcludedApp>>
+#[tauri::command] add_excluded_app(process_name: String) -> Result<ExcludedApp>
+#[tauri::command] remove_excluded_app(id: i64)           -> Result<()>
+```
+
+`add_excluded_app` trims `process_name` before passing to the store. Empty string after trim returns an error immediately.
+
+## Angular Integration
+
+- `tauri-bridge.service.ts` gets three new methods alongside the snippet methods.
+- A dedicated `excluded-apps.service.ts` manages state via a signal-based resource (same pattern as snippets/settings).
+- **Add:** trim → empty check → call `addExcludedApp` → reload resource.
+- **Remove:** call `removeExcludedApp(id)` then `resource.update(apps => apps.filter(a => a.id !== id))` — optimistic, no reload.
+
 ## Settings UI
 
-In the **Privacy** settings group (new group, below Clipboard):
+Located in the **Privacy** settings group (new group, below Clipboard):
 
 ```
 Excluded apps
 
-[ KeePass.exe          ✕ ]
-[ 1Password.exe        ✕ ]
+[ KeePass.exe                    added Apr 27, 2026  ✕ ]
+[ 1Password.exe                  added Apr 28, 2026  ✕ ]
 [ ________________________ ]  ← text input
 [  + Add app  ]
 ```
 
-- Text input accepts a process name. Pressing Enter or clicking **+ Add app** appends to the list.
-- Each row has a remove (✕) button.
-- Empty input is rejected silently.
-- Duplicate entries are ignored (case-insensitive check before adding).
-- The list is saved immediately on each add/remove (same autosave pattern as other settings).
+- `created_at` displayed as a short locale date next to each entry.
+- List ordered by `id ASC` (insertion order).
+- Text input trimmed on submit. Empty input rejected silently. Duplicate ignored silently.
+- Each row has a remove (✕) button triggering optimistic removal.
 
 ## i18n Keys
 
@@ -80,6 +136,7 @@ Excluded apps
 SETTINGS.EXCLUDED_APPS_LABEL        = "Excluded apps"
 SETTINGS.EXCLUDED_APPS_PLACEHOLDER  = "e.g. KeePass.exe"
 SETTINGS.EXCLUDED_APPS_ADD          = "Add app"
+SETTINGS.EXCLUDED_APPS_ADDED        = "added {date}"
 ```
 
 ## What is NOT in scope
@@ -87,3 +144,5 @@ SETTINGS.EXCLUDED_APPS_ADD          = "Add app"
 - Wildcard or regex matching.
 - Window-title-based exclusion.
 - Temporary pause ("pause capture for 5 minutes").
+- Manual reordering of the list.
+- Soft-disable (enabled/disabled toggle per entry).
