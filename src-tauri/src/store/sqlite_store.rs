@@ -578,8 +578,9 @@ impl SqliteStore {
             let mut stmt = conn.prepare(
                 "SELECT id FROM snippets WHERE folder_id IS ?1 ORDER BY sort_order ASC, id ASC",
             )?;
-            let x = stmt.query_map(params![folder_id], |row| row.get(0))?
-                .collect::<Result<Vec<_>, _>>()?; x
+            let rows = stmt.query_map(params![folder_id], |row| row.get(0))?
+                .collect::<Result<Vec<_>, _>>()?;
+            rows
         };
 
         let current_pos = ids
@@ -616,8 +617,8 @@ impl SqliteStore {
                 name: row.get(1)?,
                 sort_order: row.get(2)?,
             })
-        })?.collect::<Result<Vec<_>, _>>();
-        results
+        })?.collect::<Result<Vec<_>, _>>()?;
+        Ok(results)
     }
 
     pub fn create_snippet_folder(&self, name: &str) -> Result<SnippetFolder, rusqlite::Error> {
@@ -662,8 +663,9 @@ impl SqliteStore {
             let mut stmt = conn.prepare(
                 "SELECT id FROM snippet_folders ORDER BY sort_order ASC, id ASC",
             )?;
-            let x = stmt.query_map([], |row| row.get(0))?
-                .collect::<Result<Vec<_>, _>>()?; x
+            let rows = stmt.query_map([], |row| row.get(0))?
+                .collect::<Result<Vec<_>, _>>()?;
+            rows
         };
         let current_pos = ids.iter().position(|&x| x == id)
             .ok_or(rusqlite::Error::QueryReturnedNoRows)?;
