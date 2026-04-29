@@ -3,7 +3,7 @@ use std::sync::{
     Arc,
 };
 
-use tauri::{Emitter, Manager, State};
+use tauri::{Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
@@ -163,8 +163,5 @@ pub fn get_capture_paused(pause: PauseCaptureState) -> bool {
 
 #[tauri::command]
 pub fn toggle_capture_paused(pause: PauseCaptureState, app_handle: tauri::AppHandle) -> bool {
-    let was_paused = pause.paused.fetch_xor(true, Ordering::AcqRel);
-    let now_paused = !was_paused;
-    let _ = app_handle.emit("capture-paused-changed", now_paused);
-    now_paused
+    pause.toggle_and_emit(&app_handle)
 }

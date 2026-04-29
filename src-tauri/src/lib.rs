@@ -15,7 +15,7 @@ use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager, WindowEvent,
+    Manager, WindowEvent,
 };
 
 use store::SqliteStore;
@@ -23,6 +23,16 @@ use store::SqliteStore;
 pub struct PauseCapture {
     pub paused: AtomicBool,
     pub shortcut_str: Mutex<String>,
+}
+
+impl PauseCapture {
+    pub fn toggle_and_emit(&self, app: &tauri::AppHandle) -> bool {
+        use tauri::Emitter;
+        let was_paused = self.paused.fetch_xor(true, Ordering::AcqRel);
+        let now_paused = !was_paused;
+        let _ = app.emit("capture-paused-changed", now_paused);
+        now_paused
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -57,9 +67,7 @@ pub fn run() {
                                 .map(|ps| &ps == shortcut)
                                 .unwrap_or(false);
                         if is_pause {
-                            let was_paused = pause_capture_handler.paused.fetch_xor(true, Ordering::AcqRel);
-                            let now_paused = !was_paused;
-                            let _ = app.emit("capture-paused-changed", now_paused);
+                            pause_capture_handler.toggle_and_emit(app);
                         } else {
                             windows::toggle_popup(app);
                         }

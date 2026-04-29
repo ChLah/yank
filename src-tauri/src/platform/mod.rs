@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 use crate::{store::SqliteStore, PauseCapture};
 
+/// Spawns background threads for clipboard monitoring and returns immediately.
 pub fn start_monitor(
     app_handle: tauri::AppHandle,
     store: Arc<SqliteStore>,

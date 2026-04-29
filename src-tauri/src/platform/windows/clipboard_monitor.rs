@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{atomic::Ordering, Arc};
 
 use tauri::Emitter;
 
@@ -39,8 +39,6 @@ fn process_clipboard_change(
     source_app: Option<String>,
     pause_capture: &Arc<PauseCapture>,
 ) {
-    use std::sync::atomic::Ordering;
-
     if pause_capture.paused.load(Ordering::Relaxed) {
         return;
     }
