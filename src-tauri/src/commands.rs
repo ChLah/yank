@@ -122,6 +122,11 @@ pub fn delete_snippet(id: i64, store: StoreState) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn reorder_snippet(id: i64, new_index: usize, store: StoreState) -> Result<(), String> {
+    store.reorder_snippet(id, new_index).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn get_excluded_apps(store: StoreState) -> Result<Vec<ExcludedApp>, String> {
     store.get_excluded_apps().map_err(|e| e.to_string())
 }

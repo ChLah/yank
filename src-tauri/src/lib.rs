@@ -129,6 +129,7 @@ pub fn run() {
             commands::create_snippet,
             commands::update_snippet,
             commands::delete_snippet,
+            commands::reorder_snippet,
             commands::get_excluded_apps,
             commands::add_excluded_app,
             commands::remove_excluded_app,
