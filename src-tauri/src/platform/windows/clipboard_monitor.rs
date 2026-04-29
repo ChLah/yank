@@ -5,12 +5,13 @@ use tauri::Emitter;
 use crate::{
     models::{ClipboardContent, ClipboardPayload},
     store::{sqlite_store::compute_hash, SqliteStore},
+    PauseCapture,
 };
 
 /// Start the Windows clipboard monitor. Spawns two threads:
 /// 1. A Win32 message pump thread that listens for WM_CLIPBOARDUPDATE
 /// 2. A processor thread that reads the clipboard and saves to the store
-pub fn start(app_handle: tauri::AppHandle, store: Arc<SqliteStore>) {
+pub fn start(app_handle: tauri::AppHandle, store: Arc<SqliteStore>, pause_capture: Arc<PauseCapture>) {
     let (trigger_tx, trigger_rx) = std::sync::mpsc::channel::<Option<String>>();
 
     // Thread 1: Win32 message pump
@@ -26,7 +27,7 @@ pub fn start(app_handle: tauri::AppHandle, store: Arc<SqliteStore>) {
         .name("clipboard-processor".into())
         .spawn(move || {
             while let Ok(source_app) = trigger_rx.recv() {
-                process_clipboard_change(&app_handle, &store, source_app);
+                process_clipboard_change(&app_handle, &store, source_app, &pause_capture);
             }
         })
         .expect("Failed to spawn clipboard processor thread");
@@ -36,7 +37,14 @@ fn process_clipboard_change(
     app_handle: &tauri::AppHandle,
     store: &Arc<SqliteStore>,
     source_app: Option<String>,
+    pause_capture: &Arc<PauseCapture>,
 ) {
+    use std::sync::atomic::Ordering;
+
+    if pause_capture.paused.load(Ordering::Relaxed) {
+        return;
+    }
+
     if let Some(ref proc) = source_app {
         if store.is_app_excluded(proc).unwrap_or(false) {
             return;

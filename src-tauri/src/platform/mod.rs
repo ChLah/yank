@@ -1,5 +1,4 @@
 /// Platform-specific clipboard monitor implementations.
-/// Each platform module exposes a `start_monitor` function.
 
 #[cfg(target_os = "windows")]
 pub mod windows;
@@ -12,26 +11,25 @@ pub mod linux;
 
 use std::sync::Arc;
 
-use crate::store::SqliteStore;
+use crate::{store::SqliteStore, PauseCapture};
 
-/// Start the platform clipboard monitor. Spawns background threads and returns immediately.
-/// When the clipboard changes, the payload is processed and emitted via the Tauri app handle.
 pub fn start_monitor(
     app_handle: tauri::AppHandle,
     store: Arc<SqliteStore>,
+    pause_capture: Arc<PauseCapture>,
 ) {
     #[cfg(target_os = "windows")]
-    windows::clipboard_monitor::start(app_handle, store);
+    windows::clipboard_monitor::start(app_handle, store, pause_capture);
 
     #[cfg(target_os = "macos")]
     {
         tracing::warn!("macOS clipboard monitor not yet implemented");
-        let _ = (app_handle, store);
+        let _ = (app_handle, store, pause_capture);
     }
 
     #[cfg(target_os = "linux")]
     {
         tracing::warn!("Linux clipboard monitor not yet implemented");
-        let _ = (app_handle, store);
+        let _ = (app_handle, store, pause_capture);
     }
 }
