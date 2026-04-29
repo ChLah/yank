@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, image::Image};
 
 use crate::{models::WindowPositionMode, store::SqliteStore};
 
@@ -181,4 +181,17 @@ pub fn open_settings(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
         .build()?;
 
     Ok(())
+}
+
+pub fn set_tray_icon(app: &AppHandle, paused: bool) {
+    let icon_bytes: &[u8] = if paused {
+        include_bytes!("../icons/32x32-paused.png")
+    } else {
+        include_bytes!("../icons/32x32.png")
+    };
+    if let Ok(icon) = Image::from_bytes(icon_bytes) {
+        if let Some(tray) = app.tray_by_id("main-tray") {
+            let _ = tray.set_icon(Some(icon));
+        }
+    }
 }

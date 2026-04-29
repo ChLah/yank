@@ -163,5 +163,7 @@ pub fn get_capture_paused(pause: PauseCaptureState) -> bool {
 
 #[tauri::command]
 pub fn toggle_capture_paused(pause: PauseCaptureState, app_handle: tauri::AppHandle) -> bool {
-    pause.toggle_and_emit(&app_handle)
+    let paused = pause.toggle_and_emit(&app_handle);
+    crate::windows::set_tray_icon(&app_handle, paused);
+    paused
 }

@@ -67,7 +67,8 @@ pub fn run() {
                                 .map(|ps| &ps == shortcut)
                                 .unwrap_or(false);
                         if is_pause {
-                            pause_capture_handler.toggle_and_emit(app);
+                            let paused = pause_capture_handler.toggle_and_emit(app);
+                            windows::set_tray_icon(app, paused);
                         } else {
                             windows::toggle_popup(app);
                         }
