@@ -5,7 +5,7 @@ use image::imageops::FilterType;
 use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
-use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, ExcludedApp, Language, Snippet, Theme, WindowPositionMode};
+use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, ExcludedApp, Language, Snippet, SnippetFolder, Theme, WindowPositionMode};
 
 const THUMBNAIL_MAX_SIZE: u32 = 200;
 
@@ -566,14 +566,20 @@ impl SqliteStore {
     pub fn reorder_snippet(&self, id: i64, new_index: usize) -> Result<(), rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
 
-        // Collect ordered IDs; statement is dropped before the updates
+        // Get folder_id of the target snippet
+        let folder_id: Option<i64> = conn.query_row(
+            "SELECT folder_id FROM snippets WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        )?;
+
+        // Collect IDs within the same folder only (NULL IS NULL evaluates true)
         let ids: Vec<i64> = {
             let mut stmt = conn.prepare(
-                "SELECT id FROM snippets ORDER BY sort_order ASC, id ASC",
+                "SELECT id FROM snippets WHERE folder_id IS ?1 ORDER BY sort_order ASC, id ASC",
             )?;
-            let rows = stmt.query_map([], |row| row.get(0))?
-                .collect::<Result<Vec<_>, _>>()?;
-            rows
+            let x = stmt.query_map(params![folder_id], |row| row.get(0))?
+                .collect::<Result<Vec<_>, _>>()?; x
         };
 
         let current_pos = ids
@@ -596,6 +602,99 @@ impl SqliteStore {
         drop(stmt);
         tx.commit()?;
 
+        Ok(())
+    }
+
+    pub fn get_snippet_folders(&self) -> Result<Vec<SnippetFolder>, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, name, sort_order FROM snippet_folders ORDER BY sort_order ASC, id ASC",
+        )?;
+        let results = stmt.query_map([], |row| {
+            Ok(SnippetFolder {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                sort_order: row.get(2)?,
+            })
+        })?.collect::<Result<Vec<_>, _>>();
+        results
+    }
+
+    pub fn create_snippet_folder(&self, name: &str) -> Result<SnippetFolder, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let sort_order: i64 = conn.query_row(
+            "SELECT COALESCE(MAX(sort_order) + 1, 0) FROM snippet_folders",
+            [],
+            |row| row.get(0),
+        )?;
+        conn.execute(
+            "INSERT INTO snippet_folders (name, sort_order) VALUES (?1, ?2)",
+            params![name, sort_order],
+        )?;
+        let id = conn.last_insert_rowid();
+        Ok(SnippetFolder { id, name: name.to_string(), sort_order })
+    }
+
+    pub fn rename_snippet_folder(&self, id: i64, name: &str) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let changed = conn.execute(
+            "UPDATE snippet_folders SET name = ?1 WHERE id = ?2",
+            params![name, id],
+        )?;
+        if changed == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows);
+        }
+        Ok(())
+    }
+
+    pub fn delete_snippet_folder(&self, id: i64) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let tx = conn.unchecked_transaction()?;
+        tx.execute("UPDATE snippets SET folder_id = NULL WHERE folder_id = ?1", params![id])?;
+        tx.execute("DELETE FROM snippet_folders WHERE id = ?1", params![id])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn reorder_snippet_folder(&self, id: i64, new_index: usize) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let ids: Vec<i64> = {
+            let mut stmt = conn.prepare(
+                "SELECT id FROM snippet_folders ORDER BY sort_order ASC, id ASC",
+            )?;
+            let x = stmt.query_map([], |row| row.get(0))?
+                .collect::<Result<Vec<_>, _>>()?; x
+        };
+        let current_pos = ids.iter().position(|&x| x == id)
+            .ok_or(rusqlite::Error::QueryReturnedNoRows)?;
+        let mut ids = ids;
+        ids.remove(current_pos);
+        let clamped = new_index.min(ids.len());
+        ids.insert(clamped, id);
+        let tx = conn.unchecked_transaction()?;
+        let mut stmt = tx.prepare("UPDATE snippet_folders SET sort_order = ?1 WHERE id = ?2")?;
+        for (i, &folder_id) in ids.iter().enumerate() {
+            stmt.execute(params![i as i64, folder_id])?;
+        }
+        drop(stmt);
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn move_snippet_to_folder(&self, snippet_id: i64, folder_id: Option<i64>) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let next_order: i64 = conn.query_row(
+            "SELECT COALESCE(MAX(sort_order) + 1, 0) FROM snippets WHERE folder_id IS ?1",
+            params![folder_id],
+            |row| row.get(0),
+        )?;
+        let changed = conn.execute(
+            "UPDATE snippets SET folder_id = ?1, sort_order = ?2 WHERE id = ?3",
+            params![folder_id, next_order, snippet_id],
+        )?;
+        if changed == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows);
+        }
         Ok(())
     }
 
@@ -1298,5 +1397,99 @@ mod tests {
         let store = in_memory_store();
         store.add_excluded_app("  notepad.exe  ").unwrap(); // stored as "notepad.exe"
         assert!(store.is_app_excluded("notepad.exe").unwrap());
+    }
+
+    #[test]
+    fn test_create_and_get_snippet_folders() {
+        let store = in_memory_store();
+        let f1 = store.create_snippet_folder("Work").unwrap();
+        let f2 = store.create_snippet_folder("Dev").unwrap();
+        assert_eq!(f1.name, "Work");
+        assert_eq!(f1.sort_order, 0);
+        assert_eq!(f2.sort_order, 1);
+        let folders = store.get_snippet_folders().unwrap();
+        assert_eq!(folders.len(), 2);
+        assert_eq!(folders[0].id, f1.id);
+        assert_eq!(folders[1].id, f2.id);
+    }
+
+    #[test]
+    fn test_rename_snippet_folder() {
+        let store = in_memory_store();
+        let f = store.create_snippet_folder("Old").unwrap();
+        store.rename_snippet_folder(f.id, "New").unwrap();
+        let folders = store.get_snippet_folders().unwrap();
+        assert_eq!(folders[0].name, "New");
+    }
+
+    #[test]
+    fn test_delete_snippet_folder_moves_snippets_to_general() {
+        let store = in_memory_store();
+        let folder = store.create_snippet_folder("Work").unwrap();
+        let s = store.create_snippet("Test", "Body").unwrap();
+        store.move_snippet_to_folder(s.id, Some(folder.id)).unwrap();
+        store.delete_snippet_folder(folder.id).unwrap();
+        let snippets = store.get_snippets().unwrap();
+        assert_eq!(snippets[0].folder_id, None);
+        let folders = store.get_snippet_folders().unwrap();
+        assert!(folders.is_empty());
+    }
+
+    #[test]
+    fn test_move_snippet_to_folder() {
+        let store = in_memory_store();
+        let folder = store.create_snippet_folder("Work").unwrap();
+        let s = store.create_snippet("Test", "Body").unwrap();
+        assert_eq!(s.folder_id, None);
+        store.move_snippet_to_folder(s.id, Some(folder.id)).unwrap();
+        let snippets = store.get_snippets().unwrap();
+        assert_eq!(snippets[0].folder_id, Some(folder.id));
+    }
+
+    #[test]
+    fn test_move_snippet_to_folder_places_at_end() {
+        let store = in_memory_store();
+        let folder = store.create_snippet_folder("Work").unwrap();
+        let s1 = store.create_snippet("A", "a").unwrap();
+        let s2 = store.create_snippet("B", "b").unwrap();
+        store.move_snippet_to_folder(s1.id, Some(folder.id)).unwrap();
+        store.move_snippet_to_folder(s2.id, Some(folder.id)).unwrap();
+        let snippets = store.get_snippets().unwrap();
+        let folder_snippets: Vec<_> = snippets.iter().filter(|s| s.folder_id == Some(folder.id)).collect();
+        assert_eq!(folder_snippets[0].id, s1.id);
+        assert_eq!(folder_snippets[1].id, s2.id);
+        assert_eq!(folder_snippets[0].sort_order, 0);
+        assert_eq!(folder_snippets[1].sort_order, 1);
+    }
+
+    #[test]
+    fn test_reorder_snippet_folder() {
+        let store = in_memory_store();
+        let f1 = store.create_snippet_folder("A").unwrap();
+        let f2 = store.create_snippet_folder("B").unwrap();
+        let f3 = store.create_snippet_folder("C").unwrap();
+        store.reorder_snippet_folder(f1.id, 2).unwrap();
+        let folders = store.get_snippet_folders().unwrap();
+        assert_eq!(folders[0].id, f2.id);
+        assert_eq!(folders[1].id, f3.id);
+        assert_eq!(folders[2].id, f1.id);
+    }
+
+    #[test]
+    fn test_reorder_snippet_scoped_to_folder() {
+        let store = in_memory_store();
+        let folder = store.create_snippet_folder("Work").unwrap();
+        let s1 = store.create_snippet("A", "a").unwrap();
+        let s2 = store.create_snippet("B", "b").unwrap();
+        let s3 = store.create_snippet("C", "c").unwrap();
+        store.move_snippet_to_folder(s1.id, Some(folder.id)).unwrap();
+        store.move_snippet_to_folder(s2.id, Some(folder.id)).unwrap();
+        store.reorder_snippet(s1.id, 1).unwrap();
+        let snippets = store.get_snippets().unwrap();
+        let folder_snippets: Vec<_> = snippets.iter().filter(|s| s.folder_id == Some(folder.id)).collect();
+        assert_eq!(folder_snippets[0].id, s2.id);
+        assert_eq!(folder_snippets[1].id, s1.id);
+        let general: Vec<_> = snippets.iter().filter(|s| s.folder_id.is_none()).collect();
+        assert_eq!(general[0].id, s3.id);
     }
 }
