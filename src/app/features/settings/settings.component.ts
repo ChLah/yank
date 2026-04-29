@@ -266,6 +266,29 @@ import { ExcludedAppsComponent } from './components/excluded-apps/excluded-apps.
             <app-setting-field [label]="'SETTINGS.EXCLUDED_APPS_LABEL' | translate">
               <app-excluded-apps />
             </app-setting-field>
+
+            <app-setting-field [label]="'SETTINGS.PAUSE_SHORTCUT_LABEL' | translate">
+              <div class="relative w-full">
+                <input
+                  hlmInput
+                  type="text"
+                  [value]="settings().pauseShortcut"
+                  class="w-full font-mono pr-8"
+                  [placeholder]="'SETTINGS.SHORTCUT_PLACEHOLDER' | translate"
+                  (keydown)="onPauseShortcutCapture($event)"
+                  readonly
+                />
+                @if (settings().pauseShortcut) {
+                  <button
+                    type="button"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    (click)="clearPauseShortcut()"
+                  >
+                    <ng-icon hlm size="sm" name="lucideX" />
+                  </button>
+                }
+              </div>
+            </app-setting-field>
           </div>
         </div>
       }
@@ -396,6 +419,46 @@ export class SettingsComponent {
   protected onWindowPositionChange(value: string | null): void {
     const windowPosition = (value as WindowPositionMode) || 'cursor';
     this.settings.update((s) => ({ ...s, windowPosition }));
+    this.persist();
+  }
+
+  protected onPauseShortcutCapture(event: KeyboardEvent): void {
+    event.preventDefault();
+    const parts: string[] = [];
+    if (event.ctrlKey) parts.push('Ctrl');
+    if (event.altKey) parts.push('Alt');
+    if (event.shiftKey) parts.push('Shift');
+    if (event.metaKey) parts.push('Super');
+
+    const key = event.code;
+    if (
+      ![
+        'ControlLeft',
+        'ControlRight',
+        'AltLeft',
+        'AltRight',
+        'ShiftLeft',
+        'ShiftRight',
+        'MetaLeft',
+        'MetaRight',
+      ].includes(key)
+    ) {
+      if (parts.length === 0) {
+        this.settings.update((s) => ({ ...s, pauseShortcut: '' }));
+        this.persist();
+        return;
+      }
+      const cleanKey = key.startsWith('Key') ? key.slice(3) : key;
+      parts.push(cleanKey);
+      if (parts.length > 1) {
+        this.settings.update((s) => ({ ...s, pauseShortcut: parts.join('+') }));
+        this.persist();
+      }
+    }
+  }
+
+  protected clearPauseShortcut(): void {
+    this.settings.update((s) => ({ ...s, pauseShortcut: '' }));
     this.persist();
   }
 
