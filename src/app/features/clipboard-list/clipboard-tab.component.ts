@@ -413,6 +413,8 @@ export class ClipboardTabComponent implements OnInit, OnDestroy {
         } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
           this.isSearching.set(true);
           this.searchQuery.set(event.key);
+          this.selectedIndex.set(0);
+          this.emitSelectedEntry();
           setTimeout(() => {
             const input = this.searchInput()?.nativeElement;
             if (input) {
