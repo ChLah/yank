@@ -13,9 +13,16 @@ import { UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideClipboard, lucideSearch, lucideSettings, lucideX } from '@ng-icons/lucide';
+import {
+  lucideClipboard,
+  lucideGripVertical,
+  lucideSearch,
+  lucideSettings,
+  lucideX,
+} from '@ng-icons/lucide';
 import { ClipboardEntryComponent } from './clipboard-entry.component';
 import { SnippetItemComponent } from './snippet-item.component';
+import { SnippetFolderHeaderComponent } from './snippet-folder-header.component';
 import { PlaceholderOverlayComponent, extractPlaceholders } from './placeholder-overlay.component';
 import { NewSnippetFormComponent } from './new-snippet-form.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
@@ -27,12 +34,20 @@ import { SnippetsService } from '../../core/services/snippets.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { Snippet } from '../../core/models/snippet.model';
+import { SnippetFolder } from '../../core/models/snippet-folder.model';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmSwitchImports } from '@spartan-ng/helm/switch';
 import { HlmTabs, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs';
-import { CdkDropList, CdkDrag, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
+import {
+  CdkDropList,
+  CdkDrag,
+  CdkDragDrop,
+  CdkDragHandle,
+  CdkDragPlaceholder,
+  moveItemInArray,
+} from '@angular/cdk/drag-drop';
 import { TranslatePipe } from '@ngx-translate/core';
 
 type Tab = 'recent' | 'pinned' | 'snippets';
@@ -44,8 +59,11 @@ type Filter = 'all' | 'text' | 'image';
   imports: [
     CdkDropList,
     CdkDrag,
+    CdkDragHandle,
+    CdkDragPlaceholder,
     ClipboardEntryComponent,
     SnippetItemComponent,
+    SnippetFolderHeaderComponent,
     PlaceholderOverlayComponent,
     NewSnippetFormComponent,
     RouterLink,
@@ -63,7 +81,9 @@ type Filter = 'all' | 'text' | 'image';
     TransformPickerComponent,
     ...HlmSwitchImports,
   ],
-  providers: [provideIcons({ lucideClipboard, lucideSettings, lucideSearch, lucideX })],
+  providers: [
+    provideIcons({ lucideClipboard, lucideGripVertical, lucideSettings, lucideSearch, lucideX }),
+  ],
   host: {
     '(keydown)': 'onKeyDown($event)',
     '(click)': 'onHostClick()',
@@ -212,30 +232,149 @@ type Filter = 'all' | 'text' | 'image';
               [hint]="'SNIPPETS.EMPTY_HINT' | translate"
             />
           } @else {
-            <div cdkDropList (cdkDropListDropped)="onSnippetDrop($event)" class="py-1">
-              @if (showNewSnippetForm()) {
-                <app-new-snippet-form
-                  (saved)="onSnippetCreated($event)"
-                  (cancelled)="onSnippetFormCancelled()"
-                />
-              }
-              @for (snippet of allSnippets(); track snippet.id; let i = $index) {
+            <!-- Snippet folders -->
+            <div class="py-1">
+              <!-- General folder section (always first, not reorderable) -->
+              <div class="folder-section relative group/folder">
                 <div
-                  class="snippet-item"
-                  cdkDrag
-                  [cdkDragData]="snippet"
-                  [cdkDragDisabled]="editingSnippetId() !== null || showNewSnippetForm()"
+                  class="relative"
+                  cdkDropList
+                  id="folder-header-general"
+                  [cdkDropListConnectedTo]="snippetBodyIds()"
+                  [cdkDropListSortingDisabled]="true"
+                  (cdkDropListDropped)="onSnippetDroppedOnFolderHeader($event, null)"
                 >
-                  <app-snippet-item
-                    [snippet]="snippet"
-                    [selected]="snippetSelectedIndex() === i"
-                    [editMode]="editingSnippetId() === snippet.id"
-                    (select)="selectSnippet(i)"
-                    (delete)="deleteSnippetByIndex(i)"
-                    (editConfirm)="onSnippetEditConfirm($event)"
-                    (editCancel)="onSnippetEditCancel()"
+                  <app-snippet-folder-header
+                    [folder]="generalFolder"
+                    [isGeneral]="true"
+                    [isExpanded]="isFolderExpanded('general')"
+                    (toggleCollapse)="toggleFolder('general')"
                   />
                 </div>
+                @if (isFolderExpanded('general')) {
+                  <div
+                    cdkDropList
+                    id="folder-body-general"
+                    [cdkDropListConnectedTo]="allSnippetTargetIds()"
+                    [cdkDropListData]="null"
+                    (cdkDropListDropped)="onSnippetDrop($any($event))"
+                  >
+                    @if (showNewSnippetForm()) {
+                      <app-new-snippet-form
+                        (saved)="onSnippetCreated($event)"
+                        (cancelled)="onSnippetFormCancelled()"
+                      />
+                    }
+                    @for (snippet of generalSnippets(); track snippet.id; let i = $index) {
+                      <div
+                        class="snippet-item"
+                        cdkDrag
+                        [cdkDragData]="snippet"
+                        [cdkDragDisabled]="editingSnippetId() !== null || showNewSnippetForm()"
+                      >
+                        <app-snippet-item
+                          [snippet]="snippet"
+                          [selected]="snippetSelectedIndex() === allSnippets().indexOf(snippet)"
+                          [editMode]="editingSnippetId() === snippet.id"
+                          (select)="selectSnippet(allSnippets().indexOf(snippet))"
+                          (delete)="deleteSnippetByIndex(allSnippets().indexOf(snippet))"
+                          (editConfirm)="onSnippetEditConfirm($event)"
+                          (editCancel)="onSnippetEditCancel()"
+                        />
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- User folder sections (reorderable) -->
+              <div cdkDropList id="folder-reorder" (cdkDropListDropped)="onFolderDrop($event)">
+                @for (folder of userFolders(); track folder.id) {
+                  <div cdkDrag [cdkDragData]="folder" class="folder-section group/folder">
+                    <div
+                      *cdkDragPlaceholder
+                      class="h-7 mx-2 my-0.5 rounded border border-dashed border-border/50 bg-muted/20"
+                    ></div>
+
+                    <!-- Folder header: also a drop zone for snippets -->
+                    <div
+                      class="relative flex items-center"
+                      cdkDropList
+                      [id]="'folder-header-' + folder.id"
+                      [cdkDropListConnectedTo]="snippetBodyIds()"
+                      [cdkDropListSortingDisabled]="true"
+                      (cdkDropListDropped)="onSnippetDroppedOnFolderHeader($event, folder.id)"
+                    >
+                      <span
+                        cdkDragHandle
+                        class="opacity-0 group-hover/folder:opacity-100 cursor-grab active:cursor-grabbing shrink-0 text-muted-foreground transition-opacity pl-1"
+                      >
+                        <ng-icon hlm size="xs" name="lucideGripVertical" />
+                      </span>
+                      <app-snippet-folder-header
+                        class="flex-1 min-w-0"
+                        [folder]="folder"
+                        [isGeneral]="false"
+                        [isExpanded]="isFolderExpanded(folder.id)"
+                        (toggleCollapse)="toggleFolder(folder.id)"
+                        (rename)="onFolderRename(folder.id, $event)"
+                        (delete)="onFolderDelete(folder.id)"
+                      />
+                    </div>
+
+                    @if (isFolderExpanded(folder.id)) {
+                      <div
+                        cdkDropList
+                        [id]="'folder-body-' + folder.id"
+                        [cdkDropListConnectedTo]="allSnippetTargetIds()"
+                        [cdkDropListData]="folder.id"
+                        (cdkDropListDropped)="onSnippetDrop($any($event))"
+                      >
+                        @for (snippet of getSnippetsByFolder(folder.id); track snippet.id) {
+                          <div
+                            class="snippet-item"
+                            cdkDrag
+                            [cdkDragData]="snippet"
+                            [cdkDragDisabled]="editingSnippetId() !== null"
+                          >
+                            <app-snippet-item
+                              [snippet]="snippet"
+                              [selected]="snippetSelectedIndex() === allSnippets().indexOf(snippet)"
+                              [editMode]="editingSnippetId() === snippet.id"
+                              (select)="selectSnippet(allSnippets().indexOf(snippet))"
+                              (delete)="deleteSnippetByIndex(allSnippets().indexOf(snippet))"
+                              (editConfirm)="onSnippetEditConfirm($event)"
+                              (editCancel)="onSnippetEditCancel()"
+                            />
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Add folder button / inline new folder input -->
+              @if (addingFolder()) {
+                <div class="flex items-center gap-1.5 px-3 py-1">
+                  <input
+                    #newFolderInput
+                    type="text"
+                    [value]="newFolderName()"
+                    (input)="newFolderName.set($any($event.target).value)"
+                    (keydown)="onNewFolderKeyDown($event)"
+                    (blur)="saveNewFolder()"
+                    [placeholder]="'SNIPPETS.FOLDER_NAME_PLACEHOLDER' | translate"
+                    class="flex-1 min-w-0 bg-muted/50 text-[12px] text-foreground rounded px-2 py-1 outline-none focus:ring-1 focus:ring-brand/50"
+                  />
+                </div>
+              } @else {
+                <button
+                  class="w-full text-left px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  (click)="startAddFolder()"
+                >
+                  {{ 'SNIPPETS.FOLDER_ADD' | translate }}
+                </button>
               }
             </div>
           }
@@ -429,6 +568,10 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected placeholderSnippet = signal<Snippet | null>(null);
   protected captureIsPaused = signal(false);
 
+  protected expandedFolderIds = signal<Set<string>>(new Set(['general']));
+  protected addingFolder = signal(false);
+  protected newFolderName = signal('');
+
   protected tabs = [
     { labelKey: 'CLIPBOARD.TAB_RECENT', value: 'recent' as Tab },
     { labelKey: 'CLIPBOARD.TAB_PINNED', value: 'pinned' as Tab },
@@ -442,7 +585,66 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   ];
 
   protected allEntries = computed(() => this.clipboard.entries.value() ?? []);
-  protected allSnippets = computed(() => this.snippetsService.snippets.value() ?? []);
+
+  protected allSnippets = computed(() => {
+    const snippets = this.snippetsService.snippets.value() ?? [];
+    const folders = this.snippetsService.folders.value() ?? [];
+    const general = snippets
+      .filter((s) => s.folderId === null)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const folderSnippets = folders
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .flatMap((f) =>
+        snippets.filter((s) => s.folderId === f.id).sort((a, b) => a.sortOrder - b.sortOrder),
+      );
+    return [...general, ...folderSnippets];
+  });
+
+  protected userFolders = computed(() =>
+    (this.snippetsService.folders.value() ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder),
+  );
+
+  protected generalSnippets = computed(() =>
+    (this.snippetsService.snippets.value() ?? [])
+      .filter((s) => s.folderId === null)
+      .sort((a, b) => a.sortOrder - b.sortOrder),
+  );
+
+  protected snippetBodyIds = computed(() => [
+    'folder-body-general',
+    ...this.userFolders().map((f) => 'folder-body-' + f.id),
+  ]);
+
+  protected allSnippetTargetIds = computed(() => [
+    ...this.snippetBodyIds(),
+    'folder-header-general',
+    ...this.userFolders().map((f) => 'folder-header-' + f.id),
+  ]);
+
+  protected getSnippetsByFolder(folderId: number): Snippet[] {
+    return (this.snippetsService.snippets.value() ?? [])
+      .filter((s) => s.folderId === folderId)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  protected isFolderExpanded(key: string | number): boolean {
+    return this.expandedFolderIds().has(String(key));
+  }
+
+  protected toggleFolder(key: string | number): void {
+    const id = String(key);
+    const set = new Set(this.expandedFolderIds());
+    if (set.has(id)) {
+      set.delete(id);
+    } else {
+      set.add(id);
+    }
+    this.expandedFolderIds.set(set);
+  }
+
+  protected readonly generalFolder: SnippetFolder = { id: -1, name: '', sortOrder: -1 };
+
   protected pinnedCount = computed(() => this.allEntries().filter((e) => e.pinned).length);
 
   protected selectedEntryIsImage = computed(() => {
@@ -475,6 +677,10 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
         this.showPlaceholderOverlay.set(false);
         this.placeholderSnippet.set(null);
         this.snippetSelectedIndex.set(0);
+        this.addingFolder.set(false);
+        this.newFolderName.set('');
+        this.expandedFolderIds.set(new Set(['general']));
+        this.snippetsService.folders.reload();
         this.bridge.getCapturePaused().then((paused) => this.captureIsPaused.set(paused));
         this.suppressPositionSave = true;
         setTimeout(() => {
@@ -916,13 +1122,93 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     this.hostEl.nativeElement.focus();
   }
 
-  protected onSnippetDrop(event: CdkDragDrop<Snippet[]>): void {
-    if (event.previousIndex === event.currentIndex) return;
+  protected onSnippetDrop(event: CdkDragDrop<number | null>): void {
+    if (
+      event.previousIndex === event.currentIndex &&
+      event.container.id === event.previousContainer.id
+    )
+      return;
     const snippet = event.item.data as Snippet;
-    const reordered = [...this.allSnippets()];
-    moveItemInArray(reordered, event.previousIndex, event.currentIndex);
-    this.snippetSelectedIndex.set(event.currentIndex);
-    this.snippetsService.reorderSnippet(reordered, snippet.id, event.currentIndex);
+    const targetFolderId = event.container.data as number | null;
+    const sourceFolderId = event.previousContainer.data as number | null;
+    const all = this.snippetsService.snippets.value() ?? [];
+
+    if (sourceFolderId === targetFolderId) {
+      const folderItems =
+        sourceFolderId === null
+          ? all.filter((s) => s.folderId === null).sort((a, b) => a.sortOrder - b.sortOrder)
+          : all
+              .filter((s) => s.folderId === sourceFolderId)
+              .sort((a, b) => a.sortOrder - b.sortOrder);
+      const reordered = [...folderItems];
+      moveItemInArray(reordered, event.previousIndex, event.currentIndex);
+      const updated = all.map((s) => {
+        const idx = reordered.findIndex((r) => r.id === s.id);
+        return idx !== -1 ? { ...s, sortOrder: idx } : s;
+      });
+      this.snippetSelectedIndex.set(this.allSnippets().findIndex((s) => s.id === snippet.id));
+      this.snippetsService.reorderSnippet(updated, snippet.id, event.currentIndex);
+    } else {
+      const updated = all
+        .filter((s) => s.id !== snippet.id)
+        .concat([{ ...snippet, folderId: targetFolderId }]);
+      this.snippetsService.moveAndReorderSnippet(
+        updated,
+        snippet.id,
+        targetFolderId,
+        event.currentIndex,
+      );
+    }
+  }
+
+  protected onSnippetDroppedOnFolderHeader(
+    event: CdkDragDrop<number | null>,
+    targetFolderId: number | null,
+  ): void {
+    const snippet = event.item.data as Snippet;
+    if (snippet.folderId === targetFolderId) return;
+    const all = this.snippetsService.snippets.value() ?? [];
+    const updated = all.map((s) => (s.id === snippet.id ? { ...s, folderId: targetFolderId } : s));
+    this.snippetsService.moveSnippetToFolder(updated, snippet.id, targetFolderId);
+  }
+
+  protected onFolderDrop(event: CdkDragDrop<SnippetFolder[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
+    const folder = event.item.data as SnippetFolder;
+    const folders = [...this.userFolders()];
+    moveItemInArray(folders, event.previousIndex, event.currentIndex);
+    this.snippetsService.reorderFolder(folders, folder.id, event.currentIndex);
+  }
+
+  protected onFolderRename(id: number, name: string): void {
+    this.snippetsService.renameFolder(id, name);
+  }
+
+  protected onFolderDelete(id: number): void {
+    this.snippetsService.deleteFolder(id);
+  }
+
+  protected startAddFolder(): void {
+    this.newFolderName.set('');
+    this.addingFolder.set(true);
+  }
+
+  protected saveNewFolder(): void {
+    const name = this.newFolderName().trim();
+    this.addingFolder.set(false);
+    if (name) {
+      this.snippetsService.createFolder(name);
+    }
+  }
+
+  protected onNewFolderKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      (event.target as HTMLInputElement).blur();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      this.addingFolder.set(false);
+    }
   }
 
   protected async onPlaceholderConfirmed(text: string): Promise<void> {
