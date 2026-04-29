@@ -30,6 +30,7 @@ import { Snippet } from '../../core/models/snippet.model';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmIcon } from '@spartan-ng/helm/icon';
+import { HlmSwitchImports } from '@spartan-ng/helm/switch';
 import { HlmTabs, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs';
 import { CdkDropList, CdkDrag, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -60,6 +61,7 @@ type Filter = 'all' | 'text' | 'image';
     EmptyStateComponent,
     KeyboardHintComponent,
     TransformPickerComponent,
+    ...HlmSwitchImports,
   ],
   providers: [provideIcons({ lucideClipboard, lucideSettings, lucideSearch, lucideX })],
   host: {
@@ -84,6 +86,13 @@ type Filter = 'all' | 'text' | 'image';
           }
         </ng-container>
         <ng-container end>
+          <span class="text-[11px] text-muted-foreground select-none">{{
+            'CLIPBOARD.CAPTURE_LABEL' | translate
+          }}</span>
+          <hlm-switch
+            [checked]="!captureIsPaused()"
+            (checkedChange)="onCaptureSwitchChange($event)"
+          />
           <a
             routerLink="/settings"
             class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -388,6 +397,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   private hostEl = inject(ElementRef);
   private unlistenPopupShown?: UnlistenFn;
   private unlistenWindowMoved?: UnlistenFn;
+  private unlistenCapturePaused?: UnlistenFn;
   private moveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private duplicateErrorTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressPositionSave = false;
@@ -417,6 +427,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected showNewSnippetForm = signal(false);
   protected showPlaceholderOverlay = signal(false);
   protected placeholderSnippet = signal<Snippet | null>(null);
+  protected captureIsPaused = signal(false);
 
   protected tabs = [
     { labelKey: 'CLIPBOARD.TAB_RECENT', value: 'recent' as Tab },
@@ -464,6 +475,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
         this.showPlaceholderOverlay.set(false);
         this.placeholderSnippet.set(null);
         this.snippetSelectedIndex.set(0);
+        this.bridge.getCapturePaused().then((paused) => this.captureIsPaused.set(paused));
         this.suppressPositionSave = true;
         setTimeout(() => {
           this.suppressPositionSave = false;
@@ -471,6 +483,12 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
       })
       .then((fn) => {
         this.unlistenPopupShown = fn;
+      });
+
+    this.bridge
+      .onCapturePausedChanged((paused) => this.captureIsPaused.set(paused))
+      .then((fn) => {
+        this.unlistenCapturePaused = fn;
       });
 
     getCurrentWindow()
@@ -491,6 +509,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.unlistenPopupShown?.();
     this.unlistenWindowMoved?.();
+    this.unlistenCapturePaused?.();
     if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
     if (this.duplicateErrorTimer) clearTimeout(this.duplicateErrorTimer);
     if (this.editCopyFailedTimer) clearTimeout(this.editCopyFailedTimer);
@@ -917,6 +936,11 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     this.showPlaceholderOverlay.set(false);
     this.placeholderSnippet.set(null);
     this.hostEl.nativeElement.focus();
+  }
+
+  protected async onCaptureSwitchChange(checked: boolean): Promise<void> {
+    this.captureIsPaused.set(!checked);
+    await this.bridge.toggleCapturePaused();
   }
 
   private moveSnippetSelection(delta: number): void {

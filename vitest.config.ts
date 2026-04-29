@@ -16,6 +16,7 @@ export default defineConfig({
       '@spartan-ng/helm/checkbox': resolve(__dirname, './src/libs/ui/checkbox/src/index.ts'),
       '@spartan-ng/helm/separator': resolve(__dirname, './src/libs/ui/separator/src/index.ts'),
       '@spartan-ng/helm/hover-card': resolve(__dirname, './src/libs/ui/hover-card/src/index.ts'),
+      '@spartan-ng/helm/switch': resolve(__dirname, './src/libs/ui/switch/src/index.ts'),
     },
   },
   test: {
