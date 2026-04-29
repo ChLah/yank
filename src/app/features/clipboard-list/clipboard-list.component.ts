@@ -234,32 +234,3 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     this.activeTabRef()?.nativeElement.focus();
   }
 }
-
-/**
- * Returns true when clicking `clickedEntryId` should cancel edit mode
- * (i.e. the user clicked a *different* entry). Exported for unit testing.
- */
-export function shouldCancelEditOnSelect(
-  clickedEntryId: number | undefined,
-  editingEntryId: number,
-): boolean {
-  return clickedEntryId !== editingEntryId;
-}
-
-/** Returns the 1-based digit (1–9) if the event is a Ctrl-only digit shortcut, otherwise null. Exported for unit testing. */
-export function getQuickPasteDigit(event: KeyboardEvent): number | null {
-  if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return null;
-  const digit = parseInt(event.key, 10);
-  return digit >= 1 && digit <= 9 ? digit : null;
-}
-
-/** Returns true when the event is Ctrl+O (no other modifiers). Exported for unit testing. */
-export function isOcrTrigger(event: KeyboardEvent): boolean {
-  return (
-    event.key.toLowerCase() === 'o' &&
-    event.ctrlKey &&
-    !event.shiftKey &&
-    !event.altKey &&
-    !event.metaKey
-  );
-}
