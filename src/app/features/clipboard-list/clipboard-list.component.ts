@@ -237,7 +237,7 @@ type Filter = 'all' | 'text' | 'image';
             <!-- Snippet folders -->
             <div class="py-1">
               <!-- General folder section (always first, not reorderable) -->
-              <div class="folder-section relative group/folder">
+              <div class="folder-section relative group/folder border-b border-border/20">
                 <div
                   class="relative"
                   cdkDropList
@@ -265,6 +265,7 @@ type Filter = 'all' | 'text' | 'image';
                   <div
                     cdkDropList
                     id="folder-body-general"
+                    class="pl-3"
                     [cdkDropListConnectedTo]="allSnippetTargetIds()"
                     [cdkDropListData]="null"
                     (cdkDropListDropped)="onSnippetDrop($any($event))"
@@ -300,7 +301,11 @@ type Filter = 'all' | 'text' | 'image';
               <!-- User folder sections (reorderable) -->
               <div cdkDropList id="folder-reorder" (cdkDropListDropped)="onFolderDrop($event)">
                 @for (folder of userFolders(); track folder.id) {
-                  <div cdkDrag [cdkDragData]="folder" class="folder-section group/folder">
+                  <div
+                    cdkDrag
+                    [cdkDragData]="folder"
+                    class="folder-section group/folder border-b border-border/20"
+                  >
                     <div
                       *cdkDragPlaceholder
                       class="h-7 mx-2 my-0.5 rounded border border-dashed border-border/50 bg-muted/20"
@@ -337,6 +342,7 @@ type Filter = 'all' | 'text' | 'image';
                       <div
                         cdkDropList
                         [id]="'folder-body-' + folder.id"
+                        class="pl-3"
                         [cdkDropListConnectedTo]="allSnippetTargetIds()"
                         [cdkDropListData]="folder.id"
                         (cdkDropListDropped)="onSnippetDrop($any($event))"

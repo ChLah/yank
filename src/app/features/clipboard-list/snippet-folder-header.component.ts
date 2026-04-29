@@ -71,7 +71,9 @@ import { SnippetFolder } from '../../core/models/snippet-folder.model';
         >
           {{ isGeneral() ? ('SNIPPETS.FOLDER_GENERAL' | translate) : folder().name }}
         </span>
-        <span class="shrink-0 text-[11px] text-muted-foreground/50 select-none tabular-nums">
+        <span
+          class="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground/70 tabular-nums select-none"
+        >
           {{ count() }}
         </span>
         @if (!isGeneral()) {
