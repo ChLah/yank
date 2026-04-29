@@ -5,7 +5,6 @@ import {
   computed,
   input,
   model,
-  output,
 } from '@angular/core';
 import type { BooleanInput } from '@angular/cdk/coercion';
 import { BrnSwitchImports } from '@spartan-ng/brain/switch';
@@ -22,7 +21,7 @@ import type { ClassValue } from 'clsx';
       [checked]="checked()"
       [disabled]="disabled()"
       [class]="_computedClass()"
-      (checkedChange)="checkedChange.emit($event)"
+      (checkedChange)="checked.set($event)"
     >
       <brn-switch-thumb
         class="block size-4 rounded-full bg-background shadow-md ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0.5"
@@ -31,11 +30,10 @@ import type { ClassValue } from 'clsx';
   `,
 })
 export class HlmSwitch {
-  readonly id = input<string | null>(null);
-  readonly checked = model<boolean>(false);
-  readonly disabled = input<boolean, BooleanInput>(false, { transform: booleanAttribute });
-  readonly userClass = input<ClassValue>('', { alias: 'class' });
-  readonly checkedChange = output<boolean>();
+  public readonly id = input<string | null>(null);
+  public readonly checked = model<boolean>(false);
+  public readonly disabled = input<boolean, BooleanInput>(false, { transform: booleanAttribute });
+  public readonly userClass = input<ClassValue>('', { alias: 'class' });
 
   protected readonly _computedClass = computed(() =>
     hlm(
@@ -44,5 +42,3 @@ export class HlmSwitch {
     ),
   );
 }
-
-export const HlmSwitchImports = [HlmSwitch] as const;
