@@ -94,9 +94,8 @@ When `Enter` is pressed on a snippet that contains one or more `{{...}}` tokens:
 
 1. An overlay appears over the popup (same visual layer as the transform picker).
 2. One labeled input field per **unique** placeholder name, in order of first appearance in the content.
-3. Tab moves between fields; Shift+Tab moves back.
-4. `Enter` (or `Ctrl+Enter`) confirms: substitutes all occurrences and pastes the result.
-5. `Esc` cancels and returns to the snippet list.
+3. `Enter` confirms: substitutes all occurrences and pastes the result.
+4. `Esc` cancels and returns to the snippet list.
 
 Example — snippet content:
 
