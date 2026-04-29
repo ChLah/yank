@@ -7,7 +7,7 @@ use tauri::{Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
-    models::{AppSettings, ClipboardEntry, ExcludedApp, Snippet},
+    models::{AppSettings, ClipboardEntry, ExcludedApp, Snippet, SnippetFolder},
     store::SqliteStore,
     PauseCapture,
 };
@@ -135,6 +135,44 @@ pub fn delete_snippet(id: i64, store: StoreState) -> Result<(), String> {
 #[tauri::command]
 pub fn reorder_snippet(id: i64, new_index: usize, store: StoreState) -> Result<(), String> {
     store.reorder_snippet(id, new_index).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_snippet_folders(store: StoreState) -> Result<Vec<SnippetFolder>, String> {
+    store.get_snippet_folders().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn create_snippet_folder(name: String, store: StoreState) -> Result<SnippetFolder, String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err("Folder name cannot be empty".to_string());
+    }
+    store.create_snippet_folder(trimmed).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn rename_snippet_folder(id: i64, name: String, store: StoreState) -> Result<(), String> {
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return Err("Folder name cannot be empty".to_string());
+    }
+    store.rename_snippet_folder(id, trimmed).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_snippet_folder(id: i64, store: StoreState) -> Result<(), String> {
+    store.delete_snippet_folder(id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn reorder_snippet_folder(id: i64, new_index: usize, store: StoreState) -> Result<(), String> {
+    store.reorder_snippet_folder(id, new_index).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn move_snippet_to_folder(snippet_id: i64, folder_id: Option<i64>, store: StoreState) -> Result<(), String> {
+    store.move_snippet_to_folder(snippet_id, folder_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
