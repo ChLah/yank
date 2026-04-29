@@ -7,24 +7,26 @@ mod store;
 mod windows;
 
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    Arc,
+    atomic::{AtomicBool, AtomicU64, Ordering},
+    Arc, Mutex,
 };
 
 use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, WindowEvent,
+    Emitter, Manager, WindowEvent,
 };
 
 use store::SqliteStore;
 
+pub struct PauseCapture {
+    pub paused: AtomicBool,
+    pub shortcut_str: Mutex<String>,
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Generation counter: incremented on every Focused(false). Each spawned hide
-    // thread captures its own generation; if the counter has moved on (because
-    // Moved or Focused(true) fired first) the hide is cancelled.
     let hide_gen: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
     let hide_gen_wev = hide_gen.clone();
 
@@ -35,14 +37,32 @@ pub fn run() {
         )
         .init();
 
+    // Shared pause state — used by handler, commands, and monitor
+    let pause_capture = Arc::new(PauseCapture {
+        paused: AtomicBool::new(false),
+        shortcut_str: Mutex::new(String::new()),
+    });
+    let pause_capture_handler = pause_capture.clone();
+    let pause_capture_setup = pause_capture.clone();
+
     tauri::Builder::default()
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, shortcut, event| {
+                .with_handler(move |app, shortcut, event| {
                     use tauri_plugin_global_shortcut::ShortcutState;
-                    tracing::info!("Shortcut {:?} fired, state={:?}", shortcut, event.state());
                     if event.state() == ShortcutState::Pressed {
-                        windows::toggle_popup(app);
+                        let pause_str = pause_capture_handler.shortcut_str.lock().unwrap().clone();
+                        let is_pause = !pause_str.is_empty()
+                            && shortcuts::build_shortcut(&pause_str)
+                                .map(|ps| &ps == shortcut)
+                                .unwrap_or(false);
+                        if is_pause {
+                            let was_paused = pause_capture_handler.paused.fetch_xor(true, Ordering::AcqRel);
+                            let now_paused = !was_paused;
+                            let _ = app.emit("capture-paused-changed", now_paused);
+                        } else {
+                            windows::toggle_popup(app);
+                        }
                     }
                 })
                 .build(),
@@ -51,8 +71,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
-        .setup(|app| {
-            // Open the SQLite database in the app data directory
+        .setup(move |app| {
             let app_data_dir = app
                 .path()
                 .app_data_dir()
@@ -65,25 +84,27 @@ pub fn run() {
             );
 
             app.manage(store.clone());
+            app.manage(pause_capture_setup.clone());
 
-            // Prune stale entries on startup if age-based deletion is enabled
             if let Err(e) = store.prune_old_entries_if_enabled() {
                 tracing::warn!("Failed to prune old entries on startup: {}", e);
             }
 
-            let shortcut = store
+            let settings = store
                 .get_settings()
-                .map(|s| s.shortcut)
-                .unwrap_or_else(|_| models::AppSettings::default().shortcut);
+                .unwrap_or_else(|_| models::AppSettings::default());
 
-            if let Err(e) = shortcuts::register_shortcut(app.handle(), &shortcut) {
-                tracing::warn!("Failed to register shortcut '{}': {}", shortcut, e);
+            if let Err(e) = shortcuts::register_shortcuts(
+                app.handle(),
+                &settings.shortcut,
+                &settings.pause_shortcut,
+                &pause_capture_setup.shortcut_str,
+            ) {
+                tracing::warn!("Failed to register shortcuts: {}", e);
             }
 
-            // Start the platform clipboard monitor
-            platform::start_monitor(app.handle().clone(), store);
+            platform::start_monitor(app.handle().clone(), store, pause_capture_setup.clone());
 
-            // System tray
             setup_tray(app)?;
 
             Ok(())
@@ -92,8 +113,6 @@ pub fn run() {
             if window.label() == "main" {
                 match event {
                     WindowEvent::Focused(false) => {
-                        // startDragging() causes a transient WM_KILLFOCUS on Windows.
-                        // Delay the hide; cancel it if Moved (drag) or Focused(true) arrives first.
                         let gen = hide_gen_wev.fetch_add(1, Ordering::Relaxed) + 1;
                         let w = window.clone();
                         let hg = hide_gen_wev.clone();
@@ -133,6 +152,8 @@ pub fn run() {
             commands::get_excluded_apps,
             commands::add_excluded_app,
             commands::remove_excluded_app,
+            commands::get_capture_paused,
+            commands::toggle_capture_paused,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Tauri application");

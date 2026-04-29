@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::sync::{
+    atomic::Ordering,
+    Arc,
+};
 
 use tauri::{Manager, State};
 use tauri_plugin_autostart::ManagerExt;
@@ -6,9 +9,11 @@ use tauri_plugin_autostart::ManagerExt;
 use crate::{
     models::{AppSettings, ClipboardEntry, ExcludedApp, Snippet},
     store::SqliteStore,
+    PauseCapture,
 };
 
 type StoreState<'a> = State<'a, Arc<SqliteStore>>;
+type PauseCaptureState<'a> = State<'a, Arc<PauseCapture>>;
 
 #[tauri::command]
 pub fn get_entries(store: StoreState) -> Result<Vec<ClipboardEntry>, String> {
@@ -35,12 +40,18 @@ pub fn save_settings(
     settings: AppSettings,
     store: StoreState,
     app_handle: tauri::AppHandle,
+    pause_capture: PauseCaptureState,
 ) -> Result<(), String> {
     store.save_settings(&settings).map_err(|e| e.to_string())?;
 
-    // Re-register shortcut with new value. Non-fatal: settings are already saved.
-    if let Err(e) = crate::shortcuts::register_shortcut(&app_handle, &settings.shortcut) {
-        tracing::warn!("Failed to re-register shortcut '{}' after save: {}", settings.shortcut, e);
+    // Re-register shortcuts with new values. Non-fatal: settings are already saved.
+    if let Err(e) = crate::shortcuts::register_shortcuts(
+        &app_handle,
+        &settings.shortcut,
+        &settings.pause_shortcut,
+        &pause_capture.shortcut_str,
+    ) {
+        tracing::warn!("Failed to re-register shortcuts after save: {}", e);
     }
 
     // Toggle OS autostart. Non-fatal: settings are already saved.
@@ -143,4 +154,15 @@ pub fn add_excluded_app(process_name: String, store: StoreState) -> Result<Exclu
 #[tauri::command]
 pub fn remove_excluded_app(id: i64, store: StoreState) -> Result<(), String> {
     store.remove_excluded_app(id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_capture_paused(pause: PauseCaptureState) -> bool {
+    pause.paused.load(Ordering::Acquire)
+}
+
+#[tauri::command]
+pub fn toggle_capture_paused(pause: PauseCaptureState) -> bool {
+    let was_paused = pause.paused.fetch_xor(true, Ordering::AcqRel);
+    !was_paused
 }

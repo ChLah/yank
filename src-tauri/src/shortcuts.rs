@@ -1,24 +1,36 @@
+use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
-pub fn register_shortcut(
+pub fn register_shortcuts(
     app: &AppHandle,
-    shortcut_str: &str,
+    popup_str: &str,
+    pause_str: &str,
+    pause_shortcut_store: &Mutex<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    tracing::info!("Registering global shortcut: '{}'", shortcut_str);
+    tracing::info!("Registering shortcuts: popup='{}' pause='{}'", popup_str, pause_str);
 
-    let shortcut = build_shortcut(shortcut_str).map_err(|e| {
-        tracing::error!("Failed to parse shortcut '{}': {}", shortcut_str, e);
+    let popup_sc = build_shortcut(popup_str).map_err(|e| {
+        tracing::error!("Failed to parse popup shortcut '{}': {}", popup_str, e);
         e
     })?;
 
-    // Ignore errors if nothing was registered yet
     let _ = app.global_shortcut().unregister_all();
+    app.global_shortcut().register(popup_sc)?;
 
-    // Only register the key binding; the handler lives in Builder::with_handler in lib.rs
-    app.global_shortcut().register(shortcut)?;
+    if !pause_str.is_empty() {
+        match build_shortcut(pause_str) {
+            Ok(pause_sc) => {
+                if let Err(e) = app.global_shortcut().register(pause_sc) {
+                    tracing::warn!("Failed to register pause shortcut '{}': {}", pause_str, e);
+                }
+            }
+            Err(e) => tracing::warn!("Invalid pause shortcut '{}': {}", pause_str, e),
+        }
+    }
 
-    tracing::info!("Global shortcut registered successfully");
+    *pause_shortcut_store.lock().unwrap() = pause_str.to_string();
+    tracing::info!("Shortcuts registered successfully");
     Ok(())
 }
 
