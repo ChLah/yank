@@ -100,4 +100,16 @@ export class TauriBridgeService {
   removeExcludedApp(id: number): Promise<void> {
     return invoke('remove_excluded_app', { id });
   }
+
+  getCapturePaused(): Promise<boolean> {
+    return invoke<boolean>('get_capture_paused');
+  }
+
+  toggleCapturePaused(): Promise<boolean> {
+    return invoke<boolean>('toggle_capture_paused');
+  }
+
+  onCapturePausedChanged(handler: (paused: boolean) => void): Promise<UnlistenFn> {
+    return listen<boolean>('capture-paused-changed', (event) => handler(event.payload));
+  }
 }

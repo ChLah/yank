@@ -4,6 +4,7 @@ export type WindowPositionMode = 'cursor' | 'last';
 
 export interface AppSettings {
   shortcut: string;
+  pauseShortcut: string;
   maxEntries: number;
   language: Language | null;
   theme: Theme;
@@ -16,6 +17,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   shortcut: 'Ctrl+Semicolon',
+  pauseShortcut: '',
   maxEntries: 20,
   language: null,
   theme: 'system',
