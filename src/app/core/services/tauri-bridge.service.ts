@@ -85,6 +85,10 @@ export class TauriBridgeService {
     return invoke('delete_snippet', { id });
   }
 
+  reorderSnippet(id: number, newIndex: number): Promise<void> {
+    return invoke('reorder_snippet', { id, newIndex });
+  }
+
   getExcludedApps(): Promise<ExcludedApp[]> {
     return invoke<ExcludedApp[]>('get_excluded_apps');
   }

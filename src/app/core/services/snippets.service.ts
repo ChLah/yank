@@ -24,4 +24,13 @@ export class SnippetsService {
     await this.bridge.deleteSnippet(id);
     this.snippets.reload();
   }
+
+  async reorderSnippet(reordered: Snippet[], id: number, newIndex: number): Promise<void> {
+    this.snippets.value.set(reordered);
+    try {
+      await this.bridge.reorderSnippet(id, newIndex);
+    } catch {
+      this.snippets.reload();
+    }
+  }
 }
