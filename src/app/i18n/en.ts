@@ -28,6 +28,11 @@ export const en: Translation = {
     GROUP_GENERAL: 'General',
     GROUP_APPEARANCE: 'Appearance',
     GROUP_HISTORY: 'History',
+    GROUP_PRIVACY: 'Privacy',
+    EXCLUDED_APPS_LABEL: 'Excluded apps',
+    EXCLUDED_APPS_PLACEHOLDER: 'e.g. KeePass.exe',
+    EXCLUDED_APPS_ADD: 'Add app',
+    EXCLUDED_APPS_ADDED: 'added {{date}}',
   },
   CLIPBOARD: {
     TITLE: 'Clipboard',

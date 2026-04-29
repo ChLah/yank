@@ -27,6 +27,11 @@ export interface Translation {
     GROUP_GENERAL: string;
     GROUP_APPEARANCE: string;
     GROUP_HISTORY: string;
+    GROUP_PRIVACY: string;
+    EXCLUDED_APPS_LABEL: string;
+    EXCLUDED_APPS_PLACEHOLDER: string;
+    EXCLUDED_APPS_ADD: string;
+    EXCLUDED_APPS_ADDED: string;
   };
   CLIPBOARD: {
     TITLE: string;
