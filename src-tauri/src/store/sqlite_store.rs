@@ -5,7 +5,7 @@ use image::imageops::FilterType;
 use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
-use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language, Snippet, Theme, WindowPositionMode};
+use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, ExcludedApp, Language, Snippet, Theme, WindowPositionMode};
 
 const THUMBNAIL_MAX_SIZE: u32 = 200;
 
@@ -94,6 +94,14 @@ impl SqliteStore {
                 content     TEXT    NOT NULL,
                 created_at  INTEGER NOT NULL,
                 sort_order  INTEGER NOT NULL DEFAULT 0
+            );"
+        )?;
+
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS excluded_apps (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                process_name TEXT    NOT NULL UNIQUE,
+                created_at   INTEGER NOT NULL
             );"
         )?;
 
@@ -522,6 +530,55 @@ impl SqliteStore {
         let conn = self.conn.lock().unwrap();
         conn.execute("DELETE FROM snippets WHERE id = ?1", params![id])?;
         Ok(())
+    }
+
+    pub fn get_excluded_apps(&self) -> Result<Vec<ExcludedApp>, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT id, process_name, created_at FROM excluded_apps ORDER BY id ASC",
+        )?;
+        let results = stmt
+            .query_map([], |row| {
+                Ok(ExcludedApp {
+                    id: row.get(0)?,
+                    process_name: row.get(1)?,
+                    created_at: row.get(2)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(results)
+    }
+
+    pub fn add_excluded_app(&self, process_name: &str) -> Result<ExcludedApp, rusqlite::Error> {
+        let trimmed = process_name.trim();
+        let now = chrono::Utc::now().timestamp();
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO excluded_apps (process_name, created_at) VALUES (?1, ?2)",
+            params![trimmed, now],
+        )?;
+        let id = conn.last_insert_rowid();
+        Ok(ExcludedApp {
+            id,
+            process_name: trimmed.to_string(),
+            created_at: now,
+        })
+    }
+
+    pub fn remove_excluded_app(&self, id: i64) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM excluded_apps WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
+    pub fn is_app_excluded(&self, process_name: &str) -> Result<bool, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let exists: bool = conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM excluded_apps WHERE process_name = ?1 COLLATE NOCASE)",
+            params![process_name],
+            |row| row.get(0),
+        )?;
+        Ok(exists)
     }
 }
 
@@ -999,5 +1056,97 @@ mod tests {
         assert!(entries.iter().any(|e| e.id == pinned_id), "pinned entry was pruned");
         // 2 unpinned (max_entries) + 1 pinned
         assert_eq!(entries.len(), 3);
+    }
+
+    #[test]
+    fn test_excluded_apps_table_exists() {
+        let store = in_memory_store();
+        let conn = store.conn.lock().unwrap();
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM excluded_apps", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_add_and_get_excluded_apps() {
+        let store = in_memory_store();
+        let app = store.add_excluded_app("KeePass.exe").unwrap();
+        assert_eq!(app.process_name, "KeePass.exe");
+        assert!(app.id > 0);
+        assert!(app.created_at > 0);
+
+        let apps = store.get_excluded_apps().unwrap();
+        assert_eq!(apps.len(), 1);
+        assert_eq!(apps[0].id, app.id);
+        assert_eq!(apps[0].process_name, "KeePass.exe");
+    }
+
+    #[test]
+    fn test_add_excluded_app_trims_whitespace() {
+        let store = in_memory_store();
+        let app = store.add_excluded_app("  notepad.exe  ").unwrap();
+        assert_eq!(app.process_name, "notepad.exe");
+
+        let apps = store.get_excluded_apps().unwrap();
+        assert_eq!(apps[0].process_name, "notepad.exe");
+    }
+
+    #[test]
+    fn test_add_excluded_app_duplicate_returns_error() {
+        let store = in_memory_store();
+        store.add_excluded_app("notepad.exe").unwrap();
+        let result = store.add_excluded_app("notepad.exe");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_remove_excluded_app() {
+        let store = in_memory_store();
+        let app = store.add_excluded_app("KeePass.exe").unwrap();
+        store.remove_excluded_app(app.id).unwrap();
+        let apps = store.get_excluded_apps().unwrap();
+        assert!(apps.is_empty());
+    }
+
+    #[test]
+    fn test_get_excluded_apps_ordered_by_id() {
+        let store = in_memory_store();
+        store.add_excluded_app("B.exe").unwrap();
+        store.add_excluded_app("A.exe").unwrap();
+        let apps = store.get_excluded_apps().unwrap();
+        assert_eq!(apps[0].process_name, "B.exe");
+        assert_eq!(apps[1].process_name, "A.exe");
+    }
+
+    #[test]
+    fn test_is_app_excluded_case_insensitive() {
+        let store = in_memory_store();
+        store.add_excluded_app("KeePass.exe").unwrap();
+        assert!(store.is_app_excluded("KeePass.exe").unwrap());
+        assert!(store.is_app_excluded("keepass.exe").unwrap());
+        assert!(store.is_app_excluded("KEEPASS.EXE").unwrap());
+    }
+
+    #[test]
+    fn test_is_app_excluded_not_found() {
+        let store = in_memory_store();
+        assert!(!store.is_app_excluded("notepad.exe").unwrap());
+    }
+
+    #[test]
+    fn test_is_app_excluded_after_remove() {
+        let store = in_memory_store();
+        let app = store.add_excluded_app("KeePass.exe").unwrap();
+        assert!(store.is_app_excluded("KeePass.exe").unwrap());
+        store.remove_excluded_app(app.id).unwrap();
+        assert!(!store.is_app_excluded("KeePass.exe").unwrap());
+    }
+
+    #[test]
+    fn test_is_app_excluded_ignores_whitespace_in_stored_name() {
+        let store = in_memory_store();
+        store.add_excluded_app("  notepad.exe  ").unwrap(); // stored as "notepad.exe"
+        assert!(store.is_app_excluded("notepad.exe").unwrap());
     }
 }

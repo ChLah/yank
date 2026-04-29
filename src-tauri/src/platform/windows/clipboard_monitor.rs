@@ -37,6 +37,12 @@ fn process_clipboard_change(
     store: &Arc<SqliteStore>,
     source_app: Option<String>,
 ) {
+    if let Some(ref proc) = source_app {
+        if store.is_app_excluded(proc).unwrap_or(false) {
+            return;
+        }
+    }
+
     let mut payload = match read_clipboard() {
         Ok(Some(p)) => p,
         Ok(None) => return, // empty or unsupported format

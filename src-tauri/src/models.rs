@@ -99,3 +99,11 @@ pub struct Snippet {
     pub created_at: i64,
     pub sort_order: i64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExcludedApp {
+    pub id: i64,
+    pub process_name: String,
+    pub created_at: i64,
+}

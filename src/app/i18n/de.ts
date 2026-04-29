@@ -28,6 +28,11 @@ export const de: Translation = {
     GROUP_GENERAL: 'Allgemein',
     GROUP_APPEARANCE: 'Darstellung',
     GROUP_HISTORY: 'Verlauf',
+    GROUP_PRIVACY: 'Datenschutz',
+    EXCLUDED_APPS_LABEL: 'Ausgeschlossene Apps',
+    EXCLUDED_APPS_PLACEHOLDER: 'z.B. KeePass.exe',
+    EXCLUDED_APPS_ADD: 'App hinzufügen',
+    EXCLUDED_APPS_ADDED: 'hinzugefügt {{date}}',
   },
   CLIPBOARD: {
     TITLE: 'Zwischenablage',

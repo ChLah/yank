@@ -23,6 +23,7 @@ import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.com
 import { LoadingSpinnerComponent } from '../../shared/ui/loading-spinner/loading-spinner.component';
 import { SettingFieldComponent } from './components/setting-field/setting-field.component';
 import { SettingCheckboxComponent } from './components/setting-checkbox/setting-checkbox.component';
+import { ExcludedAppsComponent } from './components/excluded-apps/excluded-apps.component';
 
 @Component({
   selector: 'app-settings',
@@ -39,6 +40,7 @@ import { SettingCheckboxComponent } from './components/setting-checkbox/setting-
     LoadingSpinnerComponent,
     SettingFieldComponent,
     SettingCheckboxComponent,
+    ExcludedAppsComponent,
   ],
   providers: [provideIcons({ lucideChevronLeft, lucideX })],
   template: `
@@ -251,6 +253,18 @@ import { SettingCheckboxComponent } from './components/setting-checkbox/setting-
                   {{ 'SETTINGS.MAX_DAYS_RANGE' | translate: { min: 1, max: 365 } }}
                 </span>
               </div>
+            </app-setting-field>
+          </div>
+
+          <brn-separator hlmSeparator />
+
+          <!-- Privacy -->
+          <div class="space-y-3">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {{ 'SETTINGS.GROUP_PRIVACY' | translate }}
+            </p>
+            <app-setting-field [label]="'SETTINGS.EXCLUDED_APPS_LABEL' | translate">
+              <app-excluded-apps />
             </app-setting-field>
           </div>
         </div>

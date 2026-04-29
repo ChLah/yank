@@ -4,7 +4,7 @@ use tauri::{Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
-    models::{AppSettings, ClipboardEntry, Snippet},
+    models::{AppSettings, ClipboardEntry, ExcludedApp, Snippet},
     store::SqliteStore,
 };
 
@@ -119,4 +119,23 @@ pub fn update_snippet(id: i64, title: String, content: String, store: StoreState
 #[tauri::command]
 pub fn delete_snippet(id: i64, store: StoreState) -> Result<(), String> {
     store.delete_snippet(id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_excluded_apps(store: StoreState) -> Result<Vec<ExcludedApp>, String> {
+    store.get_excluded_apps().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn add_excluded_app(process_name: String, store: StoreState) -> Result<ExcludedApp, String> {
+    let trimmed = process_name.trim();
+    if trimmed.is_empty() {
+        return Err("Process name cannot be empty".to_string());
+    }
+    store.add_excluded_app(trimmed).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn remove_excluded_app(id: i64, store: StoreState) -> Result<(), String> {
+    store.remove_excluded_app(id).map_err(|e| e.to_string())
 }
