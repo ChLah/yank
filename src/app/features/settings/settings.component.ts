@@ -443,6 +443,7 @@ export class SettingsComponent {
         'MetaRight',
       ].includes(key)
     ) {
+      // pressing a bare key with no modifiers clears the shortcut
       if (parts.length === 0) {
         this.settings.update((s) => ({ ...s, pauseShortcut: '' }));
         this.persist();
