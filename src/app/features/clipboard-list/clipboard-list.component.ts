@@ -246,12 +246,19 @@ type Filter = 'all' | 'text' | 'image';
                   [cdkDropListSortingDisabled]="true"
                   (cdkDropListDropped)="onSnippetDroppedOnFolderHeader($event, null)"
                 >
-                  <app-snippet-folder-header
-                    [folder]="generalFolder"
-                    [isGeneral]="true"
-                    [isExpanded]="isFolderExpanded('general')"
-                    (toggleCollapse)="toggleFolder('general')"
-                  />
+                  <div class="flex items-center">
+                    <!-- Spacer matching the drag handle width so General aligns with user folders -->
+                    <span aria-hidden="true" class="shrink-0 pl-1 opacity-0 pointer-events-none">
+                      <ng-icon hlm size="xs" name="lucideGripVertical" />
+                    </span>
+                    <app-snippet-folder-header
+                      class="flex-1 min-w-0"
+                      [folder]="generalFolder"
+                      [isGeneral]="true"
+                      [isExpanded]="isFolderExpanded('general')"
+                      (toggleCollapse)="toggleFolder('general')"
+                    />
+                  </div>
                 </div>
                 @if (isFolderExpanded('general')) {
                   <div
@@ -1218,6 +1225,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   }
 
   protected onNewFolderKeyDown(event: KeyboardEvent): void {
+    event.stopPropagation();
     if (event.key === 'Enter') {
       event.preventDefault();
       (event.target as HTMLInputElement).blur();

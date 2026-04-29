@@ -73,7 +73,7 @@ import { SnippetFolder } from '../../core/models/snippet-folder.model';
         </span>
         @if (!isGeneral()) {
           <button
-            class="opacity-0 group-hover:opacity-100 shrink-0 text-muted-foreground hover:text-destructive transition-opacity p-0.5"
+            class="opacity-0 group-hover/folder:opacity-100 shrink-0 text-muted-foreground hover:text-destructive transition-opacity p-0.5"
             (click)="$event.stopPropagation(); confirmingDelete.set(true)"
           >
             <ng-icon hlm size="xs" name="lucideTrash2" />
@@ -120,6 +120,7 @@ export class SnippetFolderHeaderComponent {
   }
 
   protected onNameKeyDown(event: KeyboardEvent): void {
+    event.stopPropagation();
     if (event.key === 'Enter') {
       event.preventDefault();
       this.saveName();
