@@ -329,7 +329,7 @@ impl SqliteStore {
         let map = Self::fetch_settings_map(&conn, &[
             "shortcut", "maxEntries", "language", "theme",
             "autostart", "deleteAfterMaxEntries", "deleteAfterDays", "maxDays",
-            "windowPosition",
+            "windowPosition", "pauseShortcut",
         ])?;
 
         let defaults = AppSettings::default();
@@ -356,8 +356,13 @@ impl SqliteStore {
             "last" => WindowPositionMode::Last,
             _      => WindowPositionMode::Cursor,
         }).unwrap_or(WindowPositionMode::Cursor);
+        let pause_shortcut = text("pauseShortcut").unwrap_or(defaults.pause_shortcut);
 
-        Ok(AppSettings { shortcut, max_entries, language, theme, autostart, delete_after_max_entries, delete_after_days, max_days, window_position })
+        Ok(AppSettings {
+            shortcut, max_entries, language, theme, autostart,
+            delete_after_max_entries, delete_after_days, max_days,
+            window_position, pause_shortcut,
+        })
     }
 
     pub fn save_settings(&self, settings: &AppSettings) -> Result<(), rusqlite::Error> {
@@ -385,6 +390,7 @@ impl SqliteStore {
             ("deleteAfterDays",       None,                                         Some(settings.delete_after_days as i64)),
             ("maxDays",               None,                                         Some(settings.max_days)),
             ("windowPosition",        Some(window_position_str),                   None),
+            ("pauseShortcut",         Some(settings.pause_shortcut.as_str()),      None),
         ];
 
         let conn = self.conn.lock().unwrap();

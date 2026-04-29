@@ -54,6 +54,7 @@ pub struct AppSettings {
     pub delete_after_days: bool,
     pub max_days: i64,
     pub window_position: WindowPositionMode,
+    pub pause_shortcut: String,
 }
 
 impl Default for AppSettings {
@@ -68,6 +69,7 @@ impl Default for AppSettings {
             delete_after_days: false,
             max_days: 30,
             window_position: WindowPositionMode::Cursor,
+            pause_shortcut: String::new(),
         }
     }
 }
