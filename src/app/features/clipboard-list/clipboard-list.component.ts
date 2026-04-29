@@ -256,6 +256,7 @@ type Filter = 'all' | 'text' | 'image';
                       [folder]="generalFolder"
                       [isGeneral]="true"
                       [isExpanded]="isFolderExpanded('general')"
+                      [count]="generalSnippets().length"
                       (toggleCollapse)="toggleFolder('general')"
                     />
                   </div>
@@ -325,6 +326,7 @@ type Filter = 'all' | 'text' | 'image';
                         [folder]="folder"
                         [isGeneral]="false"
                         [isExpanded]="isFolderExpanded(folder.id)"
+                        [count]="getSnippetsByFolder(folder.id).length"
                         (toggleCollapse)="toggleFolder(folder.id)"
                         (rename)="onFolderRename(folder.id, $event)"
                         (delete)="onFolderDelete(folder.id)"

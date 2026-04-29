@@ -71,6 +71,9 @@ import { SnippetFolder } from '../../core/models/snippet-folder.model';
         >
           {{ isGeneral() ? ('SNIPPETS.FOLDER_GENERAL' | translate) : folder().name }}
         </span>
+        <span class="shrink-0 text-[11px] text-muted-foreground/50 select-none tabular-nums">
+          {{ count() }}
+        </span>
         @if (!isGeneral()) {
           <button
             class="opacity-0 group-hover/folder:opacity-100 shrink-0 text-muted-foreground hover:text-destructive transition-opacity p-0.5"
@@ -87,6 +90,7 @@ export class SnippetFolderHeaderComponent {
   folder = input.required<SnippetFolder>();
   isGeneral = input<boolean>(false);
   isExpanded = input.required<boolean>();
+  count = input<number>(0);
 
   toggleCollapse = output<void>();
   rename = output<string>();
