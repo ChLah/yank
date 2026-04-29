@@ -1,4 +1,9 @@
-import { getQuickPasteDigit, isOcrTrigger, resolveEditModeAction, shouldCancelEditOnSelect } from './clipboard-list.component';
+import { resolveEditModeAction } from './keyboard.utils';
+import {
+  getQuickPasteDigit,
+  isOcrTrigger,
+  shouldCancelEditOnSelect,
+} from './clipboard-list.component';
 
 describe('resolveEditModeAction', () => {
   it('returns cancel-navigate for ArrowDown', () => {

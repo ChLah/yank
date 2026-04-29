@@ -14,6 +14,7 @@ import {
 import { UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Router, RouterLink } from '@angular/router';
+import { resolveEditModeAction } from './keyboard.utils';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   lucideClipboard,
@@ -1284,11 +1285,6 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     const item = items[this.selectedIndex()];
     item?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
-}
-
-/** Arrow keys cancel-then-navigate; all other keys are blocked while in edit mode. Exported for unit testing. */
-export function resolveEditModeAction(key: string): 'cancel-navigate' | 'block' {
-  return key === 'ArrowDown' || key === 'ArrowUp' ? 'cancel-navigate' : 'block';
 }
 
 /**
