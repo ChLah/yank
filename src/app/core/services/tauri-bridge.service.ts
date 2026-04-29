@@ -4,6 +4,7 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { ClipboardEntry } from '../models/clipboard-entry.model';
 import { AppSettings } from '../models/settings.model';
 import { Snippet } from '../models/snippet.model';
+import { ExcludedApp } from '../models/excluded-app.model';
 
 /** Single seam between Angular and Tauri. Mock this in tests. */
 @Injectable({ providedIn: 'root' })
@@ -82,5 +83,17 @@ export class TauriBridgeService {
 
   deleteSnippet(id: number): Promise<void> {
     return invoke('delete_snippet', { id });
+  }
+
+  getExcludedApps(): Promise<ExcludedApp[]> {
+    return invoke<ExcludedApp[]>('get_excluded_apps');
+  }
+
+  addExcludedApp(processName: string): Promise<ExcludedApp> {
+    return invoke<ExcludedApp>('add_excluded_app', { processName });
+  }
+
+  removeExcludedApp(id: number): Promise<void> {
+    return invoke('remove_excluded_app', { id });
   }
 }
