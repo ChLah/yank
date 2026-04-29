@@ -40,8 +40,8 @@ export type ClipboardTabType = 'recent' | 'pinned';
 - Calls `toast.error()` / `toast.success()` from `@spartan-ng/brain/sonner` directly for edit failures and OCR results
 - Host `(keydown)`: all clipboard keys (arrows, Enter, Delete, Escape, Ctrl+P/E/O, digits, search chars); calls `event.stopPropagation()` for handled keys; Ctrl+Tab is NOT handled here and bubbles up to the shell
 
-**Public surface:**
-- `readonly selectedEntryIsImage` — computed signal read by the shell to pass `showOcrHint` to `ClipboardFooterHintsComponent`
+**Outputs:**
+- `selectedEntry = output<ClipboardEntry | null>()` — emits the currently selected entry whenever selection changes; shell uses it to derive `showOcrHint` (`entry?.kind === 'image'`) for `ClipboardFooterHintsComponent`, and is available for any future per-entry shell behaviour
 
 **Utility functions** (exported for unit testing, moved from `clipboard-list.component.ts`):
 - `getQuickPasteDigit`
@@ -105,7 +105,7 @@ Presentational. Renders the single row of snippet keyboard hints. No inputs.
 - Tab switcher row (3 buttons)
 - `@if` / `@else` rendering `<app-clipboard-tab>` or `<app-snippets-tab>`
 - Footer row: renders `<app-clipboard-footer-hints [showOcrHint]="showOcrHint()">` or `<app-snippets-footer-hints>` based on `activeTab()`
-  - `showOcrHint` is read via `viewChild(ClipboardTabComponent)?.selectedEntryIsImage() ?? false`
+  - `showOcrHint = computed(() => this.selectedEntry()?.kind === 'image')` derived from `selectedEntry` output stored locally as a signal
 - Window-move listener → `bridge.saveWindowPosition()`
 - Host `(keydown)`: Ctrl+Tab only → cycles tabs, calls `event.stopPropagation()`
 
