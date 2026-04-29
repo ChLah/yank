@@ -2,8 +2,10 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  Injector,
   OnDestroy,
   OnInit,
+  afterNextRender,
   computed,
   inject,
   signal,
@@ -335,7 +337,7 @@ type Filter = 'all' | 'text' | 'image';
                             class="snippet-item"
                             cdkDrag
                             [cdkDragData]="snippet"
-                            [cdkDragDisabled]="editingSnippetId() !== null"
+                            [cdkDragDisabled]="editingSnippetId() !== null || showNewSnippetForm()"
                           >
                             <app-snippet-item
                               [snippet]="snippet"
@@ -534,6 +536,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   private settings = inject(SettingsService);
   private router = inject(Router);
   private hostEl = inject(ElementRef);
+  private injector = inject(Injector);
   private unlistenPopupShown?: UnlistenFn;
   private unlistenWindowMoved?: UnlistenFn;
   private unlistenCapturePaused?: UnlistenFn;
@@ -663,6 +666,7 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
 
   private listContainer = viewChild.required<ElementRef<HTMLElement>>('listContainer');
   private searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
+  private newFolderInputRef = viewChild<ElementRef>('newFolderInput');
 
   ngOnInit(): void {
     this.hostEl.nativeElement.focus();
@@ -1191,13 +1195,25 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected startAddFolder(): void {
     this.newFolderName.set('');
     this.addingFolder.set(true);
+    afterNextRender(
+      () => {
+        this.newFolderInputRef()?.nativeElement?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   protected saveNewFolder(): void {
     const name = this.newFolderName().trim();
     this.addingFolder.set(false);
     if (name) {
-      this.snippetsService.createFolder(name);
+      this.snippetsService.createFolder(name).then(() => {
+        const folders = this.snippetsService.folders.value() ?? [];
+        if (folders.length > 0) {
+          const newest = folders[folders.length - 1];
+          this.toggleFolder(newest.id);
+        }
+      });
     }
   }
 
