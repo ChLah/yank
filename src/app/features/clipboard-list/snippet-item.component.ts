@@ -10,8 +10,9 @@ import {
   output,
   viewChild,
 } from '@angular/core';
+import { CdkDragHandle } from '@angular/cdk/drag-drop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
-import { lucideX } from '@ng-icons/lucide';
+import { lucideGripVertical, lucideX } from '@ng-icons/lucide';
 import { TranslatePipe } from '@ngx-translate/core';
 import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmIcon } from '@spartan-ng/helm/icon';
@@ -20,17 +21,20 @@ import { Snippet } from '../../core/models/snippet.model';
 @Component({
   selector: 'app-snippet-item',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgIcon, HlmIcon, HlmButton, TranslatePipe],
-  providers: [provideIcons({ lucideX })],
+  imports: [CdkDragHandle, NgIcon, HlmIcon, HlmButton, TranslatePipe],
+  providers: [provideIcons({ lucideGripVertical, lucideX })],
   template: `
     <div
-      class="flex items-center gap-2 pl-3.5 pr-3 group transition-colors border-l-2"
+      class="flex items-center gap-2 pl-2 pr-3 group transition-colors border-l-2"
       [class.cursor-pointer]="!editMode()"
       [class]="selected() ? 'border-l-brand bg-card' : 'border-l-transparent hover:bg-card/60'"
       (click)="onOuterClick()"
     >
       @if (editMode()) {
-        <div class="flex-1 min-w-0 py-2 flex flex-col gap-1.5" (click)="$event.stopPropagation()">
+        <div
+          class="flex-1 min-w-0 py-2 flex flex-col gap-1.5 pl-1.5"
+          (click)="$event.stopPropagation()"
+        >
           <input
             #titleInput
             type="text"
@@ -48,12 +52,24 @@ import { Snippet } from '../../core/models/snippet.model';
           <p class="text-[11px] text-muted-foreground">{{ 'SNIPPETS.EDIT_HINT' | translate }}</p>
         </div>
       } @else {
+        <span
+          cdkDragHandle
+          class="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing shrink-0 text-muted-foreground transition-opacity"
+          [class.opacity-100]="selected()"
+          (click)="$event.stopPropagation()"
+        >
+          <ng-icon hlm size="sm" name="lucideGripVertical" />
+        </span>
         <div class="flex-1 min-w-0 py-2.5">
-          <p class="text-[13px] font-medium text-foreground truncate leading-snug">{{ snippet().title }}</p>
+          <p class="text-[13px] font-medium text-foreground truncate leading-snug">
+            {{ snippet().title }}
+          </p>
           <p class="text-[11px] text-muted-foreground truncate mt-0.5">{{ snippet().content }}</p>
         </div>
         <button
-          hlmBtn variant="ghost" size="icon"
+          hlmBtn
+          variant="ghost"
+          size="icon"
           class="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
           [class.opacity-100]="selected()"
           [title]="'ENTRY.DELETE' | translate"
@@ -66,25 +82,28 @@ import { Snippet } from '../../core/models/snippet.model';
   `,
 })
 export class SnippetItemComponent {
-  snippet  = input.required<Snippet>();
+  snippet = input.required<Snippet>();
   selected = input(false);
   editMode = input(false);
 
-  select      = output<void>();
-  delete      = output<void>();
+  select = output<void>();
+  delete = output<void>();
   editConfirm = output<{ title: string; content: string }>();
-  editCancel  = output<void>();
+  editCancel = output<void>();
 
-  private titleInput      = viewChild<ElementRef<HTMLInputElement>>('titleInput');
+  private titleInput = viewChild<ElementRef<HTMLInputElement>>('titleInput');
   private contentTextarea = viewChild<ElementRef<HTMLTextAreaElement>>('contentTextarea');
-  private injector        = inject(Injector);
+  private injector = inject(Injector);
 
   constructor() {
     effect(() => {
       if (this.editMode()) {
-        afterNextRender(() => {
-          this.titleInput()?.nativeElement.focus();
-        }, { injector: this.injector });
+        afterNextRender(
+          () => {
+            this.titleInput()?.nativeElement.focus();
+          },
+          { injector: this.injector },
+        );
       }
     });
   }
@@ -120,7 +139,7 @@ export class SnippetItemComponent {
   }
 
   private emitConfirm(): void {
-    const title   = this.titleInput()?.nativeElement.value ?? '';
+    const title = this.titleInput()?.nativeElement.value ?? '';
     const content = this.contentTextarea()?.nativeElement.value ?? '';
     this.editConfirm.emit({ title, content });
   }
