@@ -4,6 +4,7 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { ClipboardEntry } from '../models/clipboard-entry.model';
 import { AppSettings } from '../models/settings.model';
 import { Snippet } from '../models/snippet.model';
+import { SnippetFolder } from '../models/snippet-folder.model';
 import { ExcludedApp } from '../models/excluded-app.model';
 
 /** Single seam between Angular and Tauri. Mock this in tests. */
@@ -87,6 +88,30 @@ export class TauriBridgeService {
 
   reorderSnippet(id: number, newIndex: number): Promise<void> {
     return invoke('reorder_snippet', { id, newIndex });
+  }
+
+  getSnippetFolders(): Promise<SnippetFolder[]> {
+    return invoke<SnippetFolder[]>('get_snippet_folders');
+  }
+
+  createSnippetFolder(name: string): Promise<SnippetFolder> {
+    return invoke<SnippetFolder>('create_snippet_folder', { name });
+  }
+
+  renameSnippetFolder(id: number, name: string): Promise<void> {
+    return invoke('rename_snippet_folder', { id, name });
+  }
+
+  deleteSnippetFolder(id: number): Promise<void> {
+    return invoke('delete_snippet_folder', { id });
+  }
+
+  reorderSnippetFolder(id: number, newIndex: number): Promise<void> {
+    return invoke('reorder_snippet_folder', { id, newIndex });
+  }
+
+  moveSnippetToFolder(snippetId: number, folderId: number | null): Promise<void> {
+    return invoke('move_snippet_to_folder', { snippetId, folderId });
   }
 
   getExcludedApps(): Promise<ExcludedApp[]> {
