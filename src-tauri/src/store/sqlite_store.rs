@@ -5,7 +5,7 @@ use image::imageops::FilterType;
 use rusqlite::{params, Connection};
 use sha2::{Digest, Sha256};
 
-use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, Language, Snippet, Theme, WindowPositionMode};
+use crate::models::{AppSettings, ClipboardContent, ClipboardEntry, ClipboardPayload, ExcludedApp, Language, Snippet, Theme, WindowPositionMode};
 
 const THUMBNAIL_MAX_SIZE: u32 = 200;
 
@@ -94,6 +94,14 @@ impl SqliteStore {
                 content     TEXT    NOT NULL,
                 created_at  INTEGER NOT NULL,
                 sort_order  INTEGER NOT NULL DEFAULT 0
+            );"
+        )?;
+
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS excluded_apps (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                process_name TEXT    NOT NULL UNIQUE,
+                created_at   INTEGER NOT NULL
             );"
         )?;
 
@@ -999,5 +1007,15 @@ mod tests {
         assert!(entries.iter().any(|e| e.id == pinned_id), "pinned entry was pruned");
         // 2 unpinned (max_entries) + 1 pinned
         assert_eq!(entries.len(), 3);
+    }
+
+    #[test]
+    fn test_excluded_apps_table_exists() {
+        let store = in_memory_store();
+        let conn = store.conn.lock().unwrap();
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM excluded_apps", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
     }
 }
