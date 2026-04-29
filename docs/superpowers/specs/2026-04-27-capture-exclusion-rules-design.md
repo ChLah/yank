@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS excluded_apps (
 );
 ```
 
-`created_at` is a Unix timestamp in milliseconds, consistent with `entries.created_at`. The `UNIQUE` constraint enforces deduplication at the DB level. No entry in the `settings` table — excluded apps are fully independent of `AppSettings`.
+`created_at` is a Unix timestamp in seconds (from `chrono::Utc::now().timestamp()`), consistent with `entries.created_at` and `snippets.created_at`. The Angular UI multiplies by 1000 before passing to `DatePipe`. The `UNIQUE` constraint enforces deduplication at the DB level. No entry in the `settings` table — excluded apps are fully independent of `AppSettings`.
 
 ### Rust Model
 
