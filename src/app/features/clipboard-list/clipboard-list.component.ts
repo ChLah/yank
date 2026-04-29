@@ -31,6 +31,7 @@ import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmBadge } from '@spartan-ng/helm/badge';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmTabs, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs';
+import { CdkDropList, CdkDrag, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { TranslatePipe } from '@ngx-translate/core';
 
 type Tab = 'recent' | 'pinned' | 'snippets';
@@ -40,6 +41,8 @@ type Filter = 'all' | 'text' | 'image';
   selector: 'app-clipboard-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    CdkDropList,
+    CdkDrag,
     ClipboardEntryComponent,
     SnippetItemComponent,
     PlaceholderOverlayComponent,
@@ -200,7 +203,7 @@ type Filter = 'all' | 'text' | 'image';
               [hint]="'SNIPPETS.EMPTY_HINT' | translate"
             />
           } @else {
-            <div class="py-1">
+            <div cdkDropList (cdkDropListDropped)="onSnippetDrop($event)" class="py-1">
               @if (showNewSnippetForm()) {
                 <app-new-snippet-form
                   (saved)="onSnippetCreated($event)"
@@ -208,7 +211,12 @@ type Filter = 'all' | 'text' | 'image';
                 />
               }
               @for (snippet of allSnippets(); track snippet.id; let i = $index) {
-                <div class="snippet-item">
+                <div
+                  class="snippet-item"
+                  cdkDrag
+                  [cdkDragData]="snippet"
+                  [cdkDragDisabled]="editingSnippetId() !== null"
+                >
                   <app-snippet-item
                     [snippet]="snippet"
                     [selected]="snippetSelectedIndex() === i"
@@ -887,6 +895,14 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   protected onSnippetEditCancel(): void {
     this.editingSnippetId.set(null);
     this.hostEl.nativeElement.focus();
+  }
+
+  protected onSnippetDrop(event: CdkDragDrop<Snippet[]>): void {
+    if (event.previousIndex === event.currentIndex) return;
+    const snippet = event.item.data as Snippet;
+    const reordered = [...this.allSnippets()];
+    moveItemInArray(reordered, event.previousIndex, event.currentIndex);
+    this.snippetsService.reorderSnippet(reordered, snippet.id, event.currentIndex);
   }
 
   protected async onPlaceholderConfirmed(text: string): Promise<void> {
