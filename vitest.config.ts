@@ -17,6 +17,7 @@ export default defineConfig({
       '@spartan-ng/helm/separator': resolve(__dirname, './src/libs/ui/separator/src/index.ts'),
       '@spartan-ng/helm/hover-card': resolve(__dirname, './src/libs/ui/hover-card/src/index.ts'),
       '@spartan-ng/helm/switch': resolve(__dirname, './src/libs/ui/switch/src/index.ts'),
+      '@spartan-ng/helm/sonner': resolve(__dirname, './src/libs/ui/sonner/src/index.ts'),
     },
   },
   test: {
