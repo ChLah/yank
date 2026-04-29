@@ -100,6 +100,15 @@ pub struct Snippet {
     pub content: String,
     pub created_at: i64,
     pub sort_order: i64,
+    pub folder_id: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnippetFolder {
+    pub id: i64,
+    pub name: String,
+    pub sort_order: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

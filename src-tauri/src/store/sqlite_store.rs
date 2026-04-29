@@ -98,6 +98,28 @@ impl SqliteStore {
         )?;
 
         conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS snippet_folders (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                name       TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0
+            );"
+        )?;
+
+        let has_folder_id: bool = {
+            let mut stmt = conn.prepare("PRAGMA table_info(snippets)")?;
+            let cols: Vec<String> = stmt
+                .query_map([], |row| row.get::<_, String>(1))?
+                .filter_map(|r| r.ok())
+                .collect();
+            cols.iter().any(|name| name == "folder_id")
+        };
+        if !has_folder_id {
+            conn.execute_batch(
+                "ALTER TABLE snippets ADD COLUMN folder_id INTEGER REFERENCES snippet_folders(id);"
+            )?;
+        }
+
+        conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS excluded_apps (
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
                 process_name TEXT    NOT NULL UNIQUE,
@@ -471,7 +493,7 @@ impl SqliteStore {
     pub fn get_snippets(&self) -> Result<Vec<Snippet>, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
-            "SELECT id, title, content, created_at, sort_order \
+            "SELECT id, title, content, created_at, sort_order, folder_id \
              FROM snippets ORDER BY sort_order ASC, id ASC",
         )?;
         let results = stmt.query_map([], |row| {
@@ -481,6 +503,7 @@ impl SqliteStore {
                 content: row.get(2)?,
                 created_at: row.get(3)?,
                 sort_order: row.get(4)?,
+                folder_id: row.get(5)?,
             })
         })?.collect::<Result<Vec<_>, _>>()?;
         Ok(results)
@@ -505,6 +528,7 @@ impl SqliteStore {
             content: content.to_string(),
             created_at: now,
             sort_order,
+            folder_id: None,
         })
     }
 
@@ -518,7 +542,7 @@ impl SqliteStore {
             return Err(rusqlite::Error::QueryReturnedNoRows);
         }
         conn.query_row(
-            "SELECT id, title, content, created_at, sort_order FROM snippets WHERE id = ?1",
+            "SELECT id, title, content, created_at, sort_order, folder_id FROM snippets WHERE id = ?1",
             params![id],
             |row| {
                 Ok(Snippet {
@@ -527,6 +551,7 @@ impl SqliteStore {
                     content: row.get(2)?,
                     created_at: row.get(3)?,
                     sort_order: row.get(4)?,
+                    folder_id: row.get(5)?,
                 })
             },
         )
