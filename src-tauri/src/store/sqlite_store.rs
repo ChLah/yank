@@ -555,12 +555,15 @@ impl SqliteStore {
         let clamped = new_index.min(ids.len());
         ids.insert(clamped, id);
 
+        let tx = conn.unchecked_transaction()?;
+        let mut stmt = tx.prepare(
+            "UPDATE snippets SET sort_order = ?1 WHERE id = ?2",
+        )?;
         for (i, &snippet_id) in ids.iter().enumerate() {
-            conn.execute(
-                "UPDATE snippets SET sort_order = ?1 WHERE id = ?2",
-                params![i as i64, snippet_id],
-            )?;
+            stmt.execute(params![i as i64, snippet_id])?;
         }
+        drop(stmt);
+        tx.commit()?;
 
         Ok(())
     }
