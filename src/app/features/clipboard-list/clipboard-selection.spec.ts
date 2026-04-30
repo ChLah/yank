@@ -83,3 +83,55 @@ describe('ClipboardSelection — navigation', () => {
     expect(sel.selectedIndex()).toBe(0);
   });
 });
+
+describe('ClipboardSelection — selectedEntry', () => {
+  it('returns the entry at the current index', () => {
+    const a = makeEntry(1);
+    const b = makeEntry(2);
+    const entries = signal([a, b]);
+    const sel = new ClipboardSelection(entries);
+    expect(sel.selectedEntry()).toBe(a);
+    sel.moveDown();
+    expect(sel.selectedEntry()).toBe(b);
+  });
+
+  it('returns null when entries is empty', () => {
+    const entries = signal<ClipboardEntry[]>([]);
+    const sel = new ClipboardSelection(entries);
+    expect(sel.selectedEntry()).toBeNull();
+  });
+});
+
+describe('ClipboardSelection — entries change resets state', () => {
+  it('resets selectedIndex to 0 when entries signal changes', () => {
+    const entries = signal([makeEntry(1), makeEntry(2), makeEntry(3)]);
+    const sel = new ClipboardSelection(entries);
+    sel.moveDown();
+    sel.moveDown();
+    expect(sel.selectedIndex()).toBe(2);
+
+    entries.set([makeEntry(10), makeEntry(11), makeEntry(12)]);
+    expect(sel.selectedIndex()).toBe(0);
+  });
+
+  it('clears editingEntry when entries signal changes', () => {
+    const entries = signal([makeEntry(1), makeEntry(2)]);
+    const sel = new ClipboardSelection(entries);
+    sel.enterEditMode();
+    expect(sel.editingEntry()).not.toBeNull();
+
+    entries.set([makeEntry(10), makeEntry(11)]);
+    expect(sel.editingEntry()).toBeNull();
+  });
+
+  it('returns selectedIndex 0 when entries becomes empty', () => {
+    const entries = signal([makeEntry(1), makeEntry(2)]);
+    const sel = new ClipboardSelection(entries);
+    sel.moveDown();
+
+    entries.set([]);
+    expect(sel.selectedIndex()).toBe(0);
+    expect(sel.selectedEntry()).toBeNull();
+    expect(sel.editingEntry()).toBeNull();
+  });
+});
