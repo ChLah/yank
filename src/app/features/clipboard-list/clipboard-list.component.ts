@@ -1,16 +1,16 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
-  OnDestroy,
   OnInit,
   computed,
   inject,
   signal,
   viewChild,
 } from '@angular/core';
-import { UnlistenFn } from '@tauri-apps/api/event';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TauriEventBus } from '../../core/services/tauri-event-bus.service';
 import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideClipboard, lucideSettings } from '@ng-icons/lucide';
@@ -128,14 +128,12 @@ type TabType = 'snippets' | ClipboardTabType;
     </div>
   `,
 })
-export class ClipboardListComponent implements OnInit, OnDestroy {
+export class ClipboardListComponent implements OnInit {
   private clipboard = inject(ClipboardService);
   private bridge = inject(TauriBridgeService);
   private settings = inject(SettingsService);
   private hostEl = inject(ElementRef);
-  private unlistenPopupShown?: UnlistenFn;
-  private unlistenWindowMoved?: UnlistenFn;
-  private unlistenCapturePaused?: UnlistenFn;
+  private bus = inject(TauriEventBus);
   private moveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressPositionSave = false;
 
@@ -158,43 +156,38 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
     { labelKey: 'SNIPPETS.TAB', value: 'snippets' as TabType },
   ];
 
-  ngOnInit(): void {
-    this.bridge
-      .onPopupShown(() => {
-        this.activeTab.set('recent');
-        this.selectedEntrySignal.set(null);
-        this.bridge.getCapturePaused().then((paused) => this.captureIsPaused.set(paused));
-        this.suppressPositionSave = true;
-        setTimeout(() => (this.suppressPositionSave = false), 600);
-        setTimeout(() => this.focusActiveTab());
-      })
-      .then((fn) => (this.unlistenPopupShown = fn));
+  constructor() {
+    this.bus.popupShown$.pipe(takeUntilDestroyed()).subscribe(() => {
+      this.activeTab.set('recent');
+      this.selectedEntrySignal.set(null);
+      this.bridge.getCapturePaused().then((paused) => this.captureIsPaused.set(paused));
+      this.suppressPositionSave = true;
+      setTimeout(() => (this.suppressPositionSave = false), 600);
+      setTimeout(() => this.focusActiveTab());
+    });
 
-    this.bridge
-      .onCapturePausedChanged((paused) => this.captureIsPaused.set(paused))
-      .then((fn) => (this.unlistenCapturePaused = fn));
+    this.bus.capturePausedChanged$.pipe(takeUntilDestroyed()).subscribe((paused) => {
+      this.captureIsPaused.set(paused);
+    });
 
-    getCurrentWindow()
-      .onMoved(({ payload }) => {
-        if (this.suppressPositionSave) return;
-        if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
-        this.moveDebounceTimer = setTimeout(() => {
-          if (this.settings.settings.value()?.windowPosition === 'last') {
-            this.bridge.saveWindowPosition(payload.x, payload.y);
-          }
-        }, 300);
-      })
-      .then((fn) => (this.unlistenWindowMoved = fn));
+    this.bus.windowMoved$.pipe(takeUntilDestroyed()).subscribe(({ x, y }) => {
+      if (this.suppressPositionSave) return;
+      if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
+      this.moveDebounceTimer = setTimeout(() => {
+        if (this.settings.settings.value()?.windowPosition === 'last') {
+          this.bridge.saveWindowPosition(x, y);
+        }
+      }, 300);
+    });
 
-    this.bridge.getCapturePaused().then((paused) => this.captureIsPaused.set(paused));
-    this.focusActiveTab();
+    inject(DestroyRef).onDestroy(() => {
+      if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
+    });
   }
 
-  ngOnDestroy(): void {
-    this.unlistenPopupShown?.();
-    this.unlistenWindowMoved?.();
-    this.unlistenCapturePaused?.();
-    if (this.moveDebounceTimer) clearTimeout(this.moveDebounceTimer);
+  ngOnInit(): void {
+    this.bridge.getCapturePaused().then((paused) => this.captureIsPaused.set(paused));
+    this.focusActiveTab();
   }
 
   protected setTab(tab: string): void {
