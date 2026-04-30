@@ -23,7 +23,6 @@ import {
   CdkDragDrop,
   CdkDragHandle,
   CdkDragPlaceholder,
-  moveItemInArray,
 } from '@angular/cdk/drag-drop';
 import { SnippetItemComponent } from './snippet-item.component';
 import { SnippetFolderHeaderComponent } from './snippet-folder-header.component';
@@ -31,7 +30,7 @@ import { PlaceholderOverlayComponent, extractPlaceholders } from './placeholder-
 import { NewSnippetFormComponent } from './new-snippet-form.component';
 import { SkeletonListComponent } from '../../shared/ui/skeleton-list/skeleton-list.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
-import { SnippetsService } from '../../core/services/snippets.service';
+import { SnippetTree, SnippetsService } from '../../core/services/snippets.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { Snippet } from '../../core/models/snippet.model';
 import { SnippetFolder } from '../../core/models/snippet-folder.model';
@@ -71,19 +70,19 @@ import { resolveEditModeAction } from './keyboard.utils';
       />
     }
 
-    @if (snippetsService.snippets.isLoading()) {
+    @if (snippetsService.isLoading()) {
       <app-skeleton-list />
-    } @else if (snippetsService.snippets.error()) {
+    } @else if (snippetsService.error()) {
       <app-empty-state
         icon="lucideAlertCircle"
         [title]="'CLIPBOARD.ERROR_LOAD' | translate"
         variant="destructive"
       >
-        <button hlmBtn variant="link" size="sm" (click)="snippetsService.snippets.reload()">
+        <button hlmBtn variant="link" size="sm" (click)="snippetsService.reload()">
           {{ 'CLIPBOARD.TRY_AGAIN' | translate }}
         </button>
       </app-empty-state>
-    } @else if (allSnippets().length === 0 && !showNewSnippetForm()) {
+    } @else if (tree().all.length === 0 && !showNewSnippetForm()) {
       <app-empty-state
         icon="lucideClipboard"
         [title]="'SNIPPETS.EMPTY' | translate"
@@ -109,7 +108,7 @@ import { resolveEditModeAction } from './keyboard.utils';
                 [folder]="generalFolder"
                 [isGeneral]="true"
                 [isExpanded]="isFolderExpanded('general')"
-                [count]="generalSnippets().length"
+                [count]="tree().general.length"
                 (toggleCollapse)="toggleFolder('general')"
               />
             </div>
@@ -129,7 +128,7 @@ import { resolveEditModeAction } from './keyboard.utils';
                   (cancelled)="onSnippetFormCancelled()"
                 />
               }
-              @for (snippet of generalSnippets(); track snippet.id) {
+              @for (snippet of tree().general; track snippet.id) {
                 <div
                   class="snippet-item"
                   cdkDrag
@@ -138,10 +137,10 @@ import { resolveEditModeAction } from './keyboard.utils';
                 >
                   <app-snippet-item
                     [snippet]="snippet"
-                    [selected]="snippetSelectedIndex() === allSnippets().indexOf(snippet)"
+                    [selected]="snippetSelectedIndex() === tree().all.indexOf(snippet)"
                     [editMode]="editingSnippetId() === snippet.id"
-                    (select)="selectSnippet(allSnippets().indexOf(snippet))"
-                    (delete)="deleteSnippetByIndex(allSnippets().indexOf(snippet))"
+                    (select)="selectSnippet(tree().all.indexOf(snippet))"
+                    (delete)="deleteSnippetByIndex(tree().all.indexOf(snippet))"
                     (editConfirm)="onSnippetEditConfirm($event)"
                     (editCancel)="onSnippetEditCancel()"
                   />
@@ -152,10 +151,10 @@ import { resolveEditModeAction } from './keyboard.utils';
         </div>
 
         <div cdkDropList id="folder-reorder" (cdkDropListDropped)="onFolderDrop($event)">
-          @for (folder of userFolders(); track folder.id) {
+          @for (fg of tree().folders; track fg.folder.id) {
             <div
               cdkDrag
-              [cdkDragData]="folder"
+              [cdkDragData]="fg.folder"
               class="folder-section group/folder border-b border-border/20"
             >
               <div
@@ -165,10 +164,10 @@ import { resolveEditModeAction } from './keyboard.utils';
               <div
                 class="relative flex items-center"
                 cdkDropList
-                [id]="'folder-header-' + folder.id"
+                [id]="'folder-header-' + fg.folder.id"
                 [cdkDropListConnectedTo]="snippetBodyIds()"
                 [cdkDropListSortingDisabled]="true"
-                (cdkDropListDropped)="onSnippetDroppedOnFolderHeader($event, folder.id)"
+                (cdkDropListDropped)="onSnippetDroppedOnFolderHeader($event, fg.folder.id)"
               >
                 <span
                   cdkDragHandle
@@ -178,25 +177,25 @@ import { resolveEditModeAction } from './keyboard.utils';
                 </span>
                 <app-snippet-folder-header
                   class="flex-1 min-w-0"
-                  [folder]="folder"
+                  [folder]="fg.folder"
                   [isGeneral]="false"
-                  [isExpanded]="isFolderExpanded(folder.id)"
-                  [count]="getSnippetsByFolder(folder.id).length"
-                  (toggleCollapse)="toggleFolder(folder.id)"
-                  (rename)="onFolderRename(folder.id, $event)"
-                  (delete)="onFolderDelete(folder.id)"
+                  [isExpanded]="isFolderExpanded(fg.folder.id)"
+                  [count]="fg.snippets.length"
+                  (toggleCollapse)="toggleFolder(fg.folder.id)"
+                  (rename)="onFolderRename(fg.folder.id, $event)"
+                  (delete)="onFolderDelete(fg.folder.id)"
                 />
               </div>
-              @if (isFolderExpanded(folder.id)) {
+              @if (isFolderExpanded(fg.folder.id)) {
                 <div
                   cdkDropList
-                  [id]="'folder-body-' + folder.id"
+                  [id]="'folder-body-' + fg.folder.id"
                   class="pl-3"
                   [cdkDropListConnectedTo]="allSnippetTargetIds()"
-                  [cdkDropListData]="folder.id"
+                  [cdkDropListData]="fg.folder.id"
                   (cdkDropListDropped)="onSnippetDrop($any($event))"
                 >
-                  @for (snippet of getSnippetsByFolder(folder.id); track snippet.id) {
+                  @for (snippet of fg.snippets; track snippet.id) {
                     <div
                       class="snippet-item"
                       cdkDrag
@@ -205,10 +204,10 @@ import { resolveEditModeAction } from './keyboard.utils';
                     >
                       <app-snippet-item
                         [snippet]="snippet"
-                        [selected]="snippetSelectedIndex() === allSnippets().indexOf(snippet)"
+                        [selected]="snippetSelectedIndex() === tree().all.indexOf(snippet)"
                         [editMode]="editingSnippetId() === snippet.id"
-                        (select)="selectSnippet(allSnippets().indexOf(snippet))"
-                        (delete)="deleteSnippetByIndex(allSnippets().indexOf(snippet))"
+                        (select)="selectSnippet(tree().all.indexOf(snippet))"
+                        (delete)="deleteSnippetByIndex(tree().all.indexOf(snippet))"
                         (editConfirm)="onSnippetEditConfirm($event)"
                         (editCancel)="onSnippetEditCancel()"
                       />
@@ -262,50 +261,20 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
   protected newFolderName = signal('');
 
   protected readonly generalFolder: SnippetFolder = { id: -1, name: '', sortOrder: -1 };
+  protected readonly tree: () => SnippetTree = this.snippetsService.snippetTree;
 
   private newFolderInputRef = viewChild<ElementRef>('newFolderInput');
 
-  protected allSnippets = computed(() => {
-    const snippets = this.snippetsService.snippets.value() ?? [];
-    const folders = this.snippetsService.folders.value() ?? [];
-    const general = snippets
-      .filter((s) => s.folderId === null)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    const folderSnippets = folders
-      .slice()
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .flatMap((f) =>
-        snippets.filter((s) => s.folderId === f.id).sort((a, b) => a.sortOrder - b.sortOrder),
-      );
-    return [...general, ...folderSnippets];
-  });
-
-  protected userFolders = computed(() =>
-    (this.snippetsService.folders.value() ?? []).slice().sort((a, b) => a.sortOrder - b.sortOrder),
-  );
-
-  protected generalSnippets = computed(() =>
-    (this.snippetsService.snippets.value() ?? [])
-      .filter((s) => s.folderId === null)
-      .sort((a, b) => a.sortOrder - b.sortOrder),
-  );
-
   protected snippetBodyIds = computed(() => [
     'folder-body-general',
-    ...this.userFolders().map((f) => 'folder-body-' + f.id),
+    ...this.tree().folders.map((fg) => 'folder-body-' + fg.folder.id),
   ]);
 
   protected allSnippetTargetIds = computed(() => [
     ...this.snippetBodyIds(),
     'folder-header-general',
-    ...this.userFolders().map((f) => 'folder-header-' + f.id),
+    ...this.tree().folders.map((fg) => 'folder-header-' + fg.folder.id),
   ]);
-
-  protected getSnippetsByFolder(folderId: number): Snippet[] {
-    return (this.snippetsService.snippets.value() ?? [])
-      .filter((s) => s.folderId === folderId)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-  }
 
   protected isFolderExpanded(key: string | number): boolean {
     return this.expandedFolderIds().has(String(key));
@@ -320,7 +289,7 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.snippetsService.folders.reload();
+    this.snippetsService.reload();
     this.bridge
       .onPopupShown(() => this.resetState())
       .then((fn) => {
@@ -345,7 +314,7 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
     this.addingFolder.set(false);
     this.newFolderName.set('');
     this.expandedFolderIds.set(new Set(['general']));
-    this.snippetsService.folders.reload();
+    this.snippetsService.reload();
     this.hostEl.nativeElement.focus();
   }
 
@@ -354,9 +323,9 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
   }
 
   protected deleteSnippetByIndex(index: number): void {
-    const snippet = this.allSnippets()[index];
+    const snippet = this.tree().all[index];
     if (!snippet) return;
-    const newLen = this.allSnippets().length - 1;
+    const newLen = this.tree().all.length - 1;
     this.snippetsService.deleteSnippet(snippet.id);
     if (newLen <= 0) {
       this.snippetSelectedIndex.set(0);
@@ -367,7 +336,7 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
 
   protected async onSnippetCreated(data: { title: string; content: string }): Promise<void> {
     this.showNewSnippetForm.set(false);
-    const newIndex = this.allSnippets().length;
+    const newIndex = this.tree().all.length;
     await this.snippetsService.createSnippet(data.title, data.content);
     this.snippetSelectedIndex.set(newIndex);
   }
@@ -398,33 +367,12 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
     const snippet = event.item.data as Snippet;
     const targetFolderId = event.container.data as number | null;
     const sourceFolderId = event.previousContainer.data as number | null;
-    const all = this.snippetsService.snippets.value() ?? [];
 
     if (sourceFolderId === targetFolderId) {
-      const folderItems =
-        sourceFolderId === null
-          ? all.filter((s) => s.folderId === null).sort((a, b) => a.sortOrder - b.sortOrder)
-          : all
-              .filter((s) => s.folderId === sourceFolderId)
-              .sort((a, b) => a.sortOrder - b.sortOrder);
-      const reordered = [...folderItems];
-      moveItemInArray(reordered, event.previousIndex, event.currentIndex);
-      const updated = all.map((s) => {
-        const idx = reordered.findIndex((r) => r.id === s.id);
-        return idx !== -1 ? { ...s, sortOrder: idx } : s;
-      });
-      this.snippetsService.reorderSnippet(updated, snippet.id, event.currentIndex);
-      this.snippetSelectedIndex.set(this.allSnippets().findIndex((s) => s.id === snippet.id));
+      this.snippetsService.reorderSnippet(snippet.id, event.currentIndex);
+      this.snippetSelectedIndex.set(this.tree().all.findIndex((s) => s.id === snippet.id));
     } else {
-      const updated = all
-        .filter((s) => s.id !== snippet.id)
-        .concat([{ ...snippet, folderId: targetFolderId }]);
-      this.snippetsService.moveAndReorderSnippet(
-        updated,
-        snippet.id,
-        targetFolderId,
-        event.currentIndex,
-      );
+      this.snippetsService.moveAndReorderSnippet(snippet.id, targetFolderId, event.currentIndex);
     }
   }
 
@@ -434,17 +382,13 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
   ): void {
     const snippet = event.item.data as Snippet;
     if (snippet.folderId === targetFolderId) return;
-    const all = this.snippetsService.snippets.value() ?? [];
-    const updated = all.map((s) => (s.id === snippet.id ? { ...s, folderId: targetFolderId } : s));
-    this.snippetsService.moveSnippetToFolder(updated, snippet.id, targetFolderId);
+    this.snippetsService.moveSnippetToFolder(snippet.id, targetFolderId);
   }
 
   protected onFolderDrop(event: CdkDragDrop<SnippetFolder[]>): void {
     if (event.previousIndex === event.currentIndex) return;
     const folder = event.item.data as SnippetFolder;
-    const folders = [...this.userFolders()];
-    moveItemInArray(folders, event.previousIndex, event.currentIndex);
-    this.snippetsService.reorderFolder(folders, folder.id, event.currentIndex);
+    this.snippetsService.reorderFolder(folder.id, event.currentIndex);
   }
 
   protected onFolderRename(id: number, name: string): void {
@@ -468,8 +412,8 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
     this.addingFolder.set(false);
     if (name) {
       this.snippetsService.createFolder(name).then(() => {
-        const folders = this.snippetsService.folders.value() ?? [];
-        if (folders.length > 0) this.toggleFolder(folders[folders.length - 1].id);
+        const { folders } = this.tree();
+        if (folders.length > 0) this.toggleFolder(folders[folders.length - 1].folder.id);
       });
     }
   }
@@ -555,7 +499,7 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
   }
 
   private moveSnippetSelection(delta: number): void {
-    const len = this.allSnippets().length;
+    const len = this.tree().all.length;
     if (len === 0) return;
     const next = Math.max(0, Math.min(len - 1, this.snippetSelectedIndex() + delta));
     this.snippetSelectedIndex.set(next);
@@ -563,7 +507,7 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
   }
 
   private pasteOrOverlaySnippet(): void {
-    const snippet = this.allSnippets()[this.snippetSelectedIndex()];
+    const snippet = this.tree().all[this.snippetSelectedIndex()];
     if (!snippet) return;
     if (extractPlaceholders(snippet.content).length > 0) {
       this.placeholderSnippet.set(snippet);
@@ -574,7 +518,7 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
   }
 
   private enterSnippetEditMode(): void {
-    const snippet = this.allSnippets()[this.snippetSelectedIndex()];
+    const snippet = this.tree().all[this.snippetSelectedIndex()];
     if (!snippet) return;
     this.editingSnippetId.set(snippet.id);
   }
