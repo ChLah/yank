@@ -311,6 +311,7 @@ export class ClipboardTabComponent {
     if (this.selection.editingEntry() !== null) {
       if (resolveEditModeAction(event.key) === 'cancel-navigate') {
         this.selection.exitEditMode();
+        this.hostEl.nativeElement.focus();
       } else {
         event.stopPropagation();
         return;
