@@ -107,7 +107,7 @@ describe('resolveSnippetCommand', () => {
       });
     });
 
-    it('returns enter-edit for Ctrl+E uppercase', () => {
+    it('returns null for Ctrl+E (bare-key shortcut, ctrl modifier disables it)', () => {
       expect(resolveSnippetCommand(key('E', { ctrlKey: true }), ctx)).toBeNull();
     });
 
@@ -127,6 +127,10 @@ describe('resolveSnippetCommand', () => {
 
     it('returns null for Alt+e', () => {
       expect(resolveSnippetCommand(key('e', { altKey: true }), ctx)).toBeNull();
+    });
+
+    it('returns null for Meta+e', () => {
+      expect(resolveSnippetCommand(key('e', { metaKey: true }), ctx)).toBeNull();
     });
 
     it('returns null for unhandled key', () => {
