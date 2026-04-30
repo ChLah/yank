@@ -7,11 +7,11 @@ import {
 import { provideRouter, withHashLocation } from '@angular/router';
 import { TranslateLoader, provideTranslateService } from '@ngx-translate/core';
 import { routes } from './app.routes';
-import { TypescriptTranslateLoader } from './i18n/translate-loader';
 import { I18nService } from './core/services/i18n.service';
-import { ThemeService } from './core/services/theme.service';
 import { TauriBridgeService } from './core/services/tauri-bridge.service';
 import { TauriEventBus } from './core/services/tauri-event-bus.service';
+import { ThemeService } from './core/services/theme.service';
+import { TypescriptTranslateLoader } from './i18n/translate-loader';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -27,8 +27,6 @@ export const appConfig: ApplicationConfig = {
       const theme = inject(ThemeService);
       return bridge.getSettings().then((settings) => theme.applyTheme(settings.theme));
     }),
-    provideAppInitializer(() => {
-      inject(TauriEventBus).init();
-    }),
+    provideAppInitializer(() => inject(TauriEventBus).init()),
   ],
 };
