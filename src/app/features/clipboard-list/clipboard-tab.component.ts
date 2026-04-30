@@ -27,12 +27,14 @@ import { TauriEventBus } from '../../core/services/tauri-event-bus.service';
 import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
 import { resolveEditModeAction } from './keyboard.utils';
 import { ClipboardSelection } from './clipboard-selection';
+import { RetainFocusDirective } from '../../shared/ui/retain-focus/retain-focus.directive';
 
 export type ClipboardTabType = 'recent' | 'pinned';
 
 @Component({
   selector: 'app-clipboard-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  hostDirectives: [RetainFocusDirective],
   imports: [
     ClipboardEntryComponent,
     TransformPickerComponent,
@@ -208,7 +210,6 @@ export class ClipboardTabComponent {
     this.showTransformPicker.set(false);
     this.ocrLoadingEntryId.set(null);
     this.emitSelectedEntry();
-    this.hostEl.nativeElement.focus();
   }
 
   private emitSelectedEntry(): void {
@@ -267,13 +268,11 @@ export class ClipboardTabComponent {
     this.searchQuery.set('');
     this.isSearching.set(false);
     this.emitSelectedEntry();
-    this.hostEl.nativeElement.focus();
   }
 
   protected onHostClick(): void {
     if (this.showTransformPicker()) {
       this.showTransformPicker.set(false);
-      this.hostEl.nativeElement.focus();
     }
   }
 
@@ -289,7 +288,6 @@ export class ClipboardTabComponent {
 
   protected onEditCancel(): void {
     this.selection.exitEditMode();
-    this.hostEl.nativeElement.focus();
   }
 
   protected async onTransformApplied(event: { transformedContent: string }): Promise<void> {
@@ -300,7 +298,6 @@ export class ClipboardTabComponent {
 
   protected onTransformCancelled(): void {
     this.showTransformPicker.set(false);
-    this.hostEl.nativeElement.focus();
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
@@ -311,7 +308,6 @@ export class ClipboardTabComponent {
     if (this.selection.editingEntry() !== null) {
       if (resolveEditModeAction(event.key) === 'cancel-navigate') {
         this.selection.exitEditMode();
-        this.hostEl.nativeElement.focus();
       } else {
         event.stopPropagation();
         return;
