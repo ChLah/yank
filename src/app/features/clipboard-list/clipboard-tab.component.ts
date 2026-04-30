@@ -248,9 +248,7 @@ export class ClipboardTabComponent {
     const currentIndex = this.selection.selectedIndex();
     const newLen = this.filteredEntries().length - 1;
     this.clipboard.deleteEntry(entry.id);
-    if (newLen > 0) {
-      this.selection.selectAt(Math.min(currentIndex, newLen - 1));
-    }
+    this.selection.selectAt(Math.min(currentIndex, Math.max(0, newLen - 1)));
     this.emitSelectedEntry();
   }
 
