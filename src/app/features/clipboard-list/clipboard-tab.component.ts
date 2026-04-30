@@ -304,6 +304,8 @@ export class ClipboardTabComponent {
       } catch {
         // keep previous lastValidRegex so results stay stable
       }
+    } else if (this.regexMode()) {
+      this.lastValidRegex.set(null);
     }
     this.emitSelectedEntry();
   }
