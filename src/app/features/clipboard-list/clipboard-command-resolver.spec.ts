@@ -34,6 +34,12 @@ describe('resolveClipboardCommand', () => {
       expect(resolveClipboardCommand(key('Escape'), ctx)).toEqual({ type: 'cancel-edit' });
     });
 
+    it('returns cancel-edit for Ctrl+Escape in editing mode (preventDefault prevents Start menu)', () => {
+      expect(
+        resolveClipboardCommand(key('Escape', { ctrlKey: true }), { mode: 'editing', entryId: 5 }),
+      ).toEqual({ type: 'cancel-edit' });
+    });
+
     it('returns cancel-edit for ArrowDown', () => {
       expect(resolveClipboardCommand(key('ArrowDown'), ctx)).toEqual({ type: 'cancel-edit' });
     });
@@ -52,6 +58,12 @@ describe('resolveClipboardCommand', () => {
 
     it('returns null for Delete', () => {
       expect(resolveClipboardCommand(key('Delete'), ctx)).toBeNull();
+    });
+
+    it('returns null for Ctrl+digit in editing mode (editing branch fires before quick-paste)', () => {
+      expect(
+        resolveClipboardCommand(key('3', { ctrlKey: true }), { mode: 'editing', entryId: 5 }),
+      ).toBeNull();
     });
   });
 
@@ -175,6 +187,12 @@ describe('resolveClipboardCommand', () => {
 
     it('returns enter-edit for Ctrl+E', () => {
       expect(resolveClipboardCommand(key('e', { ctrlKey: true }), ctx)).toEqual({
+        type: 'enter-edit',
+      });
+    });
+
+    it('returns enter-edit for Ctrl+E uppercase', () => {
+      expect(resolveClipboardCommand(key('E', { ctrlKey: true }), ctx)).toEqual({
         type: 'enter-edit',
       });
     });
