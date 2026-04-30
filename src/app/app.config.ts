@@ -22,9 +22,10 @@ export const appConfig: ApplicationConfig = {
       loader: { provide: TranslateLoader, useClass: TypescriptTranslateLoader },
     }),
     provideAppInitializer(() => inject(I18nService).init()),
-    provideAppInitializer(async () => {
-      const settings = await inject(TauriBridgeService).getSettings();
-      inject(ThemeService).applyTheme(settings.theme);
+    provideAppInitializer(() => {
+      const bridge = inject(TauriBridgeService);
+      const theme = inject(ThemeService);
+      return bridge.getSettings().then((settings) => theme.applyTheme(settings.theme));
     }),
     provideAppInitializer(() => {
       inject(TauriEventBus).init();
