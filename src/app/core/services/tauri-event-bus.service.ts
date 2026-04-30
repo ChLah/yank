@@ -16,8 +16,11 @@ export class TauriEventBus implements OnDestroy {
   readonly windowMoved$: Observable<{ x: number; y: number }> = this._windowMoved$.asObservable();
 
   private readonly _unlisteners: UnlistenFn[] = [];
+  private _initialised = false;
 
   async init(): Promise<void> {
+    if (this._initialised) return;
+    this._initialised = true;
     const unlisteners = await Promise.all([
       listen('clipboard-changed', () => this._clipboardChanged$.next()),
       listen('popup-shown', () => this._popupShown$.next()),

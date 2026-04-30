@@ -43,8 +43,10 @@ export const appConfig: ApplicationConfig = {
     },
     {
       provide: APP_INITIALIZER,
-      useFactory: (bus: TauriEventBus) => () => bus.init(),
-      deps: [TauriEventBus],
+      useFactory: () => {
+        const bus = inject(TauriEventBus);
+        return () => bus.init();
+      },
       multi: true,
     },
   ],

@@ -130,4 +130,15 @@ describe('TauriEventBus', () => {
     expect(unlistenCapture).toHaveBeenCalledOnce();
     expect(unlistenMoved).toHaveBeenCalledOnce();
   });
+
+  it('ngOnDestroy() completes all streams', async () => {
+    await bus.init();
+    let completed = 0;
+    bus.clipboardChanged$.subscribe({ complete: () => completed++ });
+    bus.popupShown$.subscribe({ complete: () => completed++ });
+    bus.capturePausedChanged$.subscribe({ complete: () => completed++ });
+    bus.windowMoved$.subscribe({ complete: () => completed++ });
+    bus.ngOnDestroy();
+    expect(completed).toBe(4);
+  });
 });
