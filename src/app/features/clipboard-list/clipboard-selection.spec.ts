@@ -135,3 +135,46 @@ describe('ClipboardSelection — entries change resets state', () => {
     expect(sel.editingEntry()).toBeNull();
   });
 });
+
+describe('ClipboardSelection — edit mode', () => {
+  it('enterEditMode sets editingEntry for a text entry', () => {
+    const entry = makeEntry(1, 'text');
+    const entries = signal([entry]);
+    const sel = new ClipboardSelection(entries);
+    sel.enterEditMode();
+    expect(sel.editingEntry()).toBe(entry);
+  });
+
+  it('enterEditMode is a no-op for an image entry', () => {
+    const entries = signal([makeEntry(1, 'image')]);
+    const sel = new ClipboardSelection(entries);
+    sel.enterEditMode();
+    expect(sel.editingEntry()).toBeNull();
+  });
+
+  it('enterEditMode is a no-op when entries is empty', () => {
+    const entries = signal<ClipboardEntry[]>([]);
+    const sel = new ClipboardSelection(entries);
+    sel.enterEditMode();
+    expect(sel.editingEntry()).toBeNull();
+  });
+
+  it('exitEditMode clears editing state', () => {
+    const entries = signal([makeEntry(1, 'text')]);
+    const sel = new ClipboardSelection(entries);
+    sel.enterEditMode();
+    expect(sel.editingEntry()).not.toBeNull();
+    sel.exitEditMode();
+    expect(sel.editingEntry()).toBeNull();
+  });
+
+  it('navigation works normally after exitEditMode', () => {
+    const entries = signal([makeEntry(1, 'text'), makeEntry(2, 'text')]);
+    const sel = new ClipboardSelection(entries);
+    sel.enterEditMode();
+    sel.exitEditMode();
+    sel.moveDown();
+    expect(sel.selectedIndex()).toBe(1);
+    expect(sel.editingEntry()).toBeNull();
+  });
+});
