@@ -26,6 +26,8 @@ export const appConfig: ApplicationConfig = {
       const settings = await inject(TauriBridgeService).getSettings();
       inject(ThemeService).applyTheme(settings.theme);
     }),
-    provideAppInitializer(() => inject(TauriEventBus).init()),
+    provideAppInitializer(() => {
+      inject(TauriEventBus).init();
+    }),
   ],
 };
