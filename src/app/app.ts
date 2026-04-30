@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HlmToasterImports } from '@spartan-ng/helm/sonner';
-import { TauriBridgeService } from './core/services/tauri-bridge.service';
+import { TauriEventBus } from './core/services/tauri-event-bus.service';
 
 @Component({
   selector: 'app-root',
@@ -13,11 +14,12 @@ import { TauriBridgeService } from './core/services/tauri-bridge.service';
     <hlm-toaster />
   `,
 })
-export class App implements OnInit {
+export class App {
   private router = inject(Router);
-  private bridge = inject(TauriBridgeService);
 
-  ngOnInit(): void {
-    this.bridge.onPopupShown(() => this.router.navigate(['/']));
+  constructor() {
+    inject(TauriEventBus)
+      .popupShown$.pipe(takeUntilDestroyed())
+      .subscribe(() => this.router.navigate(['/']));
   }
 }
