@@ -1,5 +1,4 @@
 import { Snippet } from '../models/snippet.model';
-import { SnippetFolder } from '../models/snippet-folder.model';
 
 function moveItem<T>(arr: T[], from: number, to: number): T[] {
   const result = [...arr];
