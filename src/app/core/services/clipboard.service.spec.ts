@@ -1,4 +1,4 @@
-import { filterClipboardEntries } from './clipboard.service';
+import { filterClipboardEntries, filterClipboardEntriesByRegex } from './clipboard.service';
 import { ClipboardEntry } from '../models/clipboard-entry.model';
 
 function makeEntry(partial: Partial<ClipboardEntry>): ClipboardEntry {
@@ -76,5 +76,38 @@ describe('filterClipboardEntries', () => {
   it('returns empty array when no entries match', () => {
     const entries = [makeEntry({ id: 1, content: 'foo' })];
     expect(filterClipboardEntries(entries, false, 'all', 'zzz')).toEqual([]);
+  });
+});
+
+describe('filterClipboardEntriesByRegex', () => {
+  it('returns entries whose content matches the regex', () => {
+    const entries = [
+      makeEntry({ id: 1, content: 'Hello World' }),
+      makeEntry({ id: 2, content: 'Foo Bar' }),
+    ];
+    expect(filterClipboardEntriesByRegex(entries, /hello/i)).toEqual([entries[0]]);
+  });
+
+  it('is case-insensitive when the regex has the i flag', () => {
+    const entries = [makeEntry({ id: 1, content: 'HELLO' })];
+    expect(filterClipboardEntriesByRegex(entries, /hello/i)).toEqual(entries);
+  });
+
+  it('excludes entries with null content', () => {
+    const entries = [makeEntry({ id: 1, content: null }), makeEntry({ id: 2, content: 'hello' })];
+    expect(filterClipboardEntriesByRegex(entries, /hello/i)).toEqual([entries[1]]);
+  });
+
+  it('returns empty array when no entries match', () => {
+    const entries = [makeEntry({ id: 1, content: 'foo' })];
+    expect(filterClipboardEntriesByRegex(entries, /bar/i)).toEqual([]);
+  });
+
+  it('supports anchored patterns', () => {
+    const entries = [
+      makeEntry({ id: 1, content: 'error: file not found' }),
+      makeEntry({ id: 2, content: 'warning: error occurred' }),
+    ];
+    expect(filterClipboardEntriesByRegex(entries, /^error/i)).toEqual([entries[0]]);
   });
 });

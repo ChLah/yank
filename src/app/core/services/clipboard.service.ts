@@ -61,3 +61,10 @@ export function filterClipboardEntries(
   if (q) list = list.filter((e) => e.content?.toLowerCase().includes(q));
   return list;
 }
+
+export function filterClipboardEntriesByRegex(
+  entries: ClipboardEntry[],
+  rx: RegExp,
+): ClipboardEntry[] {
+  return entries.filter((e) => e.content != null && rx.test(e.content));
+}
