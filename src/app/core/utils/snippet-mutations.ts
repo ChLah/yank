@@ -35,3 +35,26 @@ export function computeMoveSnippetToFolder(
 ): Snippet[] {
   return snippets.map((s) => (s.id === snippetId ? { ...s, folderId: targetFolderId } : s));
 }
+
+export function computeMoveAndReorderSnippet(
+  snippets: Snippet[],
+  snippetId: number,
+  targetFolderId: number | null,
+  newIndex: number,
+): Snippet[] {
+  const withNewFolder = snippets.map((s) =>
+    s.id === snippetId ? { ...s, folderId: targetFolderId } : s,
+  );
+  const inTarget = withNewFolder
+    .filter((s) => s.folderId === targetFolderId)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const reordered = moveItem(
+    inTarget,
+    inTarget.findIndex((s) => s.id === snippetId),
+    newIndex,
+  );
+  const updatedById = new Map(reordered.map((s, i) => [s.id, i]));
+  return withNewFolder.map((s) =>
+    updatedById.has(s.id) ? { ...s, sortOrder: updatedById.get(s.id)! } : s,
+  );
+}

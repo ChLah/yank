@@ -1,4 +1,8 @@
-import { computeReorderSnippets, computeMoveSnippetToFolder } from './snippet-mutations';
+import {
+  computeReorderSnippets,
+  computeMoveSnippetToFolder,
+  computeMoveAndReorderSnippet,
+} from './snippet-mutations';
 import { Snippet } from '../models/snippet.model';
 
 function makeSnippet(partial: Partial<Snippet>): Snippet {
@@ -67,5 +71,41 @@ describe('computeMoveSnippetToFolder', () => {
     const snippets = [makeSnippet({ id: 1, folderId: 10 })];
     const result = computeMoveSnippetToFolder(snippets, 1, null);
     expect(result.find((s) => s.id === 1)?.folderId).toBeNull();
+  });
+});
+
+describe('computeMoveAndReorderSnippet', () => {
+  it('updates folderId and places snippet at the given index in the target folder', () => {
+    const snippets = [
+      makeSnippet({ id: 1, folderId: null, sortOrder: 0 }),
+      makeSnippet({ id: 2, folderId: 10, sortOrder: 0 }),
+      makeSnippet({ id: 3, folderId: 10, sortOrder: 1 }),
+    ];
+    const result = computeMoveAndReorderSnippet(snippets, 1, 10, 0);
+    expect(result.find((s) => s.id === 1)?.folderId).toBe(10);
+    expect(result.find((s) => s.id === 1)?.sortOrder).toBe(0);
+    expect(result.find((s) => s.id === 2)?.sortOrder).toBe(1);
+    expect(result.find((s) => s.id === 3)?.sortOrder).toBe(2);
+  });
+
+  it('does not change snippets outside the target folder', () => {
+    const snippets = [
+      makeSnippet({ id: 1, folderId: null, sortOrder: 0 }),
+      makeSnippet({ id: 2, folderId: 10, sortOrder: 0 }),
+      makeSnippet({ id: 3, folderId: 20, sortOrder: 0 }),
+    ];
+    const result = computeMoveAndReorderSnippet(snippets, 1, 10, 0);
+    expect(result.find((s) => s.id === 3)?.sortOrder).toBe(0);
+    expect(result.find((s) => s.id === 3)?.folderId).toBe(20);
+  });
+
+  it('appends to end when newIndex equals the destination folder length', () => {
+    const snippets = [
+      makeSnippet({ id: 1, folderId: null, sortOrder: 0 }),
+      makeSnippet({ id: 2, folderId: 10, sortOrder: 0 }),
+    ];
+    const result = computeMoveAndReorderSnippet(snippets, 1, 10, 1);
+    expect(result.find((s) => s.id === 1)?.sortOrder).toBe(1);
+    expect(result.find((s) => s.id === 2)?.sortOrder).toBe(0);
   });
 });
