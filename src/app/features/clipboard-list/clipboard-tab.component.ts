@@ -23,13 +23,12 @@ import { ClipboardEntryComponent } from './clipboard-entry.component';
 import { TransformPickerComponent } from './transform-picker.component';
 import { SkeletonListComponent } from '../../shared/ui/skeleton-list/skeleton-list.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
-import { ClipboardService } from '../../core/services/clipboard.service';
+import { ClipboardKindFilter, ClipboardService } from '../../core/services/clipboard.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
 import { resolveEditModeAction } from './keyboard.utils';
 
 export type ClipboardTabType = 'recent' | 'pinned';
-type Filter = 'all' | 'text' | 'image';
 
 @Component({
   selector: 'app-clipboard-tab',
@@ -101,15 +100,15 @@ type Filter = 'all' | 'text' | 'image';
 
     <!-- Content -->
     <div class="relative flex-1 overflow-y-auto scrollbar-thin" #listContainer>
-      @if (clipboard.entries.isLoading()) {
+      @if (clipboard.isLoading()) {
         <app-skeleton-list />
-      } @else if (clipboard.entries.error()) {
+      } @else if (clipboard.error()) {
         <app-empty-state
           icon="lucideAlertCircle"
           [title]="'CLIPBOARD.ERROR_LOAD' | translate"
           variant="destructive"
         >
-          <button hlmBtn variant="link" size="sm" (click)="clipboard.entries.reload()">
+          <button hlmBtn variant="link" size="sm" (click)="clipboard.reload()">
             {{ 'CLIPBOARD.TRY_AGAIN' | translate }}
           </button>
         </app-empty-state>
@@ -173,27 +172,20 @@ export class ClipboardTabComponent implements OnInit, OnDestroy {
   protected selectedIndex = signal(0);
   protected editingEntryId = signal<number | null>(null);
   protected ocrLoadingEntryId = signal<number | null>(null);
-  protected activeFilter = signal<Filter>('all');
+  protected activeFilter = signal<ClipboardKindFilter>('all');
   protected searchQuery = signal('');
   protected isSearching = signal(false);
   protected showTransformPicker = signal(false);
 
-  protected readonly filters = [
-    { labelKey: 'CLIPBOARD.FILTER_ALL', value: 'all' as Filter },
-    { labelKey: 'CLIPBOARD.FILTER_TEXT', value: 'text' as Filter },
-    { labelKey: 'CLIPBOARD.FILTER_IMAGE', value: 'image' as Filter },
+  protected readonly filters: { labelKey: string; value: ClipboardKindFilter }[] = [
+    { labelKey: 'CLIPBOARD.FILTER_ALL', value: 'all' },
+    { labelKey: 'CLIPBOARD.FILTER_TEXT', value: 'text' },
+    { labelKey: 'CLIPBOARD.FILTER_IMAGE', value: 'image' },
   ];
 
-  protected allEntries = computed(() => this.clipboard.entries.value() ?? []);
-
-  protected filteredEntries = computed(() => {
-    let list = this.allEntries();
-    if (this.tab() === 'pinned') list = list.filter((e) => e.pinned);
-    if (this.activeFilter() !== 'all') list = list.filter((e) => e.kind === this.activeFilter());
-    const q = this.searchQuery().toLowerCase().trim();
-    if (q) list = list.filter((e) => e.content?.toLowerCase().includes(q));
-    return list;
-  });
+  protected filteredEntries = computed(() =>
+    this.clipboard.filterEntries(this.tab() === 'pinned', this.activeFilter(), this.searchQuery()),
+  );
 
   private listContainer = viewChild.required<ElementRef<HTMLElement>>('listContainer');
   private searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
@@ -229,7 +221,7 @@ export class ClipboardTabComponent implements OnInit, OnDestroy {
     this.selectedEntry.emit(this.filteredEntries()[this.selectedIndex()] ?? null);
   }
 
-  protected setFilter(filter: Filter): void {
+  protected setFilter(filter: ClipboardKindFilter): void {
     this.editingEntryId.set(null);
     this.activeFilter.set(filter);
     this.selectedIndex.set(0);
@@ -473,7 +465,7 @@ export class ClipboardTabComponent implements OnInit, OnDestroy {
       if (text === '') {
         toast.error(this.translate.instant('OCR.NO_TEXT'));
       } else {
-        this.clipboard.entries.reload();
+        this.clipboard.reload();
         this.selectedIndex.set(0);
         this.emitSelectedEntry();
         toast.success(this.translate.instant('OCR.SUCCESS', { count: text.length }));

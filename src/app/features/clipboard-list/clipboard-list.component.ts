@@ -146,9 +146,8 @@ export class ClipboardListComponent implements OnInit, OnDestroy {
   private selectedEntrySignal = signal<ClipboardEntry | null>(null);
   protected showOcrHint = computed(() => this.selectedEntrySignal()?.kind === 'image');
 
-  private allEntries = computed(() => this.clipboard.entries.value() ?? []);
-  protected entryCount = computed(() => this.allEntries().length);
-  protected pinnedCount = computed(() => this.allEntries().filter((e) => e.pinned).length);
+  protected entryCount = computed(() => this.clipboard.count());
+  protected pinnedCount = computed(() => this.clipboard.filterEntries(true, 'all', '').length);
 
   private clipboardTabRef = viewChild(ClipboardTabComponent);
   private snippetsTabRef = viewChild(SnippetsTabComponent);
