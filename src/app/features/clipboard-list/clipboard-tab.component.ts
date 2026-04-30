@@ -2,8 +2,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
-  OnDestroy,
-  OnInit,
   computed,
   inject,
   input,
@@ -11,8 +9,8 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { UnlistenFn } from '@tauri-apps/api/event';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideSearch, lucideX } from '@ng-icons/lucide';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -25,6 +23,7 @@ import { SkeletonListComponent } from '../../shared/ui/skeleton-list/skeleton-li
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
 import { ClipboardKindFilter, ClipboardService } from '../../core/services/clipboard.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
+import { TauriEventBus } from '../../core/services/tauri-event-bus.service';
 import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
 import { resolveEditModeAction } from './keyboard.utils';
 
@@ -158,16 +157,16 @@ export type ClipboardTabType = 'recent' | 'pinned';
     </div>
   `,
 })
-export class ClipboardTabComponent implements OnInit, OnDestroy {
+export class ClipboardTabComponent {
   tab = input.required<ClipboardTabType>();
   selectedEntry = output<ClipboardEntry | null>();
 
   protected clipboard = inject(ClipboardService);
   private bridge = inject(TauriBridgeService);
+  private bus = inject(TauriEventBus);
   private router = inject(Router);
   private translate = inject(TranslateService);
   private hostEl = inject(ElementRef);
-  private unlistenPopupShown?: UnlistenFn;
 
   protected selectedIndex = signal(0);
   protected editingEntryId = signal<number | null>(null);
@@ -190,16 +189,8 @@ export class ClipboardTabComponent implements OnInit, OnDestroy {
   private listContainer = viewChild.required<ElementRef<HTMLElement>>('listContainer');
   private searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
-  ngOnInit(): void {
-    this.bridge
-      .onPopupShown(() => this.resetState())
-      .then((fn) => {
-        this.unlistenPopupShown = fn;
-      });
-  }
-
-  ngOnDestroy(): void {
-    this.unlistenPopupShown?.();
+  constructor() {
+    this.bus.popupShown$.pipe(takeUntilDestroyed()).subscribe(() => this.resetState());
   }
 
   focus(): void {

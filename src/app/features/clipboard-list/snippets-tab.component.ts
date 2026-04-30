@@ -3,7 +3,6 @@ import {
   Component,
   ElementRef,
   Injector,
-  OnDestroy,
   OnInit,
   afterNextRender,
   computed,
@@ -11,7 +10,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { UnlistenFn } from '@tauri-apps/api/event';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideGripVertical } from '@ng-icons/lucide';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -32,6 +31,7 @@ import { SkeletonListComponent } from '../../shared/ui/skeleton-list/skeleton-li
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
 import { SnippetTree, SnippetsService } from '../../core/services/snippets.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
+import { TauriEventBus } from '../../core/services/tauri-event-bus.service';
 import { Snippet } from '../../core/models/snippet.model';
 import { SnippetFolder } from '../../core/models/snippet-folder.model';
 import { resolveEditModeAction } from './keyboard.utils';
@@ -244,12 +244,12 @@ import { resolveEditModeAction } from './keyboard.utils';
     }
   `,
 })
-export class SnippetsTabComponent implements OnInit, OnDestroy {
+export class SnippetsTabComponent implements OnInit {
   protected snippetsService = inject(SnippetsService);
   private bridge = inject(TauriBridgeService);
+  private bus = inject(TauriEventBus);
   private hostEl = inject(ElementRef);
   private injector = inject(Injector);
-  private unlistenPopupShown?: UnlistenFn;
 
   protected snippetSelectedIndex = signal(0);
   protected editingSnippetId = signal<number | null>(null);
@@ -288,17 +288,12 @@ export class SnippetsTabComponent implements OnInit, OnDestroy {
     this.expandedFolderIds.set(set);
   }
 
-  ngOnInit(): void {
-    this.snippetsService.reload();
-    this.bridge
-      .onPopupShown(() => this.resetState())
-      .then((fn) => {
-        this.unlistenPopupShown = fn;
-      });
+  constructor() {
+    this.bus.popupShown$.pipe(takeUntilDestroyed()).subscribe(() => this.resetState());
   }
 
-  ngOnDestroy(): void {
-    this.unlistenPopupShown?.();
+  ngOnInit(): void {
+    this.snippetsService.reload();
   }
 
   focus(): void {
