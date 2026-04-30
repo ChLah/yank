@@ -1,4 +1,10 @@
-import { Injectable, computed, inject, resource } from '@angular/core';
+import { Injectable, WritableSignal, computed, inject, resource } from '@angular/core';
+import {
+  computeMoveAndReorderSnippet,
+  computeMoveSnippetToFolder,
+  computeReorderFolders,
+  computeReorderSnippets,
+} from '../utils/snippet-mutations';
 import { Snippet } from '../models/snippet.model';
 import { SnippetFolder } from '../models/snippet-folder.model';
 import { TauriBridgeService } from './tauri-bridge.service';
@@ -7,13 +13,6 @@ export interface SnippetTree {
   general: Snippet[];
   folders: { folder: SnippetFolder; snippets: Snippet[] }[];
   all: Snippet[];
-}
-
-function moveItem<T>(arr: T[], from: number, to: number): T[] {
-  const result = [...arr];
-  const [item] = result.splice(from, 1);
-  result.splice(to, 0, item);
-  return result;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -56,6 +55,21 @@ export class SnippetsService {
     this._folders.reload();
   }
 
+  private async applyOptimistically<T>(
+    target: { value: WritableSignal<T | undefined> },
+    transform: (current: T) => T,
+    persist: () => Promise<void>,
+  ): Promise<void> {
+    const previous = target.value();
+    if (previous === undefined) return;
+    target.value.set(transform(previous));
+    try {
+      await persist();
+    } catch {
+      target.value.set(previous);
+    }
+  }
+
   async createSnippet(title: string, content: string): Promise<void> {
     await this.bridge.createSnippet(title, content);
     this._snippets.reload();
@@ -72,40 +86,19 @@ export class SnippetsService {
   }
 
   async reorderSnippet(id: number, newIndex: number): Promise<void> {
-    const snippets = this._snippets.value() ?? [];
-    const snippet = snippets.find((s) => s.id === id);
-    if (!snippet) return;
-    const inFolder = snippets
-      .filter((s) => s.folderId === snippet.folderId)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    const reordered = moveItem(
-      inFolder,
-      inFolder.findIndex((s) => s.id === id),
-      newIndex,
+    await this.applyOptimistically(
+      this._snippets,
+      (s) => computeReorderSnippets(s, id, newIndex),
+      () => this.bridge.reorderSnippet(id, newIndex),
     );
-    const updatedById = new Map(reordered.map((s, i) => [s.id, i]));
-    const updated = snippets.map((s) =>
-      updatedById.has(s.id) ? { ...s, sortOrder: updatedById.get(s.id)! } : s,
-    );
-    this._snippets.value.set(updated);
-    try {
-      await this.bridge.reorderSnippet(id, newIndex);
-    } catch {
-      this._snippets.reload();
-    }
   }
 
   async moveSnippetToFolder(snippetId: number, targetFolderId: number | null): Promise<void> {
-    const snippets = this._snippets.value() ?? [];
-    const updated = snippets.map((s) =>
-      s.id === snippetId ? { ...s, folderId: targetFolderId } : s,
+    await this.applyOptimistically(
+      this._snippets,
+      (s) => computeMoveSnippetToFolder(s, snippetId, targetFolderId),
+      () => this.bridge.moveSnippetToFolder(snippetId, targetFolderId),
     );
-    this._snippets.value.set(updated);
-    try {
-      await this.bridge.moveSnippetToFolder(snippetId, targetFolderId);
-    } catch {
-      this._snippets.reload();
-    }
   }
 
   async moveAndReorderSnippet(
@@ -113,29 +106,14 @@ export class SnippetsService {
     targetFolderId: number | null,
     newIndex: number,
   ): Promise<void> {
-    const snippets = this._snippets.value() ?? [];
-    const withNewFolder = snippets.map((s) =>
-      s.id === snippetId ? { ...s, folderId: targetFolderId } : s,
+    await this.applyOptimistically(
+      this._snippets,
+      (s) => computeMoveAndReorderSnippet(s, snippetId, targetFolderId, newIndex),
+      async () => {
+        await this.bridge.moveSnippetToFolder(snippetId, targetFolderId);
+        await this.bridge.reorderSnippet(snippetId, newIndex);
+      },
     );
-    const inTarget = withNewFolder
-      .filter((s) => s.folderId === targetFolderId)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-    const reordered = moveItem(
-      inTarget,
-      inTarget.findIndex((s) => s.id === snippetId),
-      newIndex,
-    );
-    const updatedById = new Map(reordered.map((s, i) => [s.id, i]));
-    const updated = withNewFolder.map((s) =>
-      updatedById.has(s.id) ? { ...s, sortOrder: updatedById.get(s.id)! } : s,
-    );
-    this._snippets.value.set(updated);
-    try {
-      await this.bridge.moveSnippetToFolder(snippetId, targetFolderId);
-      await this.bridge.reorderSnippet(snippetId, newIndex);
-    } catch {
-      this._snippets.reload();
-    }
   }
 
   async createFolder(name: string): Promise<void> {
@@ -155,22 +133,10 @@ export class SnippetsService {
   }
 
   async reorderFolder(id: number, newIndex: number): Promise<void> {
-    const folders = this._folders.value() ?? [];
-    const sorted = [...folders].sort((a, b) => a.sortOrder - b.sortOrder);
-    const reordered = moveItem(
-      sorted,
-      sorted.findIndex((f) => f.id === id),
-      newIndex,
+    await this.applyOptimistically(
+      this._folders,
+      (f) => computeReorderFolders(f, id, newIndex),
+      () => this.bridge.reorderSnippetFolder(id, newIndex),
     );
-    const updatedById = new Map(reordered.map((f, i) => [f.id, i]));
-    const updated = folders.map((f) =>
-      updatedById.has(f.id) ? { ...f, sortOrder: updatedById.get(f.id)! } : f,
-    );
-    this._folders.value.set(updated);
-    try {
-      await this.bridge.reorderSnippetFolder(id, newIndex);
-    } catch {
-      this._folders.reload();
-    }
   }
 }
