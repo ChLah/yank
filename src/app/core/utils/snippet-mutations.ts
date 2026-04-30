@@ -27,3 +27,11 @@ export function computeReorderSnippets(
     updatedById.has(s.id) ? { ...s, sortOrder: updatedById.get(s.id)! } : s,
   );
 }
+
+export function computeMoveSnippetToFolder(
+  snippets: Snippet[],
+  snippetId: number,
+  targetFolderId: number | null,
+): Snippet[] {
+  return snippets.map((s) => (s.id === snippetId ? { ...s, folderId: targetFolderId } : s));
+}
