@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { ClipboardEntry } from '../models/clipboard-entry.model';
 import { AppSettings } from '../models/settings.model';
 import { Snippet } from '../models/snippet.model';
@@ -44,14 +43,6 @@ export class TauriBridgeService {
 
   togglePin(id: number): Promise<boolean> {
     return invoke<boolean>('toggle_pin', { id });
-  }
-
-  onClipboardChanged(handler: () => void): Promise<UnlistenFn> {
-    return listen('clipboard-changed', handler);
-  }
-
-  onPopupShown(handler: () => void): Promise<UnlistenFn> {
-    return listen('popup-shown', handler);
   }
 
   saveWindowPosition(x: number, y: number): Promise<void> {
@@ -132,9 +123,5 @@ export class TauriBridgeService {
 
   toggleCapturePaused(): Promise<boolean> {
     return invoke<boolean>('toggle_capture_paused');
-  }
-
-  onCapturePausedChanged(handler: (paused: boolean) => void): Promise<UnlistenFn> {
-    return listen<boolean>('capture-paused-changed', (event) => handler(event.payload));
   }
 }
