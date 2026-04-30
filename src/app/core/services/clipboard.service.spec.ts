@@ -88,9 +88,9 @@ describe('filterClipboardEntriesByRegex', () => {
     expect(filterClipboardEntriesByRegex(entries, /hello/i)).toEqual([entries[0]]);
   });
 
-  it('is case-insensitive when the regex has the i flag', () => {
+  it('is case-sensitive when the regex does not have the i flag', () => {
     const entries = [makeEntry({ id: 1, content: 'HELLO' })];
-    expect(filterClipboardEntriesByRegex(entries, /hello/i)).toEqual(entries);
+    expect(filterClipboardEntriesByRegex(entries, /hello/)).toEqual([]);
   });
 
   it('excludes entries with null content', () => {
