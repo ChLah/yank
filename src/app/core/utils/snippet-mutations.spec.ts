@@ -2,8 +2,10 @@ import {
   computeReorderSnippets,
   computeMoveSnippetToFolder,
   computeMoveAndReorderSnippet,
+  computeReorderFolders,
 } from './snippet-mutations';
 import { Snippet } from '../models/snippet.model';
+import { SnippetFolder } from '../models/snippet-folder.model';
 
 function makeSnippet(partial: Partial<Snippet>): Snippet {
   return {
@@ -113,5 +115,29 @@ describe('computeMoveAndReorderSnippet', () => {
     const snippets = [makeSnippet({ id: 1, folderId: null, sortOrder: 0 })];
     const result = computeMoveAndReorderSnippet(snippets, 99, 10, 0);
     expect(result).toEqual(snippets);
+  });
+});
+
+function makeFolder(partial: Partial<SnippetFolder>): SnippetFolder {
+  return { id: 0, name: '', sortOrder: 0, ...partial };
+}
+
+describe('computeReorderFolders', () => {
+  it('moves folder and recalculates sortOrder for all affected folders', () => {
+    const folders = [
+      makeFolder({ id: 1, sortOrder: 0 }),
+      makeFolder({ id: 2, sortOrder: 1 }),
+      makeFolder({ id: 3, sortOrder: 2 }),
+    ];
+    const result = computeReorderFolders(folders, 1, 2);
+    expect(result.find((f) => f.id === 1)?.sortOrder).toBe(2);
+    expect(result.find((f) => f.id === 2)?.sortOrder).toBe(0);
+    expect(result.find((f) => f.id === 3)?.sortOrder).toBe(1);
+  });
+
+  it('returns unchanged array when folder id is not found', () => {
+    const folders = [makeFolder({ id: 1, sortOrder: 0 })];
+    const result = computeReorderFolders(folders, 99, 0);
+    expect(result).toEqual(folders);
   });
 });

@@ -1,4 +1,5 @@
 import { Snippet } from '../models/snippet.model';
+import { SnippetFolder } from '../models/snippet-folder.model';
 
 function moveItem<T>(arr: T[], from: number, to: number): T[] {
   const result = [...arr];
@@ -57,5 +58,20 @@ export function computeMoveAndReorderSnippet(
   const updatedById = new Map(reordered.map((s, i) => [s.id, i]));
   return withNewFolder.map((s) =>
     updatedById.has(s.id) ? { ...s, sortOrder: updatedById.get(s.id)! } : s,
+  );
+}
+
+export function computeReorderFolders(
+  folders: SnippetFolder[],
+  id: number,
+  newIndex: number,
+): SnippetFolder[] {
+  const sorted = [...folders].sort((a, b) => a.sortOrder - b.sortOrder);
+  const fromIndex = sorted.findIndex((f) => f.id === id);
+  if (fromIndex === -1) return folders;
+  const reordered = moveItem(sorted, fromIndex, newIndex);
+  const updatedById = new Map(reordered.map((f, i) => [f.id, i]));
+  return folders.map((f) =>
+    updatedById.has(f.id) ? { ...f, sortOrder: updatedById.get(f.id)! } : f,
   );
 }
