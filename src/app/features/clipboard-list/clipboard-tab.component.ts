@@ -25,7 +25,11 @@ import { ClipboardKindFilter, ClipboardService } from '../../core/services/clipb
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { TauriEventBus } from '../../core/services/tauri-event-bus.service';
 import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
-import { resolveEditModeAction } from './keyboard.utils';
+import {
+  ClipboardCommand,
+  ClipboardKeyContext,
+  resolveClipboardCommand,
+} from './clipboard-command-resolver';
 import { ClipboardSelection } from './clipboard-selection';
 import { RetainFocusDirective } from '../../shared/ui/retain-focus/retain-focus.directive';
 
@@ -226,7 +230,7 @@ export class ClipboardTabComponent {
   protected selectEntry(index: number): void {
     if (this.selection.editingEntry() !== null) {
       const clickedEntry = this.filteredEntries()[index];
-      if (!shouldCancelEditOnSelect(clickedEntry?.id, this.selection.editingEntry()!.id)) return;
+      if (clickedEntry?.id === this.selection.editingEntry()!.id) return;
       this.selection.exitEditMode();
       this.selection.selectAt(index);
       this.emitSelectedEntry();
@@ -301,110 +305,76 @@ export class ClipboardTabComponent {
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
-    if (event.ctrlKey && event.key === 'Tab') return; // let bubble to shell
+    const context = this.buildContext();
+    const command = resolveClipboardCommand(event, context);
+    if (!command) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.dispatch(command);
+  }
 
-    if (this.showTransformPicker()) return;
+  private buildContext(): ClipboardKeyContext {
+    if (this.selection.editingEntry())
+      return { mode: 'editing', entryId: this.selection.editingEntry()!.id };
+    if (this.showTransformPicker()) return { mode: 'transform-picker' };
+    if (this.isSearching()) return { mode: 'searching' };
+    return { mode: 'normal' };
+  }
 
-    if (this.selection.editingEntry() !== null) {
-      if (resolveEditModeAction(event.key) === 'cancel-navigate') {
-        this.selection.exitEditMode();
-      } else {
-        event.stopPropagation();
-        return;
-      }
-    }
-
-    const quickPasteDigit = getQuickPasteDigit(event);
-    if (quickPasteDigit !== null) {
-      event.preventDefault();
-      event.stopPropagation();
-      const idx = quickPasteDigit - 1;
-      if (idx < this.filteredEntries().length) this.selectEntry(idx);
-      return;
-    }
-
-    if (this.isSearching()) {
-      switch (event.key) {
-        case 'ArrowDown':
-          event.preventDefault();
-          event.stopPropagation();
-          this.moveSelection(1);
-          break;
-        case 'ArrowUp':
-          event.preventDefault();
-          event.stopPropagation();
-          this.moveSelection(-1);
-          break;
-        case 'Enter':
-          event.preventDefault();
-          event.stopPropagation();
-          if (event.shiftKey) this.openTransformPicker();
-          else this.copySelected();
-          break;
-        case 'Escape':
-          event.preventDefault();
-          event.stopPropagation();
-          this.clearSearch();
-          break;
-      }
-      return;
-    }
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        event.stopPropagation();
-        this.moveSelection(1);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        event.stopPropagation();
+  private dispatch(command: ClipboardCommand): void {
+    switch (command.type) {
+      case 'move-up':
         this.moveSelection(-1);
         break;
-      case 'Enter':
-        event.preventDefault();
-        event.stopPropagation();
-        if (event.shiftKey) this.openTransformPicker();
-        else this.copySelected();
+      case 'move-down':
+        this.moveSelection(1);
         break;
-      case 'Delete':
-        event.preventDefault();
-        event.stopPropagation();
+      case 'copy-selected':
+        this.copySelected();
+        break;
+      case 'open-transform-picker':
+        this.openTransformPicker();
+        break;
+      case 'delete-selected':
         this.deleteEntry(this.selection.selectedIndex());
         break;
-      case 'Escape':
-        event.preventDefault();
-        event.stopPropagation();
+      case 'pin-selected':
+        this.pinSelected();
+        break;
+      case 'enter-edit':
+        this.enterEditMode();
+        break;
+      case 'trigger-ocr':
+        this.triggerOcr();
+        break;
+      case 'quick-paste': {
+        const idx = command.digit - 1;
+        if (idx < this.filteredEntries().length) this.selectEntry(idx);
+        break;
+      }
+      case 'start-search': {
+        this.isSearching.set(true);
+        this.searchQuery.set(command.char);
+        this.emitSelectedEntry();
+        setTimeout(() => {
+          const input = this.searchInput()?.nativeElement;
+          if (input) {
+            input.value = this.searchQuery();
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+          }
+        }, 0);
+        break;
+      }
+      case 'exit-search':
+        this.clearSearch();
+        break;
+      case 'cancel-edit':
+        this.selection.exitEditMode();
+        break;
+      case 'hide-popup':
         this.bridge.hidePopup();
         break;
-      default:
-        if (event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
-          if (event.key.toLowerCase() === 'p') {
-            event.preventDefault();
-            event.stopPropagation();
-            this.pinSelected();
-          } else if (event.key.toLowerCase() === 'e') {
-            event.preventDefault();
-            event.stopPropagation();
-            this.enterEditMode();
-          } else if (isOcrTrigger(event)) {
-            event.preventDefault();
-            event.stopPropagation();
-            this.triggerOcr();
-          }
-        } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
-          this.isSearching.set(true);
-          this.searchQuery.set(event.key);
-          this.emitSelectedEntry();
-          setTimeout(() => {
-            const input = this.searchInput()?.nativeElement;
-            if (input) {
-              input.value = this.searchQuery();
-              input.focus();
-              input.setSelectionRange(input.value.length, input.value.length);
-            }
-          }, 0);
-        }
     }
   }
 
@@ -465,27 +435,4 @@ export class ClipboardTabComponent {
     const items = this.listContainer().nativeElement.querySelectorAll<HTMLElement>('.entry-item');
     items[this.selection.selectedIndex()]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
-}
-
-export function shouldCancelEditOnSelect(
-  clickedEntryId: number | undefined,
-  editingEntryId: number,
-): boolean {
-  return clickedEntryId !== editingEntryId;
-}
-
-export function getQuickPasteDigit(event: KeyboardEvent): number | null {
-  if (!event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return null;
-  const digit = parseInt(event.key, 10);
-  return digit >= 1 && digit <= 9 ? digit : null;
-}
-
-export function isOcrTrigger(event: KeyboardEvent): boolean {
-  return (
-    event.key.toLowerCase() === 'o' &&
-    event.ctrlKey &&
-    !event.shiftKey &&
-    !event.altKey &&
-    !event.metaKey
-  );
 }
