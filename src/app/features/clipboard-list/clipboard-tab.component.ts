@@ -187,7 +187,7 @@ export class ClipboardTabComponent {
     this.clipboard.filterEntries(this.tab() === 'pinned', this.activeFilter(), this.searchQuery()),
   );
 
-  private selection = new ClipboardSelection(this.filteredEntries);
+  protected selection = new ClipboardSelection(this.filteredEntries);
 
   private listContainer = viewChild.required<ElementRef<HTMLElement>>('listContainer');
   private searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
