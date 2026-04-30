@@ -42,6 +42,7 @@ export function computeMoveAndReorderSnippet(
   targetFolderId: number | null,
   newIndex: number,
 ): Snippet[] {
+  if (!snippets.some((s) => s.id === snippetId)) return snippets;
   const withNewFolder = snippets.map((s) =>
     s.id === snippetId ? { ...s, folderId: targetFolderId } : s,
   );

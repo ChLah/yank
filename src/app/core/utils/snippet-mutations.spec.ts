@@ -108,4 +108,10 @@ describe('computeMoveAndReorderSnippet', () => {
     expect(result.find((s) => s.id === 1)?.sortOrder).toBe(1);
     expect(result.find((s) => s.id === 2)?.sortOrder).toBe(0);
   });
+
+  it('returns unchanged array when snippet id is not found', () => {
+    const snippets = [makeSnippet({ id: 1, folderId: null, sortOrder: 0 })];
+    const result = computeMoveAndReorderSnippet(snippets, 99, 10, 0);
+    expect(result).toEqual(snippets);
+  });
 });
