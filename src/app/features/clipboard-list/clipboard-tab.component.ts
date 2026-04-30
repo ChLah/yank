@@ -21,7 +21,11 @@ import { ClipboardEntryComponent } from './clipboard-entry.component';
 import { TransformPickerComponent } from './transform-picker.component';
 import { SkeletonListComponent } from '../../shared/ui/skeleton-list/skeleton-list.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
-import { ClipboardKindFilter, ClipboardService } from '../../core/services/clipboard.service';
+import {
+  ClipboardKindFilter,
+  ClipboardService,
+  filterClipboardEntriesByRegex,
+} from '../../core/services/clipboard.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { TauriEventBus } from '../../core/services/tauri-event-bus.service';
 import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
@@ -182,6 +186,24 @@ export class ClipboardTabComponent {
   protected searchQuery = signal('');
   protected isSearching = signal(false);
   protected showTransformPicker = signal(false);
+  protected regexMode = signal(false);
+  private lastValidRegex = signal<RegExp | null>(null);
+
+  protected isRegexInvalid = computed(() => {
+    if (!this.regexMode() || !this.searchQuery()) return false;
+    try {
+      new RegExp(this.searchQuery(), 'i');
+      return false;
+    } catch {
+      return true;
+    }
+  });
+
+  protected searchBarClass = computed(() => {
+    if (!this.isSearching()) return 'max-h-0 opacity-0';
+    const border = this.isRegexInvalid() ? 'border-destructive' : 'border-border';
+    return `max-h-10 opacity-100 border-b ${border}`;
+  });
 
   protected readonly filters: { labelKey: string; value: ClipboardKindFilter }[] = [
     { labelKey: 'CLIPBOARD.FILTER_ALL', value: 'all' },
@@ -189,9 +211,19 @@ export class ClipboardTabComponent {
     { labelKey: 'CLIPBOARD.FILTER_IMAGE', value: 'image' },
   ];
 
-  protected filteredEntries = computed(() =>
-    this.clipboard.filterEntries(this.tab() === 'pinned', this.activeFilter(), this.searchQuery()),
-  );
+  protected filteredEntries = computed(() => {
+    const q = this.searchQuery();
+    const pinnedOnly = this.tab() === 'pinned';
+    const kind = this.activeFilter();
+
+    if (!this.regexMode() || !q) {
+      return this.clipboard.filterEntries(pinnedOnly, kind, q);
+    }
+
+    const base = this.clipboard.filterEntries(pinnedOnly, kind, '');
+    const rx = this.lastValidRegex();
+    return rx ? filterClipboardEntriesByRegex(base, rx) : base;
+  });
 
   protected selection = new ClipboardSelection(this.filteredEntries);
 
@@ -264,14 +296,37 @@ export class ClipboardTabComponent {
   }
 
   protected onSearchInput(event: Event): void {
-    this.searchQuery.set((event.target as HTMLInputElement).value);
+    const value = (event.target as HTMLInputElement).value;
+    this.searchQuery.set(value);
+    if (this.regexMode() && value) {
+      try {
+        this.lastValidRegex.set(new RegExp(value, 'i'));
+      } catch {
+        // keep previous lastValidRegex so results stay stable
+      }
+    }
     this.emitSelectedEntry();
   }
 
   protected clearSearch(): void {
     this.searchQuery.set('');
     this.isSearching.set(false);
+    this.regexMode.set(false);
+    this.lastValidRegex.set(null);
     this.emitSelectedEntry();
+  }
+
+  protected toggleRegexMode(): void {
+    const next = !this.regexMode();
+    this.regexMode.set(next);
+    this.lastValidRegex.set(null);
+    if (next && this.searchQuery()) {
+      try {
+        this.lastValidRegex.set(new RegExp(this.searchQuery(), 'i'));
+      } catch {
+        // current query is invalid; lastValidRegex stays null
+      }
+    }
   }
 
   protected onHostClick(): void {
