@@ -85,7 +85,7 @@ export type ClipboardTabType = 'recent' | 'pinned';
     <!-- Search bar (animated slide-in) -->
     <div
       class="overflow-hidden transition-all duration-150 ease-out shrink-0"
-      [class]="isSearching() ? 'max-h-10 opacity-100 border-b border-border' : 'max-h-0 opacity-0'"
+      [class]="searchBarClass()"
     >
       <div class="flex items-center gap-2 px-3.5 h-9">
         <ng-icon hlm size="sm" name="lucideSearch" class="text-muted-foreground shrink-0" />
@@ -97,6 +97,18 @@ export type ClipboardTabType = 'recent' | 'pinned';
           [placeholder]="'CLIPBOARD.SEARCH_PLACEHOLDER' | translate"
           class="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground outline-none"
         />
+        <button
+          (click)="toggleRegexMode()"
+          [attr.aria-label]="'CLIPBOARD.SEARCH_REGEX_TOGGLE' | translate"
+          class="text-[11px] font-mono transition-colors shrink-0 rounded px-1"
+          [class]="
+            regexMode()
+              ? 'text-brand-300 bg-brand/20'
+              : 'text-muted-foreground hover:text-foreground'
+          "
+        >
+          .*
+        </button>
         @if (searchQuery()) {
           <button
             class="text-muted-foreground hover:text-foreground transition-colors"
