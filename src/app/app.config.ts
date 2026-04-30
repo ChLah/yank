@@ -1,4 +1,9 @@
-import { APP_INITIALIZER, ApplicationConfig, inject, provideBrowserGlobalErrorListeners } from '@angular/core';
+import {
+  APP_INITIALIZER,
+  ApplicationConfig,
+  inject,
+  provideBrowserGlobalErrorListeners,
+} from '@angular/core';
 import { provideRouter, withHashLocation } from '@angular/router';
 import { TranslateLoader, provideTranslateService } from '@ngx-translate/core';
 import { routes } from './app.routes';
@@ -6,6 +11,7 @@ import { TypescriptTranslateLoader } from './i18n/translate-loader';
 import { I18nService } from './core/services/i18n.service';
 import { ThemeService } from './core/services/theme.service';
 import { TauriBridgeService } from './core/services/tauri-bridge.service';
+import { TauriEventBus } from './core/services/tauri-event-bus.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -17,7 +23,10 @@ export const appConfig: ApplicationConfig = {
     }),
     {
       provide: APP_INITIALIZER,
-      useFactory: () => { const svc = inject(I18nService); return () => svc.init(); },
+      useFactory: () => {
+        const svc = inject(I18nService);
+        return () => svc.init();
+      },
       multi: true,
     },
     {
@@ -30,6 +39,12 @@ export const appConfig: ApplicationConfig = {
           theme.applyTheme(settings.theme);
         };
       },
+      multi: true,
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (bus: TauriEventBus) => () => bus.init(),
+      deps: [TauriEventBus],
       multi: true,
     },
   ],
