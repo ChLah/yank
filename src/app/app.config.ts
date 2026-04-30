@@ -1,7 +1,7 @@
 import {
-  APP_INITIALIZER,
   ApplicationConfig,
   inject,
+  provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideRouter, withHashLocation } from '@angular/router';
@@ -21,33 +21,11 @@ export const appConfig: ApplicationConfig = {
       defaultLanguage: 'en',
       loader: { provide: TranslateLoader, useClass: TypescriptTranslateLoader },
     }),
-    {
-      provide: APP_INITIALIZER,
-      useFactory: () => {
-        const svc = inject(I18nService);
-        return () => svc.init();
-      },
-      multi: true,
-    },
-    {
-      provide: APP_INITIALIZER,
-      useFactory: () => {
-        const bridge = inject(TauriBridgeService);
-        const theme = inject(ThemeService);
-        return async () => {
-          const settings = await bridge.getSettings();
-          theme.applyTheme(settings.theme);
-        };
-      },
-      multi: true,
-    },
-    {
-      provide: APP_INITIALIZER,
-      useFactory: () => {
-        const bus = inject(TauriEventBus);
-        return () => bus.init();
-      },
-      multi: true,
-    },
+    provideAppInitializer(() => inject(I18nService).init()),
+    provideAppInitializer(async () => {
+      const settings = await inject(TauriBridgeService).getSettings();
+      inject(ThemeService).applyTheme(settings.theme);
+    }),
+    provideAppInitializer(() => inject(TauriEventBus).init()),
   ],
 };
