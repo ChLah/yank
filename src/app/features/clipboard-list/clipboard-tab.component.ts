@@ -26,6 +26,7 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { TauriEventBus } from '../../core/services/tauri-event-bus.service';
 import { ClipboardEntry } from '../../core/models/clipboard-entry.model';
 import { resolveEditModeAction } from './keyboard.utils';
+import { ClipboardSelection } from './clipboard-selection';
 
 export type ClipboardTabType = 'recent' | 'pinned';
 
@@ -132,8 +133,8 @@ export type ClipboardTabType = 'recent' | 'pinned';
             <div class="entry-item relative">
               <app-clipboard-entry
                 [entry]="entry"
-                [selected]="selectedIndex() === i"
-                [editMode]="editingEntryId() === entry.id"
+                [selected]="selection.selectedIndex() === i"
+                [editMode]="selection.editingEntry()?.id === entry.id"
                 [ocrLoading]="ocrLoadingEntryId() === entry.id"
                 [shortcutIndex]="i < 9 ? i + 1 : null"
                 (select)="selectEntry(i)"
@@ -142,7 +143,9 @@ export type ClipboardTabType = 'recent' | 'pinned';
                 (editConfirm)="onEditConfirm($event)"
                 (editCancel)="onEditCancel()"
               />
-              @if (showTransformPicker() && selectedIndex() === i && entry.kind === 'text') {
+              @if (
+                showTransformPicker() && selection.selectedIndex() === i && entry.kind === 'text'
+              ) {
                 <app-transform-picker
                   [content]="entry.content ?? ''"
                   (applied)="onTransformApplied($event)"
@@ -168,8 +171,6 @@ export class ClipboardTabComponent {
   private translate = inject(TranslateService);
   private hostEl = inject(ElementRef);
 
-  protected selectedIndex = signal(0);
-  protected editingEntryId = signal<number | null>(null);
   protected ocrLoadingEntryId = signal<number | null>(null);
   protected activeFilter = signal<ClipboardKindFilter>('all');
   protected searchQuery = signal('');
@@ -186,6 +187,8 @@ export class ClipboardTabComponent {
     this.clipboard.filterEntries(this.tab() === 'pinned', this.activeFilter(), this.searchQuery()),
   );
 
+  private selection = new ClipboardSelection(this.filteredEntries);
+
   private listContainer = viewChild.required<ElementRef<HTMLElement>>('listContainer');
   private searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
@@ -198,10 +201,10 @@ export class ClipboardTabComponent {
   }
 
   private resetState(): void {
-    this.editingEntryId.set(null);
+    this.selection.exitEditMode();
+    this.selection.selectAt(0);
     this.activeFilter.set('all');
     this.clearSearch();
-    this.selectedIndex.set(0);
     this.showTransformPicker.set(false);
     this.ocrLoadingEntryId.set(null);
     this.emitSelectedEntry();
@@ -209,26 +212,26 @@ export class ClipboardTabComponent {
   }
 
   private emitSelectedEntry(): void {
-    this.selectedEntry.emit(this.filteredEntries()[this.selectedIndex()] ?? null);
+    this.selectedEntry.emit(this.selection.selectedEntry());
   }
 
   protected setFilter(filter: ClipboardKindFilter): void {
-    this.editingEntryId.set(null);
+    this.selection.exitEditMode();
     this.activeFilter.set(filter);
-    this.selectedIndex.set(0);
+    this.selection.selectAt(0);
     this.emitSelectedEntry();
   }
 
   protected selectEntry(index: number): void {
-    if (this.editingEntryId() !== null) {
+    if (this.selection.editingEntry() !== null) {
       const clickedEntry = this.filteredEntries()[index];
-      if (!shouldCancelEditOnSelect(clickedEntry?.id, this.editingEntryId()!)) return;
-      this.editingEntryId.set(null);
-      this.selectedIndex.set(index);
+      if (!shouldCancelEditOnSelect(clickedEntry?.id, this.selection.editingEntry()!.id)) return;
+      this.selection.exitEditMode();
+      this.selection.selectAt(index);
       this.emitSelectedEntry();
       return;
     }
-    this.selectedIndex.set(index);
+    this.selection.selectAt(index);
     this.emitSelectedEntry();
     const entry = this.filteredEntries()[index];
     if (!entry) return;
@@ -242,12 +245,11 @@ export class ClipboardTabComponent {
   protected deleteEntry(index: number): void {
     const entry = this.filteredEntries()[index];
     if (!entry) return;
+    const currentIndex = this.selection.selectedIndex();
     const newLen = this.filteredEntries().length - 1;
     this.clipboard.deleteEntry(entry.id);
-    if (newLen <= 0) {
-      this.selectedIndex.set(0);
-    } else if (this.selectedIndex() >= newLen) {
-      this.selectedIndex.set(newLen - 1);
+    if (newLen > 0) {
+      this.selection.selectAt(Math.min(currentIndex, newLen - 1));
     }
     this.emitSelectedEntry();
   }
@@ -260,14 +262,12 @@ export class ClipboardTabComponent {
 
   protected onSearchInput(event: Event): void {
     this.searchQuery.set((event.target as HTMLInputElement).value);
-    this.selectedIndex.set(0);
     this.emitSelectedEntry();
   }
 
   protected clearSearch(): void {
     this.searchQuery.set('');
     this.isSearching.set(false);
-    this.selectedIndex.set(0);
     this.emitSelectedEntry();
     this.hostEl.nativeElement.focus();
   }
@@ -280,7 +280,7 @@ export class ClipboardTabComponent {
   }
 
   protected async onEditConfirm(text: string): Promise<void> {
-    this.editingEntryId.set(null);
+    this.selection.exitEditMode();
     try {
       await this.bridge.setClipboardText(text);
       this.bridge.hidePopup();
@@ -290,7 +290,7 @@ export class ClipboardTabComponent {
   }
 
   protected onEditCancel(): void {
-    this.editingEntryId.set(null);
+    this.selection.exitEditMode();
     this.hostEl.nativeElement.focus();
   }
 
@@ -310,9 +310,9 @@ export class ClipboardTabComponent {
 
     if (this.showTransformPicker()) return;
 
-    if (this.editingEntryId() !== null) {
+    if (this.selection.editingEntry() !== null) {
       if (resolveEditModeAction(event.key) === 'cancel-navigate') {
-        this.editingEntryId.set(null);
+        this.selection.exitEditMode();
       } else {
         event.stopPropagation();
         return;
@@ -375,7 +375,7 @@ export class ClipboardTabComponent {
       case 'Delete':
         event.preventDefault();
         event.stopPropagation();
-        this.deleteEntry(this.selectedIndex());
+        this.deleteEntry(this.selection.selectedIndex());
         break;
       case 'Escape':
         event.preventDefault();
@@ -400,7 +400,6 @@ export class ClipboardTabComponent {
         } else if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
           this.isSearching.set(true);
           this.searchQuery.set(event.key);
-          this.selectedIndex.set(0);
           this.emitSelectedEntry();
           setTimeout(() => {
             const input = this.searchInput()?.nativeElement;
@@ -417,36 +416,34 @@ export class ClipboardTabComponent {
   private moveSelection(delta: number): void {
     const len = this.filteredEntries().length;
     if (len === 0) return;
-    const next = Math.max(0, Math.min(len - 1, this.selectedIndex() + delta));
-    this.selectedIndex.set(next);
+    const next = Math.max(0, Math.min(len - 1, this.selection.selectedIndex() + delta));
+    this.selection.selectAt(next);
     this.emitSelectedEntry();
     this.scrollSelectedIntoView();
   }
 
   private copySelected(): void {
-    this.selectEntry(this.selectedIndex());
+    this.selectEntry(this.selection.selectedIndex());
   }
 
   private pinSelected(): void {
-    const entry = this.filteredEntries()[this.selectedIndex()];
+    const entry = this.filteredEntries()[this.selection.selectedIndex()];
     if (!entry) return;
     this.clipboard.togglePin(entry.id);
   }
 
   private enterEditMode(): void {
-    const entry = this.filteredEntries()[this.selectedIndex()];
-    if (!entry || entry.kind !== 'text') return;
-    this.editingEntryId.set(entry.id);
+    this.selection.enterEditMode();
   }
 
   private openTransformPicker(): void {
-    const entry = this.filteredEntries()[this.selectedIndex()];
+    const entry = this.filteredEntries()[this.selection.selectedIndex()];
     if (!entry || entry.kind !== 'text') return;
     this.showTransformPicker.set(true);
   }
 
   private async triggerOcr(): Promise<void> {
-    const entry = this.filteredEntries()[this.selectedIndex()];
+    const entry = this.filteredEntries()[this.selection.selectedIndex()];
     if (!entry || entry.kind !== 'image') return;
     if (this.ocrLoadingEntryId() !== null) return;
 
@@ -457,7 +454,7 @@ export class ClipboardTabComponent {
         toast.error(this.translate.instant('OCR.NO_TEXT'));
       } else {
         this.clipboard.reload();
-        this.selectedIndex.set(0);
+        this.selection.selectAt(0);
         this.emitSelectedEntry();
         toast.success(this.translate.instant('OCR.SUCCESS', { count: text.length }));
       }
@@ -471,7 +468,7 @@ export class ClipboardTabComponent {
 
   private scrollSelectedIntoView(): void {
     const items = this.listContainer().nativeElement.querySelectorAll<HTMLElement>('.entry-item');
-    items[this.selectedIndex()]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    items[this.selection.selectedIndex()]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 }
 
