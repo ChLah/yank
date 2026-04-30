@@ -1,13 +1,15 @@
-import { Injectable, OnDestroy, computed, inject, resource } from '@angular/core';
+import { Injectable, computed, inject, resource } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriBridgeService } from './tauri-bridge.service';
+import { TauriEventBus } from './tauri-event-bus.service';
 import { ClipboardEntry, ClipboardKind } from '../models/clipboard-entry.model';
-import { UnlistenFn } from '@tauri-apps/api/event';
 
 export type ClipboardKindFilter = 'all' | ClipboardKind;
 
 @Injectable({ providedIn: 'root' })
-export class ClipboardService implements OnDestroy {
+export class ClipboardService {
   private bridge = inject(TauriBridgeService);
+  private bus = inject(TauriEventBus);
 
   private readonly _entries = resource({
     loader: () => this.bridge.getEntries(),
@@ -17,21 +19,9 @@ export class ClipboardService implements OnDestroy {
   readonly error = computed(() => this._entries.error());
   readonly count = computed(() => this._entries.value()?.length ?? 0);
 
-  private unlistenClipboardChanged?: UnlistenFn;
-  private unlistenPopupShown?: UnlistenFn;
-
   constructor() {
-    this.setupListeners();
-  }
-
-  private async setupListeners(): Promise<void> {
-    this.unlistenClipboardChanged = await this.bridge.onClipboardChanged(() => {
-      this._entries.reload();
-    });
-
-    this.unlistenPopupShown = await this.bridge.onPopupShown(() => {
-      this._entries.reload();
-    });
+    this.bus.clipboardChanged$.pipe(takeUntilDestroyed()).subscribe(() => this._entries.reload());
+    this.bus.popupShown$.pipe(takeUntilDestroyed()).subscribe(() => this._entries.reload());
   }
 
   reload(): void {
@@ -55,11 +45,6 @@ export class ClipboardService implements OnDestroy {
 
   filterEntries(pinnedOnly: boolean, kind: ClipboardKindFilter, search: string): ClipboardEntry[] {
     return filterClipboardEntries(this._entries.value() ?? [], pinnedOnly, kind, search);
-  }
-
-  ngOnDestroy(): void {
-    this.unlistenClipboardChanged?.();
-    this.unlistenPopupShown?.();
   }
 }
 
