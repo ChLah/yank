@@ -11,7 +11,7 @@ describe('ClipboardTabType', () => {
   });
 });
 
-describe('onSearchInput regex mode - empty input clears lastValidRegex', () => {
+describe('filteredEntries computed — null lastValidRegex returns unfiltered base', () => {
   it('filterClipboardEntriesByRegex with null rx returns base entries (no filtering)', () => {
     // When lastValidRegex is null (cleared by empty input),
     // filteredEntries returns base unchanged
