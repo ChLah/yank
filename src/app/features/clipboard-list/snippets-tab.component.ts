@@ -34,7 +34,11 @@ import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
 import { TauriEventBus } from '../../core/services/tauri-event-bus.service';
 import { Snippet } from '../../core/models/snippet.model';
 import { SnippetFolder } from '../../core/models/snippet-folder.model';
-import { resolveEditModeAction } from './keyboard.utils';
+import {
+  SnippetCommand,
+  SnippetKeyContext,
+  resolveSnippetCommand,
+} from './snippet-command-resolver';
 
 @Component({
   selector: 'app-snippets-tab',
@@ -438,58 +442,49 @@ export class SnippetsTabComponent implements OnInit {
   }
 
   protected onKeyDown(event: KeyboardEvent): void {
-    if (event.ctrlKey && event.key === 'Tab') return; // bubble to shell
+    const context = this.buildContext();
+    const command = resolveSnippetCommand(event, context);
+    if (!command) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.dispatch(command);
+  }
 
-    if (this.showNewSnippetForm()) return;
-    if (this.showPlaceholderOverlay()) return;
+  private buildContext(): SnippetKeyContext {
+    if (this.showPlaceholderOverlay()) return { mode: 'placeholder-overlay' };
+    if (this.showNewSnippetForm()) return { mode: 'adding-snippet' };
+    if (this.addingFolder()) return { mode: 'adding-folder' };
+    if (this.editingSnippetId() !== null)
+      return { mode: 'editing', snippetId: this.editingSnippetId()! };
+    return { mode: 'normal' };
+  }
 
-    if (this.editingSnippetId() !== null) {
-      if (resolveEditModeAction(event.key) === 'cancel-navigate') {
-        this.editingSnippetId.set(null);
-      } else {
-        event.stopPropagation();
-        return;
-      }
-    }
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        event.stopPropagation();
-        this.moveSnippetSelection(1);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        event.stopPropagation();
+  private dispatch(command: SnippetCommand): void {
+    switch (command.type) {
+      case 'move-up':
         this.moveSnippetSelection(-1);
         break;
-      case 'Enter':
-        event.preventDefault();
-        event.stopPropagation();
+      case 'move-down':
+        this.moveSnippetSelection(1);
+        break;
+      case 'paste-selected':
         this.pasteOrOverlaySnippet();
         break;
-      case 'Delete':
-        event.preventDefault();
-        event.stopPropagation();
+      case 'delete-selected':
         this.deleteSnippetByIndex(this.snippetSelectedIndex());
         break;
-      case 'Escape':
-        event.preventDefault();
-        event.stopPropagation();
+      case 'enter-edit':
+        this.enterSnippetEditMode();
+        break;
+      case 'cancel-edit':
+        this.editingSnippetId.set(null);
+        break;
+      case 'new-snippet':
+        this.showNewSnippetForm.set(true);
+        break;
+      case 'hide-popup':
         this.bridge.hidePopup();
         break;
-      default:
-        if (event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
-          if (event.key.toLowerCase() === 'e') {
-            event.preventDefault();
-            event.stopPropagation();
-            this.enterSnippetEditMode();
-          } else if (event.key.toLowerCase() === 'n') {
-            event.preventDefault();
-            event.stopPropagation();
-            this.showNewSnippetForm.set(true);
-          }
-        }
     }
   }
 
