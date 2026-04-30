@@ -100,6 +100,7 @@ export type ClipboardTabType = 'recent' | 'pinned';
         <button
           (click)="toggleRegexMode()"
           [attr.aria-label]="'CLIPBOARD.SEARCH_REGEX_TOGGLE' | translate"
+          [attr.aria-pressed]="regexMode()"
           class="text-[11px] font-mono transition-colors shrink-0 rounded px-1"
           [class]="
             regexMode()
