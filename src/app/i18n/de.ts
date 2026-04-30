@@ -60,6 +60,7 @@ export const de: Translation = {
     CAPTURE_LABEL: 'Aufnahme',
     EDIT_HINT: 'Enter zum Einfügen · Esc zum Abbrechen',
     EDIT_COPY_FAILED: 'Kopieren fehlgeschlagen.',
+    SEARCH_REGEX_TOGGLE: 'Regulären Ausdruck umschalten',
   },
   ENTRY: {
     IMAGE: 'Bild',

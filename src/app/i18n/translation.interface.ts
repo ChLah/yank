@@ -59,6 +59,7 @@ export interface Translation {
     CAPTURE_LABEL: string;
     EDIT_HINT: string;
     EDIT_COPY_FAILED: string;
+    SEARCH_REGEX_TOGGLE: string;
   };
   ENTRY: {
     IMAGE: string;

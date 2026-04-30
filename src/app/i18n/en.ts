@@ -60,6 +60,7 @@ export const en: Translation = {
     CAPTURE_LABEL: 'Capture',
     EDIT_HINT: 'Enter to paste · Esc to cancel',
     EDIT_COPY_FAILED: 'Failed to copy to clipboard.',
+    SEARCH_REGEX_TOGGLE: 'Toggle regex search',
   },
   ENTRY: {
     IMAGE: 'Image',
