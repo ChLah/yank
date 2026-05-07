@@ -19,6 +19,8 @@ import { HlmIcon } from '@spartan-ng/helm/icon';
 import { toast } from '@spartan-ng/brain/sonner';
 import { ClipboardEntryComponent } from './clipboard-entry.component';
 import { TransformPickerComponent } from './transform-picker.component';
+import { MergePickerComponent } from './merge-picker.component';
+import { mergeEntries, MergeSeparator } from '../../core/utils/merge-entries';
 import { SkeletonListComponent } from '../../shared/ui/skeleton-list/skeleton-list.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.component';
 import {
@@ -46,6 +48,7 @@ export type ClipboardTabType = 'recent' | 'pinned';
   imports: [
     ClipboardEntryComponent,
     TransformPickerComponent,
+    MergePickerComponent,
     SkeletonListComponent,
     EmptyStateComponent,
     NgIcon,
@@ -63,8 +66,21 @@ export type ClipboardTabType = 'recent' | 'pinned';
   template: `
     <!-- Filter row -->
     <div
-      class="flex items-center justify-end px-3.5 h-[34px] shrink-0 bg-card/50 border-b border-border"
+      class="flex items-center justify-between gap-2 px-3.5 h-[34px] shrink-0 bg-card/50 border-b border-border"
     >
+      @if (visibleMarkedCount() > 0) {
+        <button
+          type="button"
+          class="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-brand/20 text-brand-300 border border-brand/30 hover:bg-brand/30 transition-colors"
+          (click)="onClearMarks()"
+          [attr.aria-label]="'CLIPBOARD.CLEAR_MARKS' | translate"
+        >
+          <span>{{ 'CLIPBOARD.MARKED_COUNT' | translate: { count: visibleMarkedCount() } }}</span>
+          <ng-icon hlm size="sm" name="lucideX" class="w-3 h-3" />
+        </button>
+      } @else {
+        <span></span>
+      }
       <div class="flex items-center gap-1">
         @for (f of filters; track f.value) {
           <button
@@ -160,9 +176,12 @@ export type ClipboardTabType = 'recent' | 'pinned';
                 [editMode]="selection.editingEntry()?.id === entry.id"
                 [ocrLoading]="ocrLoadingEntryId() === entry.id"
                 [shortcutIndex]="i < 9 ? i + 1 : null"
+                [marked]="selection.isMarked(entry.id)"
+                [showCheckbox]="showCheckboxColumn()"
                 (select)="selectEntry(i)"
                 (delete)="deleteEntry(i)"
                 (pin)="pinEntry(i)"
+                (toggleMark)="onToggleMarkFromMouse(entry)"
                 (editConfirm)="onEditConfirm($event)"
                 (editCancel)="onEditCancel()"
               />
@@ -173,6 +192,13 @@ export type ClipboardTabType = 'recent' | 'pinned';
                   [content]="entry.content ?? ''"
                   (applied)="onTransformApplied($event)"
                   (cancelled)="onTransformCancelled()"
+                  (click)="$event.stopPropagation()"
+                />
+              }
+              @if (showMergePicker() && selection.selectedIndex() === i) {
+                <app-merge-picker
+                  (applied)="onMergeApplied($event)"
+                  (cancelled)="onMergeCancelled()"
                   (click)="$event.stopPropagation()"
                 />
               }
@@ -199,6 +225,7 @@ export class ClipboardTabComponent {
   protected searchQuery = signal('');
   protected isSearching = signal(false);
   protected showTransformPicker = signal(false);
+  protected showMergePicker = signal(false);
   protected regexMode = signal(false);
   private lastValidRegex = signal<RegExp | null>(null);
 
@@ -240,6 +267,12 @@ export class ClipboardTabComponent {
 
   protected selection = new ClipboardSelection(this.filteredEntries);
 
+  protected visibleMarkedCount = computed(
+    () => this.filteredEntries().filter((e) => this.selection.isMarked(e.id)).length,
+  );
+
+  protected showCheckboxColumn = computed(() => this.visibleMarkedCount() > 0);
+
   private listContainer = viewChild.required<ElementRef<HTMLElement>>('listContainer');
   private searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
@@ -254,9 +287,11 @@ export class ClipboardTabComponent {
   private resetState(): void {
     this.selection.exitEditMode();
     this.selection.selectAt(0);
+    this.selection.clearMarks();
     this.activeFilter.set('all');
     this.clearSearch();
     this.showTransformPicker.set(false);
+    this.showMergePicker.set(false);
     this.ocrLoadingEntryId.set(null);
     this.emitSelectedEntry();
   }
@@ -297,6 +332,7 @@ export class ClipboardTabComponent {
     if (!entry) return;
     const currentIndex = this.selection.selectedIndex();
     const newLen = this.filteredEntries().length - 1;
+    this.selection.unmark(entry.id);
     this.clipboard.deleteEntry(entry.id);
     this.selection.selectAt(Math.min(currentIndex, Math.max(0, newLen - 1)));
     this.emitSelectedEntry();
@@ -348,6 +384,9 @@ export class ClipboardTabComponent {
     if (this.showTransformPicker()) {
       this.showTransformPicker.set(false);
     }
+    if (this.showMergePicker()) {
+      this.showMergePicker.set(false);
+    }
   }
 
   protected async onEditConfirm(text: string): Promise<void> {
@@ -387,8 +426,10 @@ export class ClipboardTabComponent {
     if (this.selection.editingEntry())
       return { mode: 'editing', entryId: this.selection.editingEntry()!.id };
     if (this.showTransformPicker()) return { mode: 'transform-picker' };
-    if (this.isSearching()) return { mode: 'searching', visibleMarkedCount: 0 };
-    return { mode: 'normal', visibleMarkedCount: 0 };
+    if (this.showMergePicker()) return { mode: 'merge-picker' };
+    if (this.isSearching())
+      return { mode: 'searching', visibleMarkedCount: this.visibleMarkedCount() };
+    return { mode: 'normal', visibleMarkedCount: this.visibleMarkedCount() };
   }
 
   private dispatch(command: ClipboardCommand): void {
@@ -441,6 +482,17 @@ export class ClipboardTabComponent {
         break;
       case 'cancel-edit':
         this.selection.exitEditMode();
+        break;
+      case 'toggle-mark': {
+        const entry = this.filteredEntries()[this.selection.selectedIndex()];
+        if (entry) this.selection.toggleMark(entry.id, entry.kind);
+        break;
+      }
+      case 'open-merge-picker':
+        this.openMergePicker();
+        break;
+      case 'clear-marks':
+        this.selection.clearMarks();
         break;
       case 'hide-popup':
         this.bridge.hidePopup();
@@ -504,5 +556,37 @@ export class ClipboardTabComponent {
   private scrollSelectedIntoView(): void {
     const items = this.listContainer().nativeElement.querySelectorAll<HTMLElement>('.entry-item');
     items[this.selection.selectedIndex()]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  protected onClearMarks(): void {
+    this.selection.clearMarks();
+  }
+
+  protected onToggleMarkFromMouse(entry: ClipboardEntry): void {
+    this.selection.toggleMark(entry.id, entry.kind);
+  }
+
+  private openMergePicker(): void {
+    if (this.visibleMarkedCount() < 2) return;
+    this.showMergePicker.set(true);
+  }
+
+  protected async onMergeApplied(event: { separator: MergeSeparator }): Promise<void> {
+    const orderedContents = this.filteredEntries()
+      .filter((e) => e.kind === 'text' && this.selection.isMarked(e.id))
+      .map((e) => e.content ?? '');
+    const merged = mergeEntries(orderedContents, event.separator);
+    this.showMergePicker.set(false);
+    this.selection.clearMarks();
+    try {
+      await this.bridge.setClipboardText(merged);
+      this.bridge.hidePopup();
+    } catch {
+      toast.error(this.translate.instant('CLIPBOARD.EDIT_COPY_FAILED'));
+    }
+  }
+
+  protected onMergeCancelled(): void {
+    this.showMergePicker.set(false);
   }
 }
