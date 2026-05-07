@@ -24,6 +24,7 @@ import { LoadingSpinnerComponent } from '../../shared/ui/loading-spinner/loading
 import { SettingFieldComponent } from './components/setting-field/setting-field.component';
 import { SettingCheckboxComponent } from './components/setting-checkbox/setting-checkbox.component';
 import { ExcludedAppsComponent } from './components/excluded-apps/excluded-apps.component';
+import { ShortcutInputComponent } from './components/shortcut-input/shortcut-input.component';
 
 @Component({
   selector: 'app-settings',
@@ -41,6 +42,7 @@ import { ExcludedAppsComponent } from './components/excluded-apps/excluded-apps.
     SettingFieldComponent,
     SettingCheckboxComponent,
     ExcludedAppsComponent,
+    ShortcutInputComponent,
   ],
   providers: [provideIcons({ lucideChevronLeft, lucideX })],
   template: `
@@ -85,18 +87,10 @@ import { ExcludedAppsComponent } from './components/excluded-apps/excluded-apps.
             </p>
 
             <!-- Global Shortcut -->
-            <app-setting-field
-              [label]="'SETTINGS.SHORTCUT_LABEL' | translate"
-              [hint]="'SETTINGS.SHORTCUT_HINT' | translate"
-            >
-              <input
-                hlmInput
-                type="text"
+            <app-setting-field [label]="'SETTINGS.SHORTCUT_LABEL' | translate">
+              <app-shortcut-input
                 [value]="settings().shortcut"
-                class="w-full font-mono"
-                [placeholder]="'SETTINGS.SHORTCUT_PLACEHOLDER' | translate"
-                (keydown)="captureShortcut($event)"
-                readonly
+                (valueChange)="onShortcutChange($event)"
               />
             </app-setting-field>
 
@@ -268,26 +262,11 @@ import { ExcludedAppsComponent } from './components/excluded-apps/excluded-apps.
             </app-setting-field>
 
             <app-setting-field [label]="'SETTINGS.PAUSE_SHORTCUT_LABEL' | translate">
-              <div class="relative w-full">
-                <input
-                  hlmInput
-                  type="text"
-                  [value]="settings().pauseShortcut"
-                  class="w-full font-mono pr-8"
-                  [placeholder]="'SETTINGS.SHORTCUT_PLACEHOLDER' | translate"
-                  (keydown)="onPauseShortcutCapture($event)"
-                  readonly
-                />
-                @if (settings().pauseShortcut) {
-                  <button
-                    type="button"
-                    class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    (click)="clearPauseShortcut()"
-                  >
-                    <ng-icon hlm size="sm" name="lucideX" />
-                  </button>
-                }
-              </div>
+              <app-shortcut-input
+                [value]="settings().pauseShortcut"
+                [clearable]="true"
+                (valueChange)="onPauseShortcutChange($event)"
+              />
             </app-setting-field>
           </div>
         </div>
@@ -342,35 +321,14 @@ export class SettingsComponent {
     }
   };
 
-  protected captureShortcut(event: KeyboardEvent): void {
-    event.preventDefault();
-    const parts: string[] = [];
-    if (event.ctrlKey) parts.push('Ctrl');
-    if (event.altKey) parts.push('Alt');
-    if (event.shiftKey) parts.push('Shift');
-    if (event.metaKey) parts.push('Super');
+  protected onShortcutChange(value: string): void {
+    this.settings.update((s) => ({ ...s, shortcut: value }));
+    this.persist();
+  }
 
-    const key = event.code;
-    if (
-      ![
-        'ControlLeft',
-        'ControlRight',
-        'AltLeft',
-        'AltRight',
-        'ShiftLeft',
-        'ShiftRight',
-        'MetaLeft',
-        'MetaRight',
-      ].includes(key)
-    ) {
-      const cleanKey = key.startsWith('Key') ? key.slice(3) : key;
-      parts.push(cleanKey);
-    }
-
-    if (parts.length > 1) {
-      this.settings.update((s) => ({ ...s, shortcut: parts.join('+') }));
-      this.persist();
-    }
+  protected onPauseShortcutChange(value: string): void {
+    this.settings.update((s) => ({ ...s, pauseShortcut: value }));
+    this.persist();
   }
 
   protected onMaxEntriesBlur(value: number): void {
@@ -419,47 +377,6 @@ export class SettingsComponent {
   protected onWindowPositionChange(value: string | null): void {
     const windowPosition = (value as WindowPositionMode) || 'cursor';
     this.settings.update((s) => ({ ...s, windowPosition }));
-    this.persist();
-  }
-
-  protected onPauseShortcutCapture(event: KeyboardEvent): void {
-    event.preventDefault();
-    const parts: string[] = [];
-    if (event.ctrlKey) parts.push('Ctrl');
-    if (event.altKey) parts.push('Alt');
-    if (event.shiftKey) parts.push('Shift');
-    if (event.metaKey) parts.push('Super');
-
-    const key = event.code;
-    if (
-      ![
-        'ControlLeft',
-        'ControlRight',
-        'AltLeft',
-        'AltRight',
-        'ShiftLeft',
-        'ShiftRight',
-        'MetaLeft',
-        'MetaRight',
-      ].includes(key)
-    ) {
-      // pressing a bare key with no modifiers clears the shortcut
-      if (parts.length === 0) {
-        this.settings.update((s) => ({ ...s, pauseShortcut: '' }));
-        this.persist();
-        return;
-      }
-      const cleanKey = key.startsWith('Key') ? key.slice(3) : key;
-      parts.push(cleanKey);
-      if (parts.length > 1) {
-        this.settings.update((s) => ({ ...s, pauseShortcut: parts.join('+') }));
-        this.persist();
-      }
-    }
-  }
-
-  protected clearPauseShortcut(): void {
-    this.settings.update((s) => ({ ...s, pauseShortcut: '' }));
     this.persist();
   }
 

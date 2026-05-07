@@ -23,6 +23,10 @@ use store::SqliteStore;
 pub struct PauseCapture {
     pub paused: AtomicBool,
     pub shortcut_str: Mutex<String>,
+    /// When true, the global shortcut handler ignores all presses.
+    /// Set while the user is focused on a shortcut input field in settings,
+    /// so that pressing the assigned shortcut doesn't trigger it.
+    pub editing_shortcut: AtomicBool,
 }
 
 impl PauseCapture {
@@ -51,6 +55,7 @@ pub fn run() {
     let pause_capture = Arc::new(PauseCapture {
         paused: AtomicBool::new(false),
         shortcut_str: Mutex::new(String::new()),
+        editing_shortcut: AtomicBool::new(false),
     });
     let pause_capture_handler = pause_capture.clone();
     let pause_capture_setup = pause_capture.clone();
@@ -61,6 +66,9 @@ pub fn run() {
                 .with_handler(move |app, shortcut, event| {
                     use tauri_plugin_global_shortcut::ShortcutState;
                     if event.state() == ShortcutState::Pressed {
+                        if pause_capture_handler.editing_shortcut.load(Ordering::Acquire) {
+                            return;
+                        }
                         let pause_str = pause_capture_handler.shortcut_str.lock().unwrap().clone();
                         let is_pause = !pause_str.is_empty()
                             && shortcuts::build_shortcut(&pause_str)
@@ -169,6 +177,7 @@ pub fn run() {
             commands::remove_excluded_app,
             commands::get_capture_paused,
             commands::toggle_capture_paused,
+            commands::set_editing_shortcut,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Tauri application");

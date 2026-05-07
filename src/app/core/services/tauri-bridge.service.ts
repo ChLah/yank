@@ -124,4 +124,8 @@ export class TauriBridgeService {
   toggleCapturePaused(): Promise<boolean> {
     return invoke<boolean>('toggle_capture_paused');
   }
+
+  setEditingShortcut(editing: boolean): Promise<void> {
+    return invoke('set_editing_shortcut', { editing });
+  }
 }

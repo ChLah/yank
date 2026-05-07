@@ -205,3 +205,8 @@ pub fn toggle_capture_paused(pause: PauseCaptureState, app_handle: tauri::AppHan
     crate::windows::set_tray_icon(&app_handle, paused);
     paused
 }
+
+#[tauri::command]
+pub fn set_editing_shortcut(editing: bool, pause: PauseCaptureState) {
+    pause.editing_shortcut.store(editing, Ordering::Release);
+}
