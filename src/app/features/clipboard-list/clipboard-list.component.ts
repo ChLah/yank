@@ -201,6 +201,7 @@ export class ClipboardListComponent implements OnInit {
   protected setTab(tab: string): void {
     this.activeTab.set(tab as TabType);
     this.selectedEntrySignal.set(null);
+    this.visibleMarkedCount.set(0);
     setTimeout(() => this.focusActiveTab());
   }
 
