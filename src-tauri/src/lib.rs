@@ -7,7 +7,7 @@ mod store;
 mod windows;
 
 use std::sync::{
-    atomic::{AtomicBool, AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicI64, AtomicU64, Ordering},
     Arc, Mutex,
 };
 
@@ -74,6 +74,33 @@ impl PauseCapture {
     }
 }
 
+/// In-memory counters scoped to the current process lifetime. Reset on app
+/// restart and via the "Auf 0 setzen" button. Lifetime totals live in the
+/// `stats` SQLite table instead.
+pub struct SessionStats {
+    pub copies: AtomicU64,
+    pub pastes: AtomicU64,
+    /// Unix timestamp captured at app startup; surfaced as
+    /// "Letzter Programmstart" / current-session start.
+    pub started_at: AtomicI64,
+}
+
+impl SessionStats {
+    pub fn new() -> Self {
+        Self {
+            copies: AtomicU64::new(0),
+            pastes: AtomicU64::new(0),
+            started_at: AtomicI64::new(0),
+        }
+    }
+}
+
+impl Default for SessionStats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let hide_gen: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
@@ -89,6 +116,9 @@ pub fn run() {
     });
     let pause_capture_handler = pause_capture.clone();
     let pause_capture_setup = pause_capture.clone();
+
+    let session_stats = Arc::new(SessionStats::new());
+    let session_stats_setup = session_stats.clone();
 
     tauri::Builder::default()
         .plugin(
@@ -134,9 +164,16 @@ pub fn run() {
 
             app.manage(store.clone());
             app.manage(pause_capture_setup.clone());
+            app.manage(session_stats_setup.clone());
 
             if let Err(e) = store.prune_old_entries_if_enabled() {
                 tracing::warn!("Failed to prune old entries on startup: {}", e);
+            }
+
+            let now = chrono::Utc::now().timestamp();
+            session_stats_setup.started_at.store(now, Ordering::Release);
+            if let Err(e) = store.set_last_app_start(now) {
+                tracing::warn!("Failed to persist last_app_start: {}", e);
             }
 
             let settings = store
@@ -152,7 +189,12 @@ pub fn run() {
                 tracing::warn!("Failed to register shortcuts: {}", e);
             }
 
-            platform::start_monitor(app.handle().clone(), store, pause_capture_setup.clone());
+            platform::start_monitor(
+                app.handle().clone(),
+                store,
+                pause_capture_setup.clone(),
+                session_stats_setup.clone(),
+            );
 
             setup_tray(app)?;
 
@@ -210,6 +252,9 @@ pub fn run() {
             commands::get_capture_paused,
             commands::toggle_capture_paused,
             commands::set_editing_shortcut,
+            commands::get_stats,
+            commands::reset_session_stats,
+            commands::reset_database,
         ])
         .run(tauri::generate_context!())
         .expect("Error while running Tauri application");

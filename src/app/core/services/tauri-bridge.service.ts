@@ -5,6 +5,7 @@ import { AppSettings } from '../models/settings.model';
 import { Snippet } from '../models/snippet.model';
 import { SnippetFolder } from '../models/snippet-folder.model';
 import { ExcludedApp } from '../models/excluded-app.model';
+import { StatsSnapshot } from '../models/stats.model';
 
 /** Single seam between Angular and Tauri. Mock this in tests. */
 @Injectable({ providedIn: 'root' })
@@ -127,5 +128,17 @@ export class TauriBridgeService {
 
   setEditingShortcut(editing: boolean): Promise<void> {
     return invoke('set_editing_shortcut', { editing });
+  }
+
+  getStats(): Promise<StatsSnapshot> {
+    return invoke<StatsSnapshot>('get_stats');
+  }
+
+  resetSessionStats(): Promise<void> {
+    return invoke('reset_session_stats');
+  }
+
+  resetDatabase(confirm: string): Promise<void> {
+    return invoke('reset_database', { confirm });
   }
 }

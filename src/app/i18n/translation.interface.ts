@@ -44,6 +44,26 @@ export interface Translation {
     UPDATES_RESTART_NOW: string;
     UPDATES_RELEASE_NOTES: string;
     UPDATES_ERROR: string;
+    GROUP_STATISTICS: string;
+    STATS_TOTAL: string;
+    STATS_SESSION: string;
+    STATS_SINCE: string;
+    STATS_COPIED: string;
+    STATS_PASTED: string;
+    STATS_RESET_SESSION: string;
+    STATS_SAVED_COPIES: string;
+    STATS_SAVED_DATA: string;
+    STATS_DB_SIZE: string;
+    STATS_LAST_START: string;
+    STATS_PINNED: string;
+    STATS_SNIPPETS: string;
+    STATS_RESET_DB_LABEL: string;
+    STATS_RESET_DB_HINT: string;
+    STATS_RESET_DB_CONFIRM_PHRASE: string;
+    STATS_RESET_DB_PLACEHOLDER: string;
+    STATS_RESET_DB_BUTTON: string;
+    STATS_RESET_SUCCESS: string;
+    STATS_SESSION_RESET_SUCCESS: string;
   };
   CLIPBOARD: {
     TITLE: string;

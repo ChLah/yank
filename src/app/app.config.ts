@@ -4,6 +4,8 @@ import {
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
+import { registerLocaleData } from '@angular/common';
+import localeDe from '@angular/common/locales/de';
 import { provideRouter, withHashLocation } from '@angular/router';
 import { TranslateLoader, provideTranslateService } from '@ngx-translate/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -14,6 +16,8 @@ import { TauriEventBus } from './core/services/tauri-event-bus.service';
 import { ThemeService } from './core/services/theme.service';
 import { UpdaterService } from './core/services/updater.service';
 import { TypescriptTranslateLoader } from './i18n/translate-loader';
+
+registerLocaleData(localeDe);
 
 export const appConfig: ApplicationConfig = {
   providers: [

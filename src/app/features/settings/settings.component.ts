@@ -1,6 +1,16 @@
-import { ChangeDetectionStrategy, Component, inject, linkedSignal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import type { UnlistenFn } from '@tauri-apps/api/event';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChevronLeft, lucideX } from '@ng-icons/lucide';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -14,6 +24,7 @@ import { SettingsService } from '../../core/services/settings.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { UpdaterService } from '../../core/services/updater.service';
+import { StatsService } from '../../core/services/stats.service';
 import {
   AppSettings,
   DEFAULT_SETTINGS,
@@ -23,6 +34,7 @@ import {
 } from '../../core/models/settings.model';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { LoadingSpinnerComponent } from '../../shared/ui/loading-spinner/loading-spinner.component';
+import { FormatBytesPipe } from '../../shared/pipes/format-bytes.pipe';
 import { SettingFieldComponent } from './components/setting-field/setting-field.component';
 import { SettingCheckboxComponent } from './components/setting-checkbox/setting-checkbox.component';
 import { ExcludedAppsComponent } from './components/excluded-apps/excluded-apps.component';
@@ -33,6 +45,9 @@ import { ShortcutInputComponent } from './components/shortcut-input/shortcut-inp
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
+    DatePipe,
+    DecimalPipe,
+    FormatBytesPipe,
     NgIcon,
     HlmButton,
     HlmIcon,
@@ -358,6 +373,118 @@ import { ShortcutInputComponent } from './components/shortcut-input/shortcut-inp
               }
             }
           </div>
+
+          <brn-separator hlmSeparator />
+
+          <!-- Statistics -->
+          <div class="space-y-3">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {{ 'SETTINGS.GROUP_STATISTICS' | translate }}
+            </p>
+
+            @let s = statsService.stats.value();
+            @if (s) {
+              <div class="grid grid-cols-2 gap-3">
+                <!-- Insgesamt -->
+                <div class="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                  <p
+                    class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+                  >
+                    {{ 'SETTINGS.STATS_TOTAL' | translate }}
+                  </p>
+                  <dl
+                    class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px] [&>dt]:text-muted-foreground [&>dd]:font-mono [&>dd]:text-right [&>dd]:text-foreground"
+                  >
+                    <dt>{{ 'SETTINGS.STATS_SINCE' | translate }}</dt>
+                    <dd>
+                      {{
+                        s.lastAppStart > 0
+                          ? (s.lastAppStart * 1000 | date: 'short' : undefined : locale())
+                          : '—'
+                      }}
+                    </dd>
+                    <dt>{{ 'SETTINGS.STATS_COPIED' | translate }}</dt>
+                    <dd>{{ s.totalCopies | number }}</dd>
+                    <dt>{{ 'SETTINGS.STATS_PASTED' | translate }}</dt>
+                    <dd>{{ s.totalPastes | number }}</dd>
+                  </dl>
+                </div>
+
+                <!-- Diese Sitzung -->
+                <div class="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                  <p
+                    class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+                  >
+                    {{ 'SETTINGS.STATS_SESSION' | translate }}
+                  </p>
+                  <dl
+                    class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px] [&>dt]:text-muted-foreground [&>dd]:font-mono [&>dd]:text-right [&>dd]:text-foreground"
+                  >
+                    <dt>{{ 'SETTINGS.STATS_SINCE' | translate }}</dt>
+                    <dd>
+                      {{
+                        s.sessionStartedAt > 0
+                          ? (s.sessionStartedAt * 1000 | date: 'short' : undefined : locale())
+                          : '—'
+                      }}
+                    </dd>
+                    <dt>{{ 'SETTINGS.STATS_COPIED' | translate }}</dt>
+                    <dd>{{ s.sessionCopies | number }}</dd>
+                    <dt>{{ 'SETTINGS.STATS_PASTED' | translate }}</dt>
+                    <dd>{{ s.sessionPastes | number }}</dd>
+                  </dl>
+                  <button hlmBtn variant="outline" size="xs" (click)="onResetSessionClick()">
+                    {{ 'SETTINGS.STATS_RESET_SESSION' | translate }}
+                  </button>
+                </div>
+              </div>
+
+              <dl
+                class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px] [&>dt]:text-muted-foreground [&>dd]:font-mono [&>dd]:text-right [&>dd]:text-foreground"
+              >
+                <dt>{{ 'SETTINGS.STATS_SAVED_COPIES' | translate }}</dt>
+                <dd>{{ s.savedEntriesCount | number }}</dd>
+                <dt>{{ 'SETTINGS.STATS_SAVED_DATA' | translate }}</dt>
+                <dd>{{ s.savedEntriesBytes | formatBytes }}</dd>
+                <dt>{{ 'SETTINGS.STATS_DB_SIZE' | translate }}</dt>
+                <dd>{{ s.dbFileBytes | formatBytes }}</dd>
+                <dt>{{ 'SETTINGS.STATS_PINNED' | translate }}</dt>
+                <dd>{{ s.pinnedCount | number }}</dd>
+                <dt>{{ 'SETTINGS.STATS_SNIPPETS' | translate }}</dt>
+                <dd>{{ s.snippetCount | number }}</dd>
+              </dl>
+
+              <!-- Danger zone: full database reset -->
+              <div class="rounded-md border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                <p class="text-[13px] font-medium text-foreground">
+                  {{ 'SETTINGS.STATS_RESET_DB_LABEL' | translate }}
+                </p>
+                <p class="text-[12px] text-muted-foreground">
+                  {{ 'SETTINGS.STATS_RESET_DB_HINT' | translate: { phrase: confirmPhrase() } }}
+                </p>
+                <div class="flex items-center gap-2">
+                  <input
+                    hlmInput
+                    [value]="resetConfirmInput()"
+                    (input)="onResetConfirmInput($event)"
+                    [placeholder]="
+                      'SETTINGS.STATS_RESET_DB_PLACEHOLDER' | translate: { phrase: confirmPhrase() }
+                    "
+                    class="flex-1"
+                  />
+                  <button
+                    hlmBtn
+                    variant="destructive"
+                    size="sm"
+                    [disabled]="resetConfirmInput().trim() !== confirmPhrase()"
+                    (click)="onResetDatabaseClick()"
+                  >
+                    {{ 'SETTINGS.STATS_RESET_DB_BUTTON' | translate }}
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
         </div>
       }
     </div>
@@ -365,12 +492,42 @@ import { ShortcutInputComponent } from './components/shortcut-input/shortcut-inp
 })
 export class SettingsComponent {
   protected settingsService = inject(SettingsService);
+  protected statsService = inject(StatsService);
   protected updater = inject(UpdaterService);
   private i18nService = inject(I18nService);
   private themeService = inject(ThemeService);
   private translate = inject(TranslateService);
 
   protected readonly isStandaloneWindow = getCurrentWindow().label === 'settings';
+
+  protected readonly resetConfirmInput = signal('');
+  protected readonly confirmPhrase = computed(() =>
+    this.translate.instant('SETTINGS.STATS_RESET_DB_CONFIRM_PHRASE'),
+  );
+  protected readonly locale = this.i18nService.resolvedLocale;
+
+  constructor() {
+    // Reload on every component init so navigating to /settings inline
+    // refetches even though StatsService is provided in root scope.
+    this.statsService.stats.reload();
+
+    // The standalone `settings` window is reused (hidden, not destroyed) when
+    // the user closes it, so this component stays mounted across show/hide
+    // cycles. Refetch when the window regains focus so reopened windows show
+    // current numbers without needing an Angular component remount.
+    if (this.isStandaloneWindow) {
+      const destroyRef = inject(DestroyRef);
+      let unlisten: UnlistenFn | undefined;
+      void getCurrentWindow()
+        .onFocusChanged(({ payload: focused }) => {
+          if (focused) this.statsService.stats.reload();
+        })
+        .then((fn) => {
+          unlisten = fn;
+        });
+      destroyRef.onDestroy(() => unlisten?.());
+    }
+  }
 
   protected closeWindow(): void {
     getCurrentWindow().close();
@@ -486,6 +643,32 @@ export class SettingsComponent {
   private async persist(): Promise<void> {
     try {
       await this.settingsService.saveSettings(this.settings());
+    } catch (e) {
+      toast.error(String(e));
+    }
+  }
+
+  protected onResetConfirmInput(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.resetConfirmInput.set(value);
+  }
+
+  protected async onResetSessionClick(): Promise<void> {
+    try {
+      await this.statsService.resetSession();
+      toast.success(this.translate.instant('SETTINGS.STATS_SESSION_RESET_SUCCESS'));
+    } catch (e) {
+      toast.error(String(e));
+    }
+  }
+
+  protected async onResetDatabaseClick(): Promise<void> {
+    const confirm = this.resetConfirmInput().trim();
+    if (confirm !== this.confirmPhrase()) return;
+    try {
+      await this.statsService.resetDatabase(confirm);
+      this.resetConfirmInput.set('');
+      toast.success(this.translate.instant('SETTINGS.STATS_RESET_SUCCESS'));
     } catch (e) {
       toast.error(String(e));
     }

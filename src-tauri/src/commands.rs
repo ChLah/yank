@@ -7,13 +7,14 @@ use tauri::{Manager, State};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
-    models::{AppSettings, ClipboardEntry, ExcludedApp, Snippet, SnippetFolder},
+    models::{AppSettings, ClipboardEntry, ExcludedApp, Snippet, SnippetFolder, StatsSnapshot},
     store::SqliteStore,
-    PauseCapture,
+    PauseCapture, SessionStats,
 };
 
 type StoreState<'a> = State<'a, Arc<SqliteStore>>;
 type PauseCaptureState<'a> = State<'a, Arc<PauseCapture>>;
+type SessionStatsState<'a> = State<'a, Arc<SessionStats>>;
 
 #[tauri::command]
 pub fn get_entries(store: StoreState) -> Result<Vec<ClipboardEntry>, String> {
@@ -21,8 +22,14 @@ pub fn get_entries(store: StoreState) -> Result<Vec<ClipboardEntry>, String> {
 }
 
 #[tauri::command]
-pub fn set_clipboard(id: i64, store: StoreState) -> Result<(), String> {
-    store.restore_to_clipboard(id).map_err(|e| e.to_string())
+pub fn set_clipboard(
+    id: i64,
+    store: StoreState,
+    session_stats: SessionStatsState,
+) -> Result<(), String> {
+    store.restore_to_clipboard(id).map_err(|e| e.to_string())?;
+    session_stats.pastes.fetch_add(1, Ordering::Relaxed);
+    Ok(())
 }
 
 #[tauri::command]
@@ -209,4 +216,60 @@ pub fn toggle_capture_paused(pause: PauseCaptureState, app_handle: tauri::AppHan
 #[tauri::command]
 pub fn set_editing_shortcut(editing: bool, pause: PauseCaptureState) {
     pause.editing_shortcut.store(editing, Ordering::Release);
+}
+
+#[tauri::command]
+pub fn get_stats(
+    store: StoreState,
+    session_stats: SessionStatsState,
+) -> Result<StatsSnapshot, String> {
+    let (total_copies, total_pastes, last_app_start) =
+        store.get_persisted_stats().map_err(|e| e.to_string())?;
+    let (saved_entries_count, saved_entries_bytes) =
+        store.get_saved_entries_summary().map_err(|e| e.to_string())?;
+    let pinned_count = store.get_pinned_count().map_err(|e| e.to_string())?;
+    let snippet_count = store.get_snippet_count().map_err(|e| e.to_string())?;
+
+    Ok(StatsSnapshot {
+        total_copies,
+        total_pastes,
+        session_copies: session_stats.copies.load(Ordering::Relaxed),
+        session_pastes: session_stats.pastes.load(Ordering::Relaxed),
+        session_started_at: session_stats.started_at.load(Ordering::Acquire),
+        last_app_start,
+        saved_entries_count,
+        saved_entries_bytes,
+        db_file_bytes: store.db_file_size(),
+        pinned_count,
+        snippet_count,
+    })
+}
+
+#[tauri::command]
+pub fn reset_session_stats(session_stats: SessionStatsState) {
+    session_stats.copies.store(0, Ordering::Relaxed);
+    session_stats.pastes.store(0, Ordering::Relaxed);
+    // session_started_at stays — "Diese Sitzung" still refers to the same launch.
+}
+
+#[tauri::command]
+pub fn reset_database(
+    confirm: String,
+    store: StoreState,
+    session_stats: SessionStatsState,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    // Backend-side phrase guard. The frontend already disables the button
+    // until the input matches, but never trust the client.
+    let trimmed = confirm.trim();
+    if !trimmed.eq_ignore_ascii_case("DELETE") && !trimmed.eq_ignore_ascii_case("LÖSCHEN") {
+        return Err("confirmation phrase mismatch".to_string());
+    }
+    store.reset_database().map_err(|e| e.to_string())?;
+    session_stats.copies.store(0, Ordering::Relaxed);
+    session_stats.pastes.store(0, Ordering::Relaxed);
+    // Notify the popup so the clipboard list reloads to its now-empty state.
+    use tauri::Emitter;
+    let _ = app_handle.emit("clipboard-changed", ());
+    Ok(())
 }

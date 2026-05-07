@@ -102,7 +102,7 @@ mod tests {
 
     fn in_memory_store() -> SqliteStore {
         let conn = Connection::open_in_memory().unwrap();
-        let store = SqliteStore { conn: Mutex::new(conn) };
+        let store = SqliteStore { conn: Mutex::new(conn), db_path: None };
         store.run_migrations().unwrap();
         store
     }

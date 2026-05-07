@@ -1,5 +1,5 @@
 // src/app/core/services/i18n.service.ts
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import { TauriBridgeService } from './tauri-bridge.service';
 import { Language } from '../models/settings.model';
@@ -10,6 +10,15 @@ export class I18nService {
   private bridge = inject(TauriBridgeService);
 
   readonly currentLanguage = signal<Language | null>(null);
+
+  /**
+   * Locale code actually in use (resolves the `null` "system" preference to
+   * the detected OS language). Use this for Angular DatePipe / NumberPipe
+   * locale parameters so dates and numbers reflect the active UI language.
+   */
+  readonly resolvedLocale = computed<Language>(
+    () => this.currentLanguage() ?? this.detectOsLanguage(),
+  );
 
   async init(): Promise<void> {
     const settings = await this.bridge.getSettings();

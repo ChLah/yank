@@ -120,3 +120,19 @@ pub struct ExcludedApp {
     pub process_name: String,
     pub created_at: i64,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatsSnapshot {
+    pub total_copies: i64,
+    pub total_pastes: i64,
+    pub session_copies: u64,
+    pub session_pastes: u64,
+    pub session_started_at: i64,
+    pub last_app_start: i64,
+    pub saved_entries_count: i64,
+    pub saved_entries_bytes: i64,
+    pub db_file_bytes: u64,
+    pub pinned_count: i64,
+    pub snippet_count: i64,
+}

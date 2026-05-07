@@ -5,13 +5,18 @@ use tauri::Emitter;
 use crate::{
     models::{ClipboardContent, ClipboardPayload},
     store::{sqlite_store::compute_hash, SqliteStore},
-    PauseCapture,
+    PauseCapture, SessionStats,
 };
 
 /// Start the Windows clipboard monitor. Spawns two threads:
 /// 1. A Win32 message pump thread that listens for WM_CLIPBOARDUPDATE
 /// 2. A processor thread that reads the clipboard and saves to the store
-pub fn start(app_handle: tauri::AppHandle, store: Arc<SqliteStore>, pause_capture: Arc<PauseCapture>) {
+pub fn start(
+    app_handle: tauri::AppHandle,
+    store: Arc<SqliteStore>,
+    pause_capture: Arc<PauseCapture>,
+    session_stats: Arc<SessionStats>,
+) {
     let (trigger_tx, trigger_rx) = std::sync::mpsc::channel::<Option<String>>();
 
     // Thread 1: Win32 message pump
@@ -27,7 +32,7 @@ pub fn start(app_handle: tauri::AppHandle, store: Arc<SqliteStore>, pause_captur
         .name("clipboard-processor".into())
         .spawn(move || {
             while let Ok(source_app) = trigger_rx.recv() {
-                process_clipboard_change(&app_handle, &store, source_app, &pause_capture);
+                process_clipboard_change(&app_handle, &store, source_app, &pause_capture, &session_stats);
             }
         })
         .expect("Failed to spawn clipboard processor thread");
@@ -38,6 +43,7 @@ fn process_clipboard_change(
     store: &Arc<SqliteStore>,
     source_app: Option<String>,
     pause_capture: &Arc<PauseCapture>,
+    session_stats: &Arc<SessionStats>,
 ) {
     if pause_capture.paused.load(Ordering::Relaxed) {
         return;
@@ -64,6 +70,8 @@ fn process_clipboard_change(
         tracing::error!("Failed to save clipboard entry: {}", e);
         return;
     }
+
+    session_stats.copies.fetch_add(1, Ordering::Relaxed);
 
     if let Err(e) = app_handle.emit("clipboard-changed", ()) {
         tracing::warn!("Failed to emit clipboard-changed event: {}", e);

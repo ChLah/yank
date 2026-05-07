@@ -11,14 +11,28 @@ const THUMBNAIL_MAX_SIZE: u32 = 200;
 
 pub struct SqliteStore {
     pub(crate) conn: Mutex<Connection>,
+    pub(crate) db_path: Option<std::path::PathBuf>,
 }
 
 impl SqliteStore {
     pub fn new(db_path: &std::path::Path) -> Result<Self, rusqlite::Error> {
         let conn = Connection::open(db_path)?;
-        let store = Self { conn: Mutex::new(conn) };
+        let store = Self {
+            conn: Mutex::new(conn),
+            db_path: Some(db_path.to_path_buf()),
+        };
         store.run_migrations()?;
         Ok(store)
+    }
+
+    /// Size of the on-disk SQLite file in bytes. Returns 0 for in-memory stores
+    /// or if the file is unreadable.
+    pub fn db_file_size(&self) -> u64 {
+        self.db_path
+            .as_ref()
+            .and_then(|p| std::fs::metadata(p).ok())
+            .map(|m| m.len())
+            .unwrap_or(0)
     }
 
     pub(crate) fn run_migrations(&self) -> Result<(), rusqlite::Error> {
@@ -69,9 +83,10 @@ impl SqliteStore {
             )?;
         }
 
-        // Settings schema versioning via PRAGMA user_version.
-        // v0: single `value TEXT` column (old schema, reset on upgrade)
+        // Schema versioning via PRAGMA user_version.
+        // v0: single `value TEXT` column (old settings schema, reset on upgrade)
         // v1: typed `value_text TEXT` / `value_int INTEGER` columns
+        // v2: `stats` table for clipboard activity counters
         let user_version: i64 = conn.query_row(
             "PRAGMA user_version", [], |row| row.get(0)
         )?;
@@ -84,6 +99,18 @@ impl SqliteStore {
                      value_int  INTEGER
                  );
                  PRAGMA user_version = 1;"
+            )?;
+        }
+        if user_version < 2 {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS stats (
+                     id              INTEGER PRIMARY KEY CHECK (id = 1),
+                     total_copies    INTEGER NOT NULL DEFAULT 0,
+                     total_pastes    INTEGER NOT NULL DEFAULT 0,
+                     last_app_start  INTEGER NOT NULL DEFAULT 0
+                 );
+                 INSERT OR IGNORE INTO stats (id) VALUES (1);
+                 PRAGMA user_version = 2;"
             )?;
         }
 
@@ -134,6 +161,13 @@ impl SqliteStore {
     pub fn save_entry(&self, payload: &ClipboardPayload) -> Result<(), Box<dyn std::error::Error>> {
         let now = chrono::Utc::now().timestamp();
         let conn = self.conn.lock().unwrap();
+
+        // Bumped on every captured copy (paused/excluded events short-circuit
+        // before reaching this method, so they don't count).
+        let _ = conn.execute(
+            "UPDATE stats SET total_copies = total_copies + 1 WHERE id = 1",
+            [],
+        );
 
         let existing: Option<i64> = conn
             .query_row(
@@ -315,12 +349,16 @@ impl SqliteStore {
             |row| Ok((row.get(0)?, row.get(1)?)),
         )?;
 
-        // Update last_used_at
+        // Update last_used_at and bump the lifetime paste counter
         let now = chrono::Utc::now().timestamp();
         conn.execute(
             "UPDATE entries SET last_used_at = ?1 WHERE id = ?2",
             params![now, id],
         )?;
+        let _ = conn.execute(
+            "UPDATE stats SET total_pastes = total_pastes + 1 WHERE id = 1",
+            [],
+        );
         drop(conn);
 
         let mut clipboard = arboard::Clipboard::new()?;
@@ -741,6 +779,63 @@ impl SqliteStore {
         Ok(())
     }
 
+    pub fn set_last_app_start(&self, ts: i64) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE stats SET last_app_start = ?1 WHERE id = 1",
+            params![ts],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_persisted_stats(&self) -> Result<(i64, i64, i64), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.query_row(
+            "SELECT total_copies, total_pastes, last_app_start FROM stats WHERE id = 1",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+    }
+
+    pub fn get_saved_entries_summary(&self) -> Result<(i64, i64), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.query_row(
+            "SELECT COUNT(*), COALESCE(SUM(LENGTH(content)), 0) FROM entries",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+    }
+
+    pub fn get_pinned_count(&self) -> Result<i64, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.query_row(
+            "SELECT COUNT(*) FROM entries WHERE pinned = 1",
+            [],
+            |row| row.get(0),
+        )
+    }
+
+    pub fn get_snippet_count(&self) -> Result<i64, rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        conn.query_row("SELECT COUNT(*) FROM snippets", [], |row| row.get(0))
+    }
+
+    /// Wipes user-data tables (entries, snippets, snippet_folders, excluded_apps)
+    /// and zeroes lifetime counters in `stats`. Settings are preserved.
+    pub fn reset_database(&self) -> Result<(), rusqlite::Error> {
+        let conn = self.conn.lock().unwrap();
+        let tx = conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM entries", [])?;
+        tx.execute("DELETE FROM snippets", [])?;
+        tx.execute("DELETE FROM snippet_folders", [])?;
+        tx.execute("DELETE FROM excluded_apps", [])?;
+        tx.execute(
+            "UPDATE stats SET total_copies = 0, total_pastes = 0 WHERE id = 1",
+            [],
+        )?;
+        tx.commit()
+    }
+
     pub fn is_app_excluded(&self, process_name: &str) -> Result<bool, rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         let exists: bool = conn.query_row(
@@ -784,9 +879,15 @@ mod tests {
 
     fn in_memory_store() -> SqliteStore {
         let conn = Connection::open_in_memory().unwrap();
-        let store = SqliteStore { conn: Mutex::new(conn) };
+        let store = SqliteStore { conn: Mutex::new(conn), db_path: None };
         store.run_migrations().unwrap();
         store
+    }
+
+    #[test]
+    fn test_db_file_size_returns_zero_for_in_memory_store() {
+        let store = in_memory_store();
+        assert_eq!(store.db_file_size(), 0);
     }
 
     fn text_payload(text: &str) -> ClipboardPayload {
@@ -943,7 +1044,7 @@ mod tests {
             );
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);"
         ).unwrap();
-        let store = SqliteStore { conn: Mutex::new(conn) };
+        let store = SqliteStore { conn: Mutex::new(conn), db_path: None };
         // run_migrations must detect missing pinned column and ALTER TABLE successfully
         store.run_migrations().unwrap();
         // Verify pinned column works — save entry, get it back with pinned=false
@@ -971,7 +1072,7 @@ mod tests {
             );
             CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);"
         ).unwrap();
-        let store = SqliteStore { conn: Mutex::new(conn) };
+        let store = SqliteStore { conn: Mutex::new(conn), db_path: None };
         store.run_migrations().unwrap();
         // source_app column must now exist; save_entry should not error
         store.save_entry(&text_payload("legacy")).unwrap();
@@ -1510,5 +1611,124 @@ mod tests {
         let folder = store.create_snippet_folder("Work").unwrap();
         let result = store.move_snippet_to_folder(9999, Some(folder.id));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_stats_starts_at_zero() {
+        let store = in_memory_store();
+        let (copies, pastes, last_start) = store.get_persisted_stats().unwrap();
+        assert_eq!(copies, 0);
+        assert_eq!(pastes, 0);
+        assert_eq!(last_start, 0);
+    }
+
+    #[test]
+    fn test_save_entry_increments_total_copies() {
+        let store = in_memory_store();
+        store.save_entry(&text_payload("a")).unwrap();
+        store.save_entry(&text_payload("b")).unwrap();
+        // Duplicate still counts as a copy (user pressed Ctrl+C again)
+        store.save_entry(&text_payload("a")).unwrap();
+        let (copies, _, _) = store.get_persisted_stats().unwrap();
+        assert_eq!(copies, 3);
+    }
+
+    #[test]
+    fn test_restore_to_clipboard_increments_total_pastes() {
+        // Note: this calls into arboard which needs a real clipboard; skip on CI environments
+        // where clipboard access fails. The sub-call before clipboard access still increments
+        // the counter.
+        let store = in_memory_store();
+        store.save_entry(&text_payload("hello")).unwrap();
+        let id = store.get_all_entries().unwrap()[0].id;
+        // Calling this may fail on headless CI when arboard can't access a clipboard;
+        // the counter increment happens before that call, so we still verify it.
+        let _ = store.restore_to_clipboard(id);
+        let (_, pastes, _) = store.get_persisted_stats().unwrap();
+        assert_eq!(pastes, 1);
+    }
+
+    #[test]
+    fn test_set_last_app_start_persists() {
+        let store = in_memory_store();
+        store.set_last_app_start(1_700_000_000).unwrap();
+        let (_, _, last) = store.get_persisted_stats().unwrap();
+        assert_eq!(last, 1_700_000_000);
+    }
+
+    #[test]
+    fn test_get_saved_entries_summary() {
+        let store = in_memory_store();
+        store.save_entry(&text_payload("hi")).unwrap();
+        store.save_entry(&text_payload("hello")).unwrap();
+        let (count, bytes) = store.get_saved_entries_summary().unwrap();
+        assert_eq!(count, 2);
+        assert_eq!(bytes, ("hi".len() + "hello".len()) as i64);
+    }
+
+    #[test]
+    fn test_get_pinned_count() {
+        let store = in_memory_store();
+        store.save_entry(&text_payload("a")).unwrap();
+        store.save_entry(&text_payload("b")).unwrap();
+        let entries = store.get_all_entries().unwrap();
+        store.toggle_pin(entries[0].id).unwrap();
+        assert_eq!(store.get_pinned_count().unwrap(), 1);
+    }
+
+    #[test]
+    fn test_get_snippet_count() {
+        let store = in_memory_store();
+        assert_eq!(store.get_snippet_count().unwrap(), 0);
+        store.create_snippet("A", "a").unwrap();
+        store.create_snippet("B", "b").unwrap();
+        assert_eq!(store.get_snippet_count().unwrap(), 2);
+    }
+
+    #[test]
+    fn test_reset_database_wipes_user_data_keeps_settings() {
+        let store = in_memory_store();
+        // Populate every user-data table
+        store.save_entry(&text_payload("entry")).unwrap();
+        store.create_snippet("S", "body").unwrap();
+        store.create_snippet_folder("Folder").unwrap();
+        store.add_excluded_app("foo.exe").unwrap();
+        store.save_settings(&AppSettings {
+            shortcut: "Ctrl+ALT+V".to_string(),
+            max_entries: 99,
+            ..AppSettings::default()
+        }).unwrap();
+        store.set_last_app_start(1_700_000_000).unwrap();
+
+        store.reset_database().unwrap();
+
+        assert!(store.get_all_entries().unwrap().is_empty());
+        assert!(store.get_snippets().unwrap().is_empty());
+        assert!(store.get_snippet_folders().unwrap().is_empty());
+        assert!(store.get_excluded_apps().unwrap().is_empty());
+        let (copies, pastes, last) = store.get_persisted_stats().unwrap();
+        assert_eq!(copies, 0);
+        assert_eq!(pastes, 0);
+        // last_app_start is intentionally preserved across reset
+        assert_eq!(last, 1_700_000_000);
+        // Settings preserved
+        let s = store.get_settings().unwrap();
+        assert_eq!(s.shortcut, "Ctrl+ALT+V");
+        assert_eq!(s.max_entries, 99);
+    }
+
+    #[test]
+    fn test_stats_table_migrated_on_legacy_v1_db() {
+        // Simulate a database from before the v2 migration: has v1 settings table but no stats.
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE settings (key TEXT PRIMARY KEY, value_text TEXT, value_int INTEGER);
+             PRAGMA user_version = 1;"
+        ).unwrap();
+        let store = SqliteStore { conn: Mutex::new(conn), db_path: None };
+        store.run_migrations().unwrap();
+        // stats table exists with the seed row
+        let (copies, pastes, last) = store.get_persisted_stats().unwrap();
+        assert_eq!((copies, pastes, last), (0, 0, 0));
     }
 }
