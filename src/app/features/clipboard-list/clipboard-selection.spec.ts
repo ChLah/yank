@@ -178,3 +178,89 @@ describe('ClipboardSelection — edit mode', () => {
     expect(sel.editingEntry()).toBeNull();
   });
 });
+
+describe('ClipboardSelection — marks', () => {
+  it('starts with no marks', () => {
+    const entries = signal([makeEntry(1), makeEntry(2)]);
+    const sel = new ClipboardSelection(entries);
+    expect(sel.markedCount()).toBe(0);
+    expect(sel.isMarked(1)).toBe(false);
+  });
+
+  it('toggleMark adds an id when not marked (text entry)', () => {
+    const entries = signal([makeEntry(1, 'text')]);
+    const sel = new ClipboardSelection(entries);
+    sel.toggleMark(1, 'text');
+    expect(sel.isMarked(1)).toBe(true);
+    expect(sel.markedCount()).toBe(1);
+  });
+
+  it('toggleMark removes an id when already marked', () => {
+    const entries = signal([makeEntry(1, 'text')]);
+    const sel = new ClipboardSelection(entries);
+    sel.toggleMark(1, 'text');
+    sel.toggleMark(1, 'text');
+    expect(sel.isMarked(1)).toBe(false);
+    expect(sel.markedCount()).toBe(0);
+  });
+
+  it('toggleMark is a no-op for image entries', () => {
+    const entries = signal([makeEntry(1, 'image')]);
+    const sel = new ClipboardSelection(entries);
+    sel.toggleMark(1, 'image');
+    expect(sel.isMarked(1)).toBe(false);
+    expect(sel.markedCount()).toBe(0);
+  });
+
+  it('unmark removes a specific id', () => {
+    const entries = signal([makeEntry(1, 'text'), makeEntry(2, 'text')]);
+    const sel = new ClipboardSelection(entries);
+    sel.toggleMark(1, 'text');
+    sel.toggleMark(2, 'text');
+    sel.unmark(1);
+    expect(sel.isMarked(1)).toBe(false);
+    expect(sel.isMarked(2)).toBe(true);
+    expect(sel.markedCount()).toBe(1);
+  });
+
+  it('unmark is a no-op for an unmarked id', () => {
+    const entries = signal([makeEntry(1, 'text')]);
+    const sel = new ClipboardSelection(entries);
+    sel.unmark(99);
+    expect(sel.markedCount()).toBe(0);
+  });
+
+  it('clearMarks empties the set', () => {
+    const entries = signal([makeEntry(1, 'text'), makeEntry(2, 'text')]);
+    const sel = new ClipboardSelection(entries);
+    sel.toggleMark(1, 'text');
+    sel.toggleMark(2, 'text');
+    sel.clearMarks();
+    expect(sel.markedCount()).toBe(0);
+    expect(sel.isMarked(1)).toBe(false);
+    expect(sel.isMarked(2)).toBe(false);
+  });
+
+  it('marks are preserved across entries-signal changes', () => {
+    const entries = signal([makeEntry(1, 'text'), makeEntry(2, 'text')]);
+    const sel = new ClipboardSelection(entries);
+    sel.toggleMark(1, 'text');
+    sel.toggleMark(2, 'text');
+    // Simulate filter or tab change re-emitting the same IDs
+    entries.set([makeEntry(1, 'text'), makeEntry(2, 'text')]);
+    expect(sel.isMarked(1)).toBe(true);
+    expect(sel.isMarked(2)).toBe(true);
+  });
+
+  it('markedCount is reactive', () => {
+    const entries = signal([makeEntry(1, 'text'), makeEntry(2, 'text')]);
+    const sel = new ClipboardSelection(entries);
+    expect(sel.markedCount()).toBe(0);
+    sel.toggleMark(1, 'text');
+    expect(sel.markedCount()).toBe(1);
+    sel.toggleMark(2, 'text');
+    expect(sel.markedCount()).toBe(2);
+    sel.toggleMark(1, 'text');
+    expect(sel.markedCount()).toBe(1);
+  });
+});
