@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   computed,
+  effect,
   inject,
   input,
   output,
@@ -212,6 +213,7 @@ export type ClipboardTabType = 'recent' | 'pinned';
 export class ClipboardTabComponent {
   tab = input.required<ClipboardTabType>();
   selectedEntry = output<ClipboardEntry | null>();
+  visibleMarkedCountChange = output<number>();
 
   protected clipboard = inject(ClipboardService);
   private bridge = inject(TauriBridgeService);
@@ -278,6 +280,10 @@ export class ClipboardTabComponent {
 
   constructor() {
     this.bus.popupShown$.pipe(takeUntilDestroyed()).subscribe(() => this.resetState());
+
+    effect(() => {
+      this.visibleMarkedCountChange.emit(this.visibleMarkedCount());
+    });
   }
 
   focus(): void {

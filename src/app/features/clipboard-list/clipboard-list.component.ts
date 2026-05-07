@@ -118,6 +118,7 @@ type TabType = 'snippets' | ClipboardTabType;
           [tab]="activeClipboardTab()"
           class="flex-1 min-h-0"
           (selectedEntry)="onSelectedEntry($event)"
+          (visibleMarkedCountChange)="visibleMarkedCount.set($event)"
         />
       }
 
@@ -126,7 +127,7 @@ type TabType = 'snippets' | ClipboardTabType;
         @if (activeTab() === 'snippets') {
           <app-snippets-footer-hints />
         } @else {
-          <app-clipboard-footer-hints [showOcrHint]="showOcrHint()" />
+          <app-clipboard-footer-hints [showOcrHint]="showOcrHint()" [mergeMode]="mergeMode()" />
         }
       </div>
     </div>
@@ -144,6 +145,8 @@ export class ClipboardListComponent implements OnInit {
   protected activeTab = signal<TabType>('recent');
   protected activeClipboardTab = computed(() => this.activeTab() as ClipboardTabType);
   protected captureIsPaused = signal(false);
+  protected visibleMarkedCount = signal(0);
+  protected mergeMode = computed(() => this.visibleMarkedCount() >= 2);
 
   private selectedEntrySignal = signal<ClipboardEntry | null>(null);
   protected showOcrHint = computed(() => this.selectedEntrySignal()?.kind === 'image');
@@ -164,6 +167,7 @@ export class ClipboardListComponent implements OnInit {
     this.bus.popupShown$.pipe(takeUntilDestroyed()).subscribe(() => {
       this.activeTab.set('recent');
       this.selectedEntrySignal.set(null);
+      this.visibleMarkedCount.set(0);
       this.bridge.getCapturePaused().then((paused) => this.captureIsPaused.set(paused));
       this.suppressPositionSave = true;
       setTimeout(() => (this.suppressPositionSave = false), 600);

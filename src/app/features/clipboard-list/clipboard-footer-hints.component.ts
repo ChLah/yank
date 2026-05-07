@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { KeyboardHintComponent } from '../../shared/ui/keyboard-hint/keyboard-hint.component';
 
@@ -9,7 +9,7 @@ import { KeyboardHintComponent } from '../../shared/ui/keyboard-hint/keyboard-hi
   template: `
     <div class="flex items-center gap-2">
       <app-keyboard-hint key="↑↓" [label]="'CLIPBOARD.HINT_NAV' | translate" />
-      <app-keyboard-hint key="↵" [label]="'CLIPBOARD.HINT_PASTE' | translate" />
+      <app-keyboard-hint key="↵" [label]="primaryEnterLabel() | translate" />
       <app-keyboard-hint key="⇧↵" [label]="'TRANSFORM.HINT' | translate" />
       <app-keyboard-hint key="⌫" [label]="'CLIPBOARD.HINT_DELETE' | translate" />
       <span class="ml-auto text-[10px] text-muted-foreground whitespace-nowrap">
@@ -29,4 +29,9 @@ import { KeyboardHintComponent } from '../../shared/ui/keyboard-hint/keyboard-hi
 })
 export class ClipboardFooterHintsComponent {
   showOcrHint = input(false);
+  mergeMode = input(false);
+
+  protected primaryEnterLabel = computed(() =>
+    this.mergeMode() ? 'CLIPBOARD.HINT_MERGE' : 'CLIPBOARD.HINT_PASTE',
+  );
 }
