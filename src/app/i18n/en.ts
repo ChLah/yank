@@ -93,6 +93,9 @@ export const en: Translation = {
     EDIT_HINT: 'Enter to paste · Esc to cancel',
     EDIT_COPY_FAILED: 'Failed to copy to clipboard.',
     SEARCH_REGEX_TOGGLE: 'Toggle regex search',
+    MARKED_COUNT: '{{count}} selected',
+    CLEAR_MARKS: 'Clear selection',
+    HINT_MERGE: 'merge',
   },
   ENTRY: {
     IMAGE: 'Image',
@@ -132,6 +135,11 @@ export const en: Translation = {
     NO_TEXT: 'No text found in image.',
     ERROR: 'OCR failed: {{error}}',
     KEYBOARD_HINT: 'extract text',
+  },
+  MERGE: {
+    NEWLINE: 'Newline',
+    BULLET_LIST: 'Bullet list',
+    COMMA: 'Comma',
   },
   SNIPPETS: {
     TAB: 'Snippets',

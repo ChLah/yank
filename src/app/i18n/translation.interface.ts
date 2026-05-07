@@ -91,6 +91,9 @@ export interface Translation {
     EDIT_HINT: string;
     EDIT_COPY_FAILED: string;
     SEARCH_REGEX_TOGGLE: string;
+    MARKED_COUNT: string;
+    CLEAR_MARKS: string;
+    HINT_MERGE: string;
   };
   ENTRY: {
     IMAGE: string;
@@ -130,6 +133,11 @@ export interface Translation {
     NO_TEXT: string;
     ERROR: string;
     KEYBOARD_HINT: string;
+  };
+  MERGE: {
+    NEWLINE: string;
+    BULLET_LIST: string;
+    COMMA: string;
   };
   SNIPPETS: {
     TAB: string;

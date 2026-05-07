@@ -93,6 +93,9 @@ export const de: Translation = {
     EDIT_HINT: 'Enter zum Einfügen · Esc zum Abbrechen',
     EDIT_COPY_FAILED: 'Kopieren fehlgeschlagen.',
     SEARCH_REGEX_TOGGLE: 'Regulären Ausdruck umschalten',
+    MARKED_COUNT: '{{count}} ausgewählt',
+    CLEAR_MARKS: 'Auswahl aufheben',
+    HINT_MERGE: 'zusammenfügen',
   },
   ENTRY: {
     IMAGE: 'Bild',
@@ -132,6 +135,11 @@ export const de: Translation = {
     NO_TEXT: 'Kein Text im Bild gefunden.',
     ERROR: 'OCR fehlgeschlagen: {{error}}',
     KEYBOARD_HINT: 'Text extrahieren',
+  },
+  MERGE: {
+    NEWLINE: 'Zeilenumbruch',
+    BULLET_LIST: 'Aufzählung',
+    COMMA: 'Komma',
   },
   SNIPPETS: {
     TAB: 'Snippets',
