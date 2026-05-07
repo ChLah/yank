@@ -1,14 +1,16 @@
 export type ClipboardKeyContext =
-  | { mode: 'normal' }
-  | { mode: 'searching' }
+  | { mode: 'normal'; visibleMarkedCount: number }
+  | { mode: 'searching'; visibleMarkedCount: number }
   | { mode: 'editing'; entryId: number }
-  | { mode: 'transform-picker' };
+  | { mode: 'transform-picker' }
+  | { mode: 'merge-picker' };
 
 export type ClipboardCommand =
   | { type: 'move-up' }
   | { type: 'move-down' }
   | { type: 'copy-selected' }
   | { type: 'open-transform-picker' }
+  | { type: 'open-merge-picker' }
   | { type: 'delete-selected' }
   | { type: 'pin-selected' }
   | { type: 'enter-edit' }
@@ -17,6 +19,8 @@ export type ClipboardCommand =
   | { type: 'start-search'; char: string }
   | { type: 'exit-search' }
   | { type: 'cancel-edit' }
+  | { type: 'toggle-mark' }
+  | { type: 'clear-marks' }
   | { type: 'hide-popup' };
 
 export function resolveClipboardCommand(
@@ -25,7 +29,7 @@ export function resolveClipboardCommand(
 ): ClipboardCommand | null {
   if (event.ctrlKey && event.key === 'Tab') return null;
 
-  if (context.mode === 'transform-picker') return null;
+  if (context.mode === 'transform-picker' || context.mode === 'merge-picker') return null;
 
   if (context.mode === 'editing') {
     if (event.key === 'Escape' || event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -44,7 +48,10 @@ export function resolveClipboardCommand(
       case 'ArrowUp':
         return { type: 'move-up' };
       case 'Enter':
-        return event.shiftKey ? { type: 'open-transform-picker' } : { type: 'copy-selected' };
+        if (event.shiftKey) return { type: 'open-transform-picker' };
+        return context.visibleMarkedCount >= 2
+          ? { type: 'open-merge-picker' }
+          : { type: 'copy-selected' };
       case 'Escape':
         return { type: 'exit-search' };
       default:
@@ -59,11 +66,19 @@ export function resolveClipboardCommand(
     case 'ArrowUp':
       return { type: 'move-up' };
     case 'Enter':
-      return event.shiftKey ? { type: 'open-transform-picker' } : { type: 'copy-selected' };
+      if (event.shiftKey) return { type: 'open-transform-picker' };
+      return context.visibleMarkedCount >= 2
+        ? { type: 'open-merge-picker' }
+        : { type: 'copy-selected' };
     case 'Delete':
       return { type: 'delete-selected' };
     case 'Escape':
-      return { type: 'hide-popup' };
+      return context.visibleMarkedCount > 0 ? { type: 'clear-marks' } : { type: 'hide-popup' };
+    case ' ':
+      // Space toggles the mark on the focused row in normal mode.
+      // Reject when modifiers are held; let those bubble or no-op.
+      if (event.ctrlKey || event.shiftKey || event.altKey || event.metaKey) return null;
+      return { type: 'toggle-mark' };
   }
 
   if (event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {

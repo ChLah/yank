@@ -14,7 +14,12 @@ function key(k: string, mods: Partial<KeyboardEvent> = {}): KeyboardEvent {
 describe('resolveClipboardCommand', () => {
   describe('Ctrl+Tab — always null (bubble to shell)', () => {
     it('returns null in normal mode', () => {
-      expect(resolveClipboardCommand(key('Tab', { ctrlKey: true }), { mode: 'normal' })).toBeNull();
+      expect(
+        resolveClipboardCommand(key('Tab', { ctrlKey: true }), {
+          mode: 'normal',
+          visibleMarkedCount: 0,
+        }),
+      ).toBeNull();
     });
   });
 
@@ -69,39 +74,64 @@ describe('resolveClipboardCommand', () => {
 
   describe('quick paste — Ctrl+digit in normal mode', () => {
     it('returns quick-paste for Ctrl+1', () => {
-      expect(resolveClipboardCommand(key('1', { ctrlKey: true }), { mode: 'normal' })).toEqual({
+      expect(
+        resolveClipboardCommand(key('1', { ctrlKey: true }), {
+          mode: 'normal',
+          visibleMarkedCount: 0,
+        }),
+      ).toEqual({
         type: 'quick-paste',
         digit: 1,
       });
     });
 
     it('returns quick-paste for Ctrl+9', () => {
-      expect(resolveClipboardCommand(key('9', { ctrlKey: true }), { mode: 'normal' })).toEqual({
+      expect(
+        resolveClipboardCommand(key('9', { ctrlKey: true }), {
+          mode: 'normal',
+          visibleMarkedCount: 0,
+        }),
+      ).toEqual({
         type: 'quick-paste',
         digit: 9,
       });
     });
 
     it('returns quick-paste for Ctrl+3 in normal mode', () => {
-      expect(resolveClipboardCommand(key('3', { ctrlKey: true }), { mode: 'normal' })).toEqual({
+      expect(
+        resolveClipboardCommand(key('3', { ctrlKey: true }), {
+          mode: 'normal',
+          visibleMarkedCount: 0,
+        }),
+      ).toEqual({
         type: 'quick-paste',
         digit: 3,
       });
     });
 
     it('returns quick-paste for Ctrl+digit in searching mode', () => {
-      expect(resolveClipboardCommand(key('3', { ctrlKey: true }), { mode: 'searching' })).toEqual({
+      expect(
+        resolveClipboardCommand(key('3', { ctrlKey: true }), {
+          mode: 'searching',
+          visibleMarkedCount: 0,
+        }),
+      ).toEqual({
         type: 'quick-paste',
         digit: 3,
       });
     });
 
     it('returns null for Ctrl+0', () => {
-      expect(resolveClipboardCommand(key('0', { ctrlKey: true }), { mode: 'normal' })).toBeNull();
+      expect(
+        resolveClipboardCommand(key('0', { ctrlKey: true }), {
+          mode: 'normal',
+          visibleMarkedCount: 0,
+        }),
+      ).toBeNull();
     });
 
     it('returns null for digit without Ctrl', () => {
-      expect(resolveClipboardCommand(key('3'), { mode: 'normal' })).toEqual({
+      expect(resolveClipboardCommand(key('3'), { mode: 'normal', visibleMarkedCount: 0 })).toEqual({
         type: 'start-search',
         char: '3',
       });
@@ -109,13 +139,16 @@ describe('resolveClipboardCommand', () => {
 
     it('returns null for Ctrl+Shift+digit', () => {
       expect(
-        resolveClipboardCommand(key('3', { ctrlKey: true, shiftKey: true }), { mode: 'normal' }),
+        resolveClipboardCommand(key('3', { ctrlKey: true, shiftKey: true }), {
+          mode: 'normal',
+          visibleMarkedCount: 0,
+        }),
       ).toBeNull();
     });
   });
 
   describe('searching mode', () => {
-    const ctx: ClipboardKeyContext = { mode: 'searching' };
+    const ctx: ClipboardKeyContext = { mode: 'searching', visibleMarkedCount: 0 };
 
     it('returns move-down for ArrowDown', () => {
       expect(resolveClipboardCommand(key('ArrowDown'), ctx)).toEqual({ type: 'move-down' });
@@ -145,7 +178,7 @@ describe('resolveClipboardCommand', () => {
   });
 
   describe('normal mode', () => {
-    const ctx: ClipboardKeyContext = { mode: 'normal' };
+    const ctx: ClipboardKeyContext = { mode: 'normal', visibleMarkedCount: 0 };
 
     it('returns move-down for ArrowDown', () => {
       expect(resolveClipboardCommand(key('ArrowDown'), ctx)).toEqual({ type: 'move-down' });
@@ -230,6 +263,108 @@ describe('resolveClipboardCommand', () => {
 
     it('returns null for Alt+key', () => {
       expect(resolveClipboardCommand(key('a', { altKey: true }), ctx)).toBeNull();
+    });
+  });
+
+  describe('marks — Space toggles mark in normal mode', () => {
+    it('returns toggle-mark for Space in normal mode (no marks)', () => {
+      expect(resolveClipboardCommand(key(' '), { mode: 'normal', visibleMarkedCount: 0 })).toEqual({
+        type: 'toggle-mark',
+      });
+    });
+
+    it('returns toggle-mark for Space in normal mode (with marks)', () => {
+      expect(resolveClipboardCommand(key(' '), { mode: 'normal', visibleMarkedCount: 2 })).toEqual({
+        type: 'toggle-mark',
+      });
+    });
+
+    it('returns null for Space in searching mode (input handles it)', () => {
+      expect(
+        resolveClipboardCommand(key(' '), { mode: 'searching', visibleMarkedCount: 0 }),
+      ).toBeNull();
+    });
+
+    it('returns null for Shift+Space (reserved / no-op)', () => {
+      expect(
+        resolveClipboardCommand(key(' ', { shiftKey: true }), {
+          mode: 'normal',
+          visibleMarkedCount: 0,
+        }),
+      ).toBeNull();
+    });
+
+    it('returns null for Ctrl+Space', () => {
+      expect(
+        resolveClipboardCommand(key(' ', { ctrlKey: true }), {
+          mode: 'normal',
+          visibleMarkedCount: 0,
+        }),
+      ).toBeNull();
+    });
+  });
+
+  describe('marks — smart Enter', () => {
+    it('returns open-merge-picker for Enter when visibleMarkedCount >= 2 (normal)', () => {
+      expect(
+        resolveClipboardCommand(key('Enter'), { mode: 'normal', visibleMarkedCount: 2 }),
+      ).toEqual({ type: 'open-merge-picker' });
+    });
+
+    it('returns open-merge-picker for Enter when visibleMarkedCount >= 2 (searching)', () => {
+      expect(
+        resolveClipboardCommand(key('Enter'), { mode: 'searching', visibleMarkedCount: 3 }),
+      ).toEqual({ type: 'open-merge-picker' });
+    });
+
+    it('returns copy-selected for Enter when visibleMarkedCount === 1', () => {
+      expect(
+        resolveClipboardCommand(key('Enter'), { mode: 'normal', visibleMarkedCount: 1 }),
+      ).toEqual({ type: 'copy-selected' });
+    });
+
+    it('returns copy-selected for Enter when visibleMarkedCount === 0', () => {
+      expect(
+        resolveClipboardCommand(key('Enter'), { mode: 'normal', visibleMarkedCount: 0 }),
+      ).toEqual({ type: 'copy-selected' });
+    });
+
+    it('Shift+Enter still opens transform picker even with marks present', () => {
+      expect(
+        resolveClipboardCommand(key('Enter', { shiftKey: true }), {
+          mode: 'normal',
+          visibleMarkedCount: 4,
+        }),
+      ).toEqual({ type: 'open-transform-picker' });
+    });
+  });
+
+  describe('marks — smart Escape', () => {
+    it('returns clear-marks for Escape when visibleMarkedCount > 0 (normal)', () => {
+      expect(
+        resolveClipboardCommand(key('Escape'), { mode: 'normal', visibleMarkedCount: 2 }),
+      ).toEqual({ type: 'clear-marks' });
+    });
+
+    it('returns hide-popup for Escape when visibleMarkedCount === 0 (normal)', () => {
+      expect(
+        resolveClipboardCommand(key('Escape'), { mode: 'normal', visibleMarkedCount: 0 }),
+      ).toEqual({ type: 'hide-popup' });
+    });
+
+    it('returns exit-search for Escape in searching mode regardless of marks', () => {
+      // Searching-mode Esc exits the search bar; users can clear marks afterwards.
+      expect(
+        resolveClipboardCommand(key('Escape'), { mode: 'searching', visibleMarkedCount: 3 }),
+      ).toEqual({ type: 'exit-search' });
+    });
+  });
+
+  describe('marks — merge-picker mode', () => {
+    it('returns null for any key in merge-picker mode (component handles its own keys)', () => {
+      expect(resolveClipboardCommand(key('Enter'), { mode: 'merge-picker' })).toBeNull();
+      expect(resolveClipboardCommand(key('ArrowDown'), { mode: 'merge-picker' })).toBeNull();
+      expect(resolveClipboardCommand(key('Escape'), { mode: 'merge-picker' })).toBeNull();
     });
   });
 });

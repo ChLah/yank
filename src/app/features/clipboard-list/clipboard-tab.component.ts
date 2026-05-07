@@ -387,8 +387,8 @@ export class ClipboardTabComponent {
     if (this.selection.editingEntry())
       return { mode: 'editing', entryId: this.selection.editingEntry()!.id };
     if (this.showTransformPicker()) return { mode: 'transform-picker' };
-    if (this.isSearching()) return { mode: 'searching' };
-    return { mode: 'normal' };
+    if (this.isSearching()) return { mode: 'searching', visibleMarkedCount: 0 };
+    return { mode: 'normal', visibleMarkedCount: 0 };
   }
 
   private dispatch(command: ClipboardCommand): void {
