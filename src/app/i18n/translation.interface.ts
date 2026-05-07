@@ -29,10 +29,21 @@ export interface Translation {
     GROUP_APPEARANCE: string;
     GROUP_HISTORY: string;
     GROUP_PRIVACY: string;
+    GROUP_UPDATES: string;
     EXCLUDED_APPS_LABEL: string;
     EXCLUDED_APPS_PLACEHOLDER: string;
     EXCLUDED_APPS_ADD: string;
     EXCLUDED_APPS_ADDED: string;
+    UPDATES_AUTO_CHECK_LABEL: string;
+    UPDATES_CURRENT_VERSION: string;
+    UPDATES_CHECK_NOW: string;
+    UPDATES_CHECKING: string;
+    UPDATES_UP_TO_DATE: string;
+    UPDATES_DOWNLOADING: string;
+    UPDATES_READY: string;
+    UPDATES_RESTART_NOW: string;
+    UPDATES_RELEASE_NOTES: string;
+    UPDATES_ERROR: string;
   };
   CLIPBOARD: {
     TITLE: string;
@@ -128,5 +139,10 @@ export interface Translation {
     CHARACTERS: string;
     LAST_USED: string;
     ADDED: string;
+  };
+  UPDATER: {
+    BANNER_READY: string;
+    BANNER_RESTART: string;
+    BANNER_DISMISS: string;
   };
 }

@@ -141,6 +141,44 @@ Tests live alongside source files (`*.spec.ts`). Vitest is configured in `vitest
 
 ---
 
+## Local Update Testing
+
+YANK ships with `tauri-plugin-updater` wired to poll `http://localhost:8787/latest.json`. The committed `tauri.conf.json` keeps `bundle.createUpdaterArtifacts: false`, so `pnpm tauri build` produces a plain installer that needs no signing key. Updater artifacts (the signed `.nsis.zip`) are only produced by `pnpm update:local`, which reads the signing key from `src-tauri/.tauri/` itself before invoking the build.
+
+To exercise the auto-update flow end-to-end on your own machine:
+
+1. **One-time setup.** Generate the ed25519 signing keypair (if it doesn't exist yet) and store its password:
+
+   ```bash
+   pnpm tauri signer generate -w src-tauri/.tauri/updater-private.key -p "yank-dev" --ci -f
+   echo "yank-dev" > src-tauri/.tauri/updater-password
+   ```
+
+   The public key in `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`) must match the generated `.pub` file. The entire `src-tauri/.tauri/` directory is gitignored.
+
+2. **Install a baseline build.** Build and install YANK normally so the running app has a known version:
+
+   ```bash
+   pnpm tauri build
+   ```
+
+   Run the produced installer in `src-tauri/target/release/bundle/nsis/`.
+
+3. **Build a newer version + serve it.** Bump the version, sign the updater artifact, and host it on `localhost:8787`:
+
+   ```bash
+   pnpm update:local                    # auto-bump patch
+   pnpm update:local -- --version 0.2.0 # explicit version
+   ```
+
+   The script keeps running until you Ctrl+C it.
+
+4. **Trigger an update.** Open YANK and either wait for the startup auto-check or click **Settings → Updates → Check for updates**. The app downloads, signature-verifies, and installs the newer build, then prompts to restart.
+
+> **Going to a real release host.** When ready to ship, replace the endpoint in `src-tauri/tauri.conf.json` with the production URL (e.g. a GitHub Releases manifest), and switch `bundle.createUpdaterArtifacts` to `true` (or pass it via `--config` from your release pipeline) so every release build emits the signed updater bundle.
+
+---
+
 ## Project Structure
 
 ```

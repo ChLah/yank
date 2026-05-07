@@ -23,6 +23,7 @@ import { ClipboardTabComponent, ClipboardTabType } from './clipboard-tab.compone
 import { SnippetsTabComponent } from './snippets-tab.component';
 import { ClipboardFooterHintsComponent } from './clipboard-footer-hints.component';
 import { SnippetsFooterHintsComponent } from './snippets-footer-hints.component';
+import { UpdateBannerComponent } from './update-banner.component';
 import { PageHeaderComponent } from '../../shared/ui/page-header/page-header.component';
 import { ClipboardService } from '../../core/services/clipboard.service';
 import { TauriBridgeService } from '../../core/services/tauri-bridge.service';
@@ -39,6 +40,7 @@ type TabType = 'snippets' | ClipboardTabType;
     SnippetsTabComponent,
     ClipboardFooterHintsComponent,
     SnippetsFooterHintsComponent,
+    UpdateBannerComponent,
     RouterLink,
     NgIcon,
     HlmIcon,
@@ -87,6 +89,8 @@ type TabType = 'snippets' | ClipboardTabType;
           </a>
         </ng-container>
       </app-page-header>
+
+      <app-update-banner />
 
       <!-- Tab switcher row -->
       <div class="flex items-center px-3.5 h-[34px] shrink-0 bg-card/50 border-b border-border">

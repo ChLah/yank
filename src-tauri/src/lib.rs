@@ -17,8 +17,43 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager, WindowEvent,
 };
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 use store::SqliteStore;
+
+/// Resolve the directory tracing-appender writes to. On Windows this matches
+/// Tauri's `app_data_dir()`: `%APPDATA%\com.yank.app\logs\`.
+fn log_dir() -> std::path::PathBuf {
+    let base = std::env::var_os("APPDATA")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
+    base.join("com.yank.app").join("logs")
+}
+
+/// Holds the WorkerGuard returned by the non-blocking writer; dropping it
+/// stops the background flush thread, so we leak it for the program lifetime.
+fn init_tracing() {
+    let dir = log_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    let file_appender = tracing_appender::rolling::daily(&dir, "yank.log");
+    let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
+    // Keep the worker thread alive; without this, logs are dropped on exit.
+    Box::leak(Box::new(guard));
+
+    let env_filter = EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "yank=debug,tauri=info".parse().unwrap());
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        // Stderr only matters during `tauri dev` — release builds detach from
+        // the console (windows_subsystem = "windows"), so this layer is silent
+        // there but harmless.
+        .with(fmt::layer().with_writer(std::io::stderr).with_ansi(true))
+        .with(fmt::layer().with_writer(file_writer).with_ansi(false))
+        .init();
+
+    tracing::info!("logs writing to {}", dir.display());
+}
 
 pub struct PauseCapture {
     pub paused: AtomicBool,
@@ -44,12 +79,7 @@ pub fn run() {
     let hide_gen: Arc<AtomicU64> = Arc::new(AtomicU64::new(0));
     let hide_gen_wev = hide_gen.clone();
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "yank=debug".parse().unwrap()),
-        )
-        .init();
+    init_tracing();
 
     // Shared pause state — used by handler, commands, and monitor
     let pause_capture = Arc::new(PauseCapture {
@@ -88,6 +118,8 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(move |app| {
             let app_data_dir = app
                 .path()

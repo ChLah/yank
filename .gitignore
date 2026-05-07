@@ -45,3 +45,6 @@ Thumbs.db
 
 # Git worktrees
 .worktrees/
+
+# Tauri updater signing key + password (local dev only)
+/src-tauri/.tauri/

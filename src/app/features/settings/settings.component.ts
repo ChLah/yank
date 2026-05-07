@@ -4,6 +4,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideChevronLeft, lucideX } from '@ng-icons/lucide';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { HlmButton } from '@spartan-ng/helm/button';
 import { HlmIcon } from '@spartan-ng/helm/icon';
 import { HlmInput } from '@spartan-ng/helm/input';
 import { HlmSelectImports } from '@spartan-ng/helm/select';
@@ -12,6 +13,7 @@ import { toast } from '@spartan-ng/brain/sonner';
 import { SettingsService } from '../../core/services/settings.service';
 import { I18nService } from '../../core/services/i18n.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { UpdaterService } from '../../core/services/updater.service';
 import {
   AppSettings,
   DEFAULT_SETTINGS,
@@ -32,6 +34,7 @@ import { ShortcutInputComponent } from './components/shortcut-input/shortcut-inp
   imports: [
     RouterLink,
     NgIcon,
+    HlmButton,
     HlmIcon,
     HlmInput,
     TranslatePipe,
@@ -269,6 +272,92 @@ import { ShortcutInputComponent } from './components/shortcut-input/shortcut-inp
               />
             </app-setting-field>
           </div>
+
+          <brn-separator hlmSeparator />
+
+          <!-- Updates -->
+          <div class="space-y-3">
+            <p class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {{ 'SETTINGS.GROUP_UPDATES' | translate }}
+            </p>
+
+            <app-setting-field [label]="'SETTINGS.UPDATES_CURRENT_VERSION' | translate">
+              <span class="text-[13px] text-foreground font-mono">{{
+                updater.currentVersion() || '—'
+              }}</span>
+            </app-setting-field>
+
+            <app-setting-field>
+              <app-setting-checkbox
+                id="auto-check-updates-checkbox"
+                [label]="'SETTINGS.UPDATES_AUTO_CHECK_LABEL' | translate"
+                [checked]="settings().autoCheckUpdates"
+                (checkedChange)="onAutoCheckUpdatesChange($event)"
+              />
+            </app-setting-field>
+
+            <app-setting-field>
+              <button
+                hlmBtn
+                variant="outline"
+                size="sm"
+                [disabled]="updater.state() === 'checking' || updater.state() === 'downloading'"
+                (click)="onCheckForUpdatesClick()"
+              >
+                @switch (updater.state()) {
+                  @case ('checking') {
+                    {{ 'SETTINGS.UPDATES_CHECKING' | translate }}
+                  }
+                  @case ('downloading') {
+                    {{ 'SETTINGS.UPDATES_DOWNLOADING' | translate }}
+                  }
+                  @default {
+                    {{ 'SETTINGS.UPDATES_CHECK_NOW' | translate }}
+                  }
+                }
+              </button>
+            </app-setting-field>
+
+            @switch (updater.state()) {
+              @case ('up-to-date') {
+                <p class="text-[12px] text-muted-foreground">
+                  {{ 'SETTINGS.UPDATES_UP_TO_DATE' | translate }}
+                </p>
+              }
+              @case ('ready') {
+                @let pending = updater.availableUpdate();
+                @if (pending) {
+                  <div class="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+                    <p class="text-[13px] font-medium text-foreground">
+                      {{ 'SETTINGS.UPDATES_READY' | translate: { version: pending.version } }}
+                    </p>
+                    @if (pending.notes) {
+                      <div class="space-y-1">
+                        <p
+                          class="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+                        >
+                          {{ 'SETTINGS.UPDATES_RELEASE_NOTES' | translate }}
+                        </p>
+                        <pre class="text-[12px] text-foreground whitespace-pre-wrap font-sans">{{
+                          pending.notes
+                        }}</pre>
+                      </div>
+                    }
+                    <button hlmBtn size="sm" (click)="onRestartNowClick()">
+                      {{ 'SETTINGS.UPDATES_RESTART_NOW' | translate }}
+                    </button>
+                  </div>
+                }
+              }
+              @case ('error') {
+                @if (updater.errorMessage(); as err) {
+                  <p class="text-[12px] text-destructive">
+                    {{ 'SETTINGS.UPDATES_ERROR' | translate: { error: err } }}
+                  </p>
+                }
+              }
+            }
+          </div>
         </div>
       }
     </div>
@@ -276,6 +365,7 @@ import { ShortcutInputComponent } from './components/shortcut-input/shortcut-inp
 })
 export class SettingsComponent {
   protected settingsService = inject(SettingsService);
+  protected updater = inject(UpdaterService);
   private i18nService = inject(I18nService);
   private themeService = inject(ThemeService);
   private translate = inject(TranslateService);
@@ -378,6 +468,19 @@ export class SettingsComponent {
     const windowPosition = (value as WindowPositionMode) || 'cursor';
     this.settings.update((s) => ({ ...s, windowPosition }));
     this.persist();
+  }
+
+  protected onAutoCheckUpdatesChange(checked: boolean): void {
+    this.settings.update((s) => ({ ...s, autoCheckUpdates: checked }));
+    this.persist();
+  }
+
+  protected onCheckForUpdatesClick(): void {
+    void this.updater.checkNow();
+  }
+
+  protected onRestartNowClick(): void {
+    void this.updater.restartNow();
   }
 
   private async persist(): Promise<void> {

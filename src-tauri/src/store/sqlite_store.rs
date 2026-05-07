@@ -351,7 +351,7 @@ impl SqliteStore {
         let map = Self::fetch_settings_map(&conn, &[
             "shortcut", "maxEntries", "language", "theme",
             "autostart", "deleteAfterMaxEntries", "deleteAfterDays", "maxDays",
-            "windowPosition", "pauseShortcut",
+            "windowPosition", "pauseShortcut", "autoCheckUpdates",
         ])?;
 
         let defaults = AppSettings::default();
@@ -379,11 +379,12 @@ impl SqliteStore {
             _      => WindowPositionMode::Cursor,
         }).unwrap_or(WindowPositionMode::Cursor);
         let pause_shortcut = text("pauseShortcut").unwrap_or(defaults.pause_shortcut);
+        let auto_check_updates = int("autoCheckUpdates").map(|v| v != 0).unwrap_or(defaults.auto_check_updates);
 
         Ok(AppSettings {
             shortcut, max_entries, language, theme, autostart,
             delete_after_max_entries, delete_after_days, max_days,
-            window_position, pause_shortcut,
+            window_position, pause_shortcut, auto_check_updates,
         })
     }
 
@@ -413,6 +414,7 @@ impl SqliteStore {
             ("maxDays",               None,                                         Some(settings.max_days)),
             ("windowPosition",        Some(window_position_str),                   None),
             ("pauseShortcut",         Some(settings.pause_shortcut.as_str()),      None),
+            ("autoCheckUpdates",      None,                                         Some(settings.auto_check_updates as i64)),
         ];
 
         let conn = self.conn.lock().unwrap();

@@ -13,6 +13,7 @@ export interface AppSettings {
   deleteAfterDays: boolean;
   maxDays: number;
   windowPosition: WindowPositionMode;
+  autoCheckUpdates: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -26,4 +27,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   deleteAfterDays: false,
   maxDays: 30,
   windowPosition: 'cursor',
+  autoCheckUpdates: true,
 };
