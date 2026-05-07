@@ -58,6 +58,37 @@ interface TimeTranslation {
         [showDelay]="600"
         [hideDelay]="200"
       >
+        @if (showCheckbox()) {
+          <span
+            class="w-5 shrink-0 flex items-center justify-center"
+            (click)="$event.stopPropagation(); onCheckboxClick()"
+          >
+            @if (entry().kind === 'text') {
+              <span
+                [class]="
+                  'w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ' +
+                  (marked()
+                    ? 'bg-brand border-brand text-background'
+                    : 'border-muted-foreground/40 hover:border-foreground')
+                "
+              >
+                @if (marked()) {
+                  <svg
+                    viewBox="0 0 12 12"
+                    class="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polyline points="2 6 5 9 10 3" />
+                  </svg>
+                }
+              </span>
+            }
+          </span>
+        }
         <span
           class="w-4 shrink-0 text-[11px] text-muted-foreground font-mono tabular-nums text-right select-none"
         >
@@ -180,12 +211,15 @@ export class ClipboardEntryComponent {
   editMode = input(false);
   ocrLoading = input(false);
   shortcutIndex = input<number | null>(null);
+  marked = input(false);
+  showCheckbox = input(false);
 
   select = output<void>();
   delete = output<void>();
   pin = output<void>();
   editConfirm = output<string>();
   editCancel = output<void>();
+  toggleMark = output<void>();
 
   private textareaRef = viewChild<ElementRef<HTMLTextAreaElement>>('editTextarea');
   private injector = inject(Injector);
@@ -212,6 +246,11 @@ export class ClipboardEntryComponent {
     if (!this.editMode()) {
       this.select.emit();
     }
+  }
+
+  protected onCheckboxClick(): void {
+    if (this.entry().kind !== 'text') return;
+    this.toggleMark.emit();
   }
 
   protected onTextareaKeyDown(event: KeyboardEvent): void {
