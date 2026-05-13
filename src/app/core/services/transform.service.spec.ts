@@ -81,6 +81,15 @@ describe('TransformService', () => {
       value: 'a\nb\nc',
     });
   });
+  it('sort-lines-asc sorts lines alphabetically (case-insensitive via localeCompare)', () => {
+    expect(service.apply('sort-lines-asc', 'banana\napple\ncherry')).toEqual({
+      ok: true,
+      value: 'apple\nbanana\ncherry',
+    });
+  });
+  it('sort-lines-asc handles single-line input as a no-op', () => {
+    expect(service.apply('sort-lines-asc', 'only')).toEqual({ ok: true, value: 'only' });
+  });
   it('options list contains all expected IDs (current state)', () => {
     expect(service.options.map((o) => o.id)).toEqual([
       'strip-whitespace',
@@ -94,6 +103,7 @@ describe('TransformService', () => {
       'json-format',
       'strip-html',
       'remove-duplicate-lines',
+      'sort-lines-asc',
     ]);
   });
 });

@@ -11,7 +11,8 @@ export type TransformId =
   | 'base64-decode'
   | 'json-format'
   | 'strip-html'
-  | 'remove-duplicate-lines';
+  | 'remove-duplicate-lines'
+  | 'sort-lines-asc';
 
 export interface TransformOption {
   id: TransformId;
@@ -34,6 +35,7 @@ export class TransformService {
     { id: 'json-format', labelKey: 'TRANSFORM.JSON_FORMAT' },
     { id: 'strip-html', labelKey: 'TRANSFORM.STRIP_HTML' },
     { id: 'remove-duplicate-lines', labelKey: 'TRANSFORM.REMOVE_DUPLICATE_LINES' },
+    { id: 'sort-lines-asc', labelKey: 'TRANSFORM.SORT_LINES_ASC' },
   ];
 
   apply(id: TransformId, content: string): TransformResult {
@@ -89,6 +91,14 @@ export class TransformService {
           value: content
             .split('\n')
             .filter((line, i, arr) => arr.indexOf(line) === i)
+            .join('\n'),
+        };
+      case 'sort-lines-asc':
+        return {
+          ok: true,
+          value: content
+            .split('\n')
+            .sort((a, b) => a.localeCompare(b))
             .join('\n'),
         };
     }

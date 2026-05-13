@@ -127,6 +127,7 @@ export const de: Translation = {
     BASE64_ENCODE: 'Base64 kodieren',
     BASE64_DECODE: 'Base64 dekodieren',
     REMOVE_DUPLICATE_LINES: 'Duplikate entfernen',
+    SORT_LINES_ASC: 'Zeilen sortieren (A→Z)',
     ERROR_JSON: 'Ungültiges JSON',
     ERROR_URL_DECODE: 'Ungültige URL-Kodierung',
     ERROR_BASE64_DECODE: 'Ungültiges Base64',
