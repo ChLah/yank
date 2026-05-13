@@ -46,6 +46,7 @@ export class TransformService {
     { id: 'slugify', labelKey: 'TRANSFORM.SLUGIFY' },
     { id: 'hash-md5', labelKey: 'TRANSFORM.HASH_MD5' },
     { id: 'hash-sha1', labelKey: 'TRANSFORM.HASH_SHA1' },
+    { id: 'hash-sha256', labelKey: 'TRANSFORM.HASH_SHA256' },
   ];
 
   private readonly asyncIds: ReadonlySet<HashTransformId> = new Set([
@@ -67,8 +68,11 @@ export class TransformService {
         const digest = await crypto.subtle.digest('SHA-1', buf);
         return { ok: true, value: bytesToHex(digest) };
       }
-      case 'hash-sha256':
-        throw new Error(`applyAsync: ${id} not yet implemented`);
+      case 'hash-sha256': {
+        const buf = new TextEncoder().encode(content);
+        const digest = await crypto.subtle.digest('SHA-256', buf);
+        return { ok: true, value: bytesToHex(digest) };
+      }
     }
   }
 

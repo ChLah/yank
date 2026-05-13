@@ -131,6 +131,7 @@ export const en: Translation = {
     SLUGIFY: 'Slugify',
     HASH_MD5: 'Hash MD5',
     HASH_SHA1: 'Hash SHA-1',
+    HASH_SHA256: 'Hash SHA-256',
     ERROR_JSON: 'Not valid JSON',
     ERROR_URL_DECODE: 'Invalid URL encoding',
     ERROR_BASE64_DECODE: 'Invalid Base64',

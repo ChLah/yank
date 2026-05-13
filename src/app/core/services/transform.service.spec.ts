@@ -133,7 +133,19 @@ describe('TransformService', () => {
       value: 'da39a3ee5e6b4b0d3255bfef95601890afd80709',
     });
   });
-  it('options list contains all expected IDs (current state)', () => {
+  it('applyAsync("hash-sha256", "abc") returns the SHA-256 hex digest', async () => {
+    await expect(service.applyAsync('hash-sha256', 'abc')).resolves.toEqual({
+      ok: true,
+      value: 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+    });
+  });
+  it('applyAsync("hash-sha256", "") returns the empty-string SHA-256', async () => {
+    await expect(service.applyAsync('hash-sha256', '')).resolves.toEqual({
+      ok: true,
+      value: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    });
+  });
+  it('options list contains all 16 transform IDs in expected order', () => {
     expect(service.options.map((o) => o.id)).toEqual([
       'strip-whitespace',
       'uppercase',
@@ -150,6 +162,7 @@ describe('TransformService', () => {
       'slugify',
       'hash-md5',
       'hash-sha1',
+      'hash-sha256',
     ]);
   });
 });

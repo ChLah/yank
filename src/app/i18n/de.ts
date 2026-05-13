@@ -131,6 +131,7 @@ export const de: Translation = {
     SLUGIFY: 'Slug erzeugen',
     HASH_MD5: 'MD5-Hash',
     HASH_SHA1: 'SHA-1-Hash',
+    HASH_SHA256: 'SHA-256-Hash',
     ERROR_JSON: 'Ungültiges JSON',
     ERROR_URL_DECODE: 'Ungültige URL-Kodierung',
     ERROR_BASE64_DECODE: 'Ungültiges Base64',
