@@ -124,6 +124,7 @@ export interface Translation {
     STRIP_HTML: string;
     BASE64_ENCODE: string;
     BASE64_DECODE: string;
+    REMOVE_DUPLICATE_LINES: string;
     ERROR_JSON: string;
     ERROR_URL_DECODE: string;
     ERROR_BASE64_DECODE: string;

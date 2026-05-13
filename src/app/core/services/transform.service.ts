@@ -10,7 +10,8 @@ export type TransformId =
   | 'base64-encode'
   | 'base64-decode'
   | 'json-format'
-  | 'strip-html';
+  | 'strip-html'
+  | 'remove-duplicate-lines';
 
 export interface TransformOption {
   id: TransformId;
@@ -32,6 +33,7 @@ export class TransformService {
     { id: 'base64-decode', labelKey: 'TRANSFORM.BASE64_DECODE' },
     { id: 'json-format', labelKey: 'TRANSFORM.JSON_FORMAT' },
     { id: 'strip-html', labelKey: 'TRANSFORM.STRIP_HTML' },
+    { id: 'remove-duplicate-lines', labelKey: 'TRANSFORM.REMOVE_DUPLICATE_LINES' },
   ];
 
   apply(id: TransformId, content: string): TransformResult {
@@ -81,6 +83,14 @@ export class TransformService {
         }
       case 'strip-html':
         return { ok: true, value: content.replace(/<[^>]+>/g, '') };
+      case 'remove-duplicate-lines':
+        return {
+          ok: true,
+          value: content
+            .split('\n')
+            .filter((line, i, arr) => arr.indexOf(line) === i)
+            .join('\n'),
+        };
     }
   }
 }

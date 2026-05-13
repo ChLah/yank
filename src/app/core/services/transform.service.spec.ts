@@ -69,6 +69,18 @@ describe('TransformService', () => {
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toBe('TRANSFORM.ERROR_BASE64_DECODE');
   });
+  it('remove-duplicate-lines removes repeated lines and preserves first occurrence order', () => {
+    expect(service.apply('remove-duplicate-lines', 'a\nb\na\nc\nb')).toEqual({
+      ok: true,
+      value: 'a\nb\nc',
+    });
+  });
+  it('remove-duplicate-lines on input without duplicates is a no-op', () => {
+    expect(service.apply('remove-duplicate-lines', 'a\nb\nc')).toEqual({
+      ok: true,
+      value: 'a\nb\nc',
+    });
+  });
   it('options list contains all expected IDs (current state)', () => {
     expect(service.options.map((o) => o.id)).toEqual([
       'strip-whitespace',
@@ -81,6 +93,7 @@ describe('TransformService', () => {
       'base64-decode',
       'json-format',
       'strip-html',
+      'remove-duplicate-lines',
     ]);
   });
 });
