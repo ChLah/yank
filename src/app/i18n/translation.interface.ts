@@ -128,6 +128,7 @@ export interface Translation {
     SORT_LINES_ASC: string;
     SLUGIFY: string;
     HASH_MD5: string;
+    HASH_SHA1: string;
     ERROR_JSON: string;
     ERROR_URL_DECODE: string;
     ERROR_BASE64_DECODE: string;

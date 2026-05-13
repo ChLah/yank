@@ -130,6 +130,7 @@ export const de: Translation = {
     SORT_LINES_ASC: 'Zeilen sortieren (A→Z)',
     SLUGIFY: 'Slug erzeugen',
     HASH_MD5: 'MD5-Hash',
+    HASH_SHA1: 'SHA-1-Hash',
     ERROR_JSON: 'Ungültiges JSON',
     ERROR_URL_DECODE: 'Ungültige URL-Kodierung',
     ERROR_BASE64_DECODE: 'Ungültiges Base64',

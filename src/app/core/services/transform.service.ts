@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { bytesToHex } from '../utils/hex';
 import { md5 } from '../utils/md5';
 
 export type SyncTransformId =
@@ -44,6 +45,7 @@ export class TransformService {
     { id: 'sort-lines-asc', labelKey: 'TRANSFORM.SORT_LINES_ASC' },
     { id: 'slugify', labelKey: 'TRANSFORM.SLUGIFY' },
     { id: 'hash-md5', labelKey: 'TRANSFORM.HASH_MD5' },
+    { id: 'hash-sha1', labelKey: 'TRANSFORM.HASH_SHA1' },
   ];
 
   private readonly asyncIds: ReadonlySet<HashTransformId> = new Set([
@@ -60,7 +62,11 @@ export class TransformService {
     switch (id) {
       case 'hash-md5':
         return { ok: true, value: md5(content) };
-      case 'hash-sha1':
+      case 'hash-sha1': {
+        const buf = new TextEncoder().encode(content);
+        const digest = await crypto.subtle.digest('SHA-1', buf);
+        return { ok: true, value: bytesToHex(digest) };
+      }
       case 'hash-sha256':
         throw new Error(`applyAsync: ${id} not yet implemented`);
     }

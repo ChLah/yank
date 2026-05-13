@@ -121,6 +121,18 @@ describe('TransformService', () => {
       value: 'd41d8cd98f00b204e9800998ecf8427e',
     });
   });
+  it('applyAsync("hash-sha1", "abc") returns the SHA-1 hex digest', async () => {
+    await expect(service.applyAsync('hash-sha1', 'abc')).resolves.toEqual({
+      ok: true,
+      value: 'a9993e364706816aba3e25717850c26c9cd0d89d',
+    });
+  });
+  it('applyAsync("hash-sha1", "") returns the empty-string SHA-1', async () => {
+    await expect(service.applyAsync('hash-sha1', '')).resolves.toEqual({
+      ok: true,
+      value: 'da39a3ee5e6b4b0d3255bfef95601890afd80709',
+    });
+  });
   it('options list contains all expected IDs (current state)', () => {
     expect(service.options.map((o) => o.id)).toEqual([
       'strip-whitespace',
@@ -137,6 +149,7 @@ describe('TransformService', () => {
       'sort-lines-asc',
       'slugify',
       'hash-md5',
+      'hash-sha1',
     ]);
   });
 });
