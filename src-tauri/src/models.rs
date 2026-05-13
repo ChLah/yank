@@ -129,7 +129,7 @@ pub struct StatsSnapshot {
     pub session_copies: u64,
     pub session_pastes: u64,
     pub session_started_at: i64,
-    pub last_app_start: i64,
+    pub installed_at: i64,
     pub saved_entries_count: i64,
     pub saved_entries_bytes: i64,
     pub db_file_bytes: u64,

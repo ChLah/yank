@@ -172,8 +172,8 @@ pub fn run() {
 
             let now = chrono::Utc::now().timestamp();
             session_stats_setup.started_at.store(now, Ordering::Release);
-            if let Err(e) = store.set_last_app_start(now) {
-                tracing::warn!("Failed to persist last_app_start: {}", e);
+            if let Err(e) = store.set_installed_at_if_unset(now) {
+                tracing::warn!("Failed to persist installed_at: {}", e);
             }
 
             let settings = store

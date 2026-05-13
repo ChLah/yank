@@ -86,7 +86,8 @@ impl SqliteStore {
         // Schema versioning via PRAGMA user_version.
         // v0: single `value TEXT` column (old settings schema, reset on upgrade)
         // v1: typed `value_text TEXT` / `value_int INTEGER` columns
-        // v2: `stats` table for clipboard activity counters
+        // v2: `stats` table for clipboard activity counters (with last_app_start, later renamed)
+        // v3: rename last_app_start -> installed_at; backfill from earliest entry
         let user_version: i64 = conn.query_row(
             "PRAGMA user_version", [], |row| row.get(0)
         )?;
@@ -107,10 +108,40 @@ impl SqliteStore {
                      id              INTEGER PRIMARY KEY CHECK (id = 1),
                      total_copies    INTEGER NOT NULL DEFAULT 0,
                      total_pastes    INTEGER NOT NULL DEFAULT 0,
-                     last_app_start  INTEGER NOT NULL DEFAULT 0
+                     installed_at    INTEGER NOT NULL DEFAULT 0
                  );
                  INSERT OR IGNORE INTO stats (id) VALUES (1);
                  PRAGMA user_version = 2;"
+            )?;
+        }
+        if user_version < 3 {
+            // Pre-v3 the column was named last_app_start and was overwritten on every
+            // launch, so its value was the most recent app start. Rename it and back-
+            // fill from the earliest known entry timestamp so existing users see a
+            // plausible install date rather than "today".
+            let has_legacy_column: bool = {
+                let mut stmt = conn.prepare("PRAGMA table_info(stats)")?;
+                let cols: Vec<String> = stmt
+                    .query_map([], |row| row.get::<_, String>(1))?
+                    .filter_map(|r| r.ok())
+                    .collect();
+                cols.iter().any(|name| name == "last_app_start")
+            };
+            if has_legacy_column {
+                conn.execute_batch(
+                    "ALTER TABLE stats RENAME COLUMN last_app_start TO installed_at;"
+                )?;
+            }
+            conn.execute_batch(
+                "UPDATE stats
+                 SET installed_at = COALESCE(
+                     (SELECT MIN(created_at) FROM entries
+                       WHERE created_at > 0
+                         AND (installed_at = 0 OR created_at < installed_at)),
+                     installed_at
+                 )
+                 WHERE id = 1;
+                 PRAGMA user_version = 3;"
             )?;
         }
 
@@ -779,10 +810,13 @@ impl SqliteStore {
         Ok(())
     }
 
-    pub fn set_last_app_start(&self, ts: i64) -> Result<(), rusqlite::Error> {
+    /// Sets `installed_at` only if it has not been set before (still 0). Called on
+    /// every app start so the first launch records the install timestamp and
+    /// subsequent launches leave it alone.
+    pub fn set_installed_at_if_unset(&self, ts: i64) -> Result<(), rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "UPDATE stats SET last_app_start = ?1 WHERE id = 1",
+            "UPDATE stats SET installed_at = ?1 WHERE id = 1 AND installed_at = 0",
             params![ts],
         )?;
         Ok(())
@@ -791,7 +825,7 @@ impl SqliteStore {
     pub fn get_persisted_stats(&self) -> Result<(i64, i64, i64), rusqlite::Error> {
         let conn = self.conn.lock().unwrap();
         conn.query_row(
-            "SELECT total_copies, total_pastes, last_app_start FROM stats WHERE id = 1",
+            "SELECT total_copies, total_pastes, installed_at FROM stats WHERE id = 1",
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )
@@ -1616,10 +1650,10 @@ mod tests {
     #[test]
     fn test_stats_starts_at_zero() {
         let store = in_memory_store();
-        let (copies, pastes, last_start) = store.get_persisted_stats().unwrap();
+        let (copies, pastes, installed_at) = store.get_persisted_stats().unwrap();
         assert_eq!(copies, 0);
         assert_eq!(pastes, 0);
-        assert_eq!(last_start, 0);
+        assert_eq!(installed_at, 0);
     }
 
     #[test]
@@ -1649,11 +1683,21 @@ mod tests {
     }
 
     #[test]
-    fn test_set_last_app_start_persists() {
+    fn test_set_installed_at_persists_on_first_call() {
         let store = in_memory_store();
-        store.set_last_app_start(1_700_000_000).unwrap();
-        let (_, _, last) = store.get_persisted_stats().unwrap();
-        assert_eq!(last, 1_700_000_000);
+        store.set_installed_at_if_unset(1_700_000_000).unwrap();
+        let (_, _, installed_at) = store.get_persisted_stats().unwrap();
+        assert_eq!(installed_at, 1_700_000_000);
+    }
+
+    #[test]
+    fn test_set_installed_at_does_not_overwrite_existing_value() {
+        let store = in_memory_store();
+        store.set_installed_at_if_unset(1_700_000_000).unwrap();
+        // Second call (simulating a later app launch) must not change the value.
+        store.set_installed_at_if_unset(1_800_000_000).unwrap();
+        let (_, _, installed_at) = store.get_persisted_stats().unwrap();
+        assert_eq!(installed_at, 1_700_000_000);
     }
 
     #[test]
@@ -1698,7 +1742,7 @@ mod tests {
             max_entries: 99,
             ..AppSettings::default()
         }).unwrap();
-        store.set_last_app_start(1_700_000_000).unwrap();
+        store.set_installed_at_if_unset(1_700_000_000).unwrap();
 
         store.reset_database().unwrap();
 
@@ -1706,11 +1750,11 @@ mod tests {
         assert!(store.get_snippets().unwrap().is_empty());
         assert!(store.get_snippet_folders().unwrap().is_empty());
         assert!(store.get_excluded_apps().unwrap().is_empty());
-        let (copies, pastes, last) = store.get_persisted_stats().unwrap();
+        let (copies, pastes, installed_at) = store.get_persisted_stats().unwrap();
         assert_eq!(copies, 0);
         assert_eq!(pastes, 0);
-        // last_app_start is intentionally preserved across reset
-        assert_eq!(last, 1_700_000_000);
+        // installed_at is intentionally preserved across reset
+        assert_eq!(installed_at, 1_700_000_000);
         // Settings preserved
         let s = store.get_settings().unwrap();
         assert_eq!(s.shortcut, "Ctrl+ALT+V");
@@ -1728,7 +1772,63 @@ mod tests {
         let store = SqliteStore { conn: Mutex::new(conn), db_path: None };
         store.run_migrations().unwrap();
         // stats table exists with the seed row
-        let (copies, pastes, last) = store.get_persisted_stats().unwrap();
-        assert_eq!((copies, pastes, last), (0, 0, 0));
+        let (copies, pastes, installed_at) = store.get_persisted_stats().unwrap();
+        assert_eq!((copies, pastes, installed_at), (0, 0, 0));
+    }
+
+    #[test]
+    fn test_v3_migration_renames_last_app_start_and_backfills_from_entries() {
+        // Simulate a pre-v3 database that still has the legacy column.
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE settings (key TEXT PRIMARY KEY, value_text TEXT, value_int INTEGER);
+             CREATE TABLE entries (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                kind         TEXT    NOT NULL,
+                content      BLOB    NOT NULL,
+                thumbnail    BLOB,
+                width        INTEGER,
+                height       INTEGER,
+                hash         TEXT    NOT NULL UNIQUE,
+                created_at   INTEGER NOT NULL,
+                last_used_at INTEGER NOT NULL,
+                pinned       INTEGER NOT NULL DEFAULT 0
+             );
+             CREATE TABLE stats (
+                id              INTEGER PRIMARY KEY CHECK (id = 1),
+                total_copies    INTEGER NOT NULL DEFAULT 0,
+                total_pastes    INTEGER NOT NULL DEFAULT 0,
+                last_app_start  INTEGER NOT NULL DEFAULT 0
+             );
+             INSERT INTO stats (id, last_app_start) VALUES (1, 2000);
+             INSERT INTO entries (kind, content, hash, created_at, last_used_at)
+                VALUES ('text', X'61', 'h1', 1000, 1000);
+             PRAGMA user_version = 2;"
+        ).unwrap();
+        let store = SqliteStore { conn: Mutex::new(conn), db_path: None };
+        store.run_migrations().unwrap();
+        let (_, _, installed_at) = store.get_persisted_stats().unwrap();
+        // Earlier entry created_at (1000) wins over the legacy last_app_start (2000).
+        assert_eq!(installed_at, 1000);
+    }
+
+    #[test]
+    fn test_v3_migration_keeps_legacy_value_when_no_earlier_entries() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE settings (key TEXT PRIMARY KEY, value_text TEXT, value_int INTEGER);
+             CREATE TABLE stats (
+                id              INTEGER PRIMARY KEY CHECK (id = 1),
+                total_copies    INTEGER NOT NULL DEFAULT 0,
+                total_pastes    INTEGER NOT NULL DEFAULT 0,
+                last_app_start  INTEGER NOT NULL DEFAULT 0
+             );
+             INSERT INTO stats (id, last_app_start) VALUES (1, 1_500_000_000);
+             PRAGMA user_version = 2;"
+        ).unwrap();
+        let store = SqliteStore { conn: Mutex::new(conn), db_path: None };
+        store.run_migrations().unwrap();
+        let (_, _, installed_at) = store.get_persisted_stats().unwrap();
+        assert_eq!(installed_at, 1_500_000_000);
     }
 }

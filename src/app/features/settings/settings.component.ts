@@ -398,8 +398,8 @@ import { ShortcutInputComponent } from './components/shortcut-input/shortcut-inp
                     <dt>{{ 'SETTINGS.STATS_SINCE' | translate }}</dt>
                     <dd>
                       {{
-                        s.lastAppStart > 0
-                          ? (s.lastAppStart * 1000 | date: 'short' : undefined : locale())
+                        s.installedAt > 0
+                          ? (s.installedAt * 1000 | date: 'short' : undefined : locale())
                           : '—'
                       }}
                     </dd>

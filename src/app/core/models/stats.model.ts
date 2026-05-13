@@ -4,7 +4,7 @@ export interface StatsSnapshot {
   sessionCopies: number;
   sessionPastes: number;
   sessionStartedAt: number;
-  lastAppStart: number;
+  installedAt: number;
   savedEntriesCount: number;
   savedEntriesBytes: number;
   dbFileBytes: number;

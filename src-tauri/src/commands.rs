@@ -223,7 +223,7 @@ pub fn get_stats(
     store: StoreState,
     session_stats: SessionStatsState,
 ) -> Result<StatsSnapshot, String> {
-    let (total_copies, total_pastes, last_app_start) =
+    let (total_copies, total_pastes, installed_at) =
         store.get_persisted_stats().map_err(|e| e.to_string())?;
     let (saved_entries_count, saved_entries_bytes) =
         store.get_saved_entries_summary().map_err(|e| e.to_string())?;
@@ -236,7 +236,7 @@ pub fn get_stats(
         session_copies: session_stats.copies.load(Ordering::Relaxed),
         session_pastes: session_stats.pastes.load(Ordering::Relaxed),
         session_started_at: session_stats.started_at.load(Ordering::Acquire),
-        last_app_start,
+        installed_at,
         saved_entries_count,
         saved_entries_bytes,
         db_file_bytes: store.db_file_size(),
