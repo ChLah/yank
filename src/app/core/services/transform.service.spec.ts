@@ -90,6 +90,18 @@ describe('TransformService', () => {
   it('sort-lines-asc handles single-line input as a no-op', () => {
     expect(service.apply('sort-lines-asc', 'only')).toEqual({ ok: true, value: 'only' });
   });
+  it('slugify lowercases and joins words with hyphens', () => {
+    expect(service.apply('slugify', 'Hello World')).toEqual({ ok: true, value: 'hello-world' });
+  });
+  it('slugify strips diacritics', () => {
+    expect(service.apply('slugify', 'Café Déjà Vu')).toEqual({ ok: true, value: 'cafe-deja-vu' });
+  });
+  it('slugify collapses non-alphanumeric runs into a single hyphen and trims edges', () => {
+    expect(service.apply('slugify', '  Foo!! @#  Bar  ')).toEqual({ ok: true, value: 'foo-bar' });
+  });
+  it('slugify produces empty string when no alphanumerics remain', () => {
+    expect(service.apply('slugify', '!!! ???')).toEqual({ ok: true, value: '' });
+  });
   it('options list contains all expected IDs (current state)', () => {
     expect(service.options.map((o) => o.id)).toEqual([
       'strip-whitespace',
@@ -104,6 +116,7 @@ describe('TransformService', () => {
       'strip-html',
       'remove-duplicate-lines',
       'sort-lines-asc',
+      'slugify',
     ]);
   });
 });

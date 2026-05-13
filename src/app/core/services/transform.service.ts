@@ -12,7 +12,8 @@ export type TransformId =
   | 'json-format'
   | 'strip-html'
   | 'remove-duplicate-lines'
-  | 'sort-lines-asc';
+  | 'sort-lines-asc'
+  | 'slugify';
 
 export interface TransformOption {
   id: TransformId;
@@ -36,6 +37,7 @@ export class TransformService {
     { id: 'strip-html', labelKey: 'TRANSFORM.STRIP_HTML' },
     { id: 'remove-duplicate-lines', labelKey: 'TRANSFORM.REMOVE_DUPLICATE_LINES' },
     { id: 'sort-lines-asc', labelKey: 'TRANSFORM.SORT_LINES_ASC' },
+    { id: 'slugify', labelKey: 'TRANSFORM.SLUGIFY' },
   ];
 
   apply(id: TransformId, content: string): TransformResult {
@@ -100,6 +102,16 @@ export class TransformService {
             .split('\n')
             .sort((a, b) => a.localeCompare(b))
             .join('\n'),
+        };
+      case 'slugify':
+        return {
+          ok: true,
+          value: content
+            .normalize('NFD')
+            .replace(/[̀-ͯ]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, ''),
         };
     }
   }
