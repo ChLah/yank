@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
+import { md5 } from '../utils/md5';
 
-export type TransformId =
+export type SyncTransformId =
   | 'strip-whitespace'
   | 'uppercase'
   | 'lowercase'
@@ -14,6 +15,10 @@ export type TransformId =
   | 'remove-duplicate-lines'
   | 'sort-lines-asc'
   | 'slugify';
+
+export type HashTransformId = 'hash-md5' | 'hash-sha1' | 'hash-sha256';
+
+export type TransformId = SyncTransformId | HashTransformId;
 
 export interface TransformOption {
   id: TransformId;
@@ -38,9 +43,30 @@ export class TransformService {
     { id: 'remove-duplicate-lines', labelKey: 'TRANSFORM.REMOVE_DUPLICATE_LINES' },
     { id: 'sort-lines-asc', labelKey: 'TRANSFORM.SORT_LINES_ASC' },
     { id: 'slugify', labelKey: 'TRANSFORM.SLUGIFY' },
+    { id: 'hash-md5', labelKey: 'TRANSFORM.HASH_MD5' },
   ];
 
-  apply(id: TransformId, content: string): TransformResult {
+  private readonly asyncIds: ReadonlySet<HashTransformId> = new Set([
+    'hash-md5',
+    'hash-sha1',
+    'hash-sha256',
+  ]);
+
+  isAsync(id: TransformId): id is HashTransformId {
+    return this.asyncIds.has(id as HashTransformId);
+  }
+
+  async applyAsync(id: HashTransformId, content: string): Promise<TransformResult> {
+    switch (id) {
+      case 'hash-md5':
+        return { ok: true, value: md5(content) };
+      case 'hash-sha1':
+      case 'hash-sha256':
+        throw new Error(`applyAsync: ${id} not yet implemented`);
+    }
+  }
+
+  apply(id: SyncTransformId, content: string): TransformResult {
     switch (id) {
       case 'strip-whitespace':
         return { ok: true, value: content.trim().replace(/\s+/g, ' ') };

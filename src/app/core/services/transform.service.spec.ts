@@ -102,6 +102,25 @@ describe('TransformService', () => {
   it('slugify produces empty string when no alphanumerics remain', () => {
     expect(service.apply('slugify', '!!! ???')).toEqual({ ok: true, value: '' });
   });
+  it('isAsync returns true for hash IDs and false for sync IDs', () => {
+    expect(service.isAsync('hash-md5')).toBe(true);
+    expect(service.isAsync('hash-sha1')).toBe(true);
+    expect(service.isAsync('hash-sha256')).toBe(true);
+    expect(service.isAsync('uppercase')).toBe(false);
+    expect(service.isAsync('base64-encode')).toBe(false);
+  });
+  it('applyAsync("hash-md5", "abc") returns the MD5 hex digest', async () => {
+    await expect(service.applyAsync('hash-md5', 'abc')).resolves.toEqual({
+      ok: true,
+      value: '900150983cd24fb0d6963f7d28e17f72',
+    });
+  });
+  it('applyAsync("hash-md5", "") returns the empty-string MD5', async () => {
+    await expect(service.applyAsync('hash-md5', '')).resolves.toEqual({
+      ok: true,
+      value: 'd41d8cd98f00b204e9800998ecf8427e',
+    });
+  });
   it('options list contains all expected IDs (current state)', () => {
     expect(service.options.map((o) => o.id)).toEqual([
       'strip-whitespace',
@@ -117,6 +136,7 @@ describe('TransformService', () => {
       'remove-duplicate-lines',
       'sort-lines-asc',
       'slugify',
+      'hash-md5',
     ]);
   });
 });

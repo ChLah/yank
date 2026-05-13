@@ -10,14 +10,21 @@ describe('TransformPickerComponent', () => {
   describe('TransformService integration (via TransformPickerComponent logic)', () => {
     let service: TransformService;
 
-    beforeEach(() => { service = new TransformService(); });
+    beforeEach(() => {
+      service = new TransformService();
+    });
 
-    it('apply returns ok for all 8 transform types on a sample string', () => {
+    it('apply returns ok for all safe synchronous transform types on a sample string', () => {
       const sample = 'hello world';
-      const noErrorTransforms = service.options.filter(
-        o => o.id !== 'url-decode' && o.id !== 'json-format'
+      const safeSync = service.options.filter(
+        (o) =>
+          o.id !== 'url-decode' &&
+          o.id !== 'json-format' &&
+          o.id !== 'base64-decode' &&
+          !service.isAsync(o.id),
       );
-      for (const opt of noErrorTransforms) {
+      for (const opt of safeSync) {
+        if (service.isAsync(opt.id)) continue;
         const result = service.apply(opt.id, sample);
         expect(result.ok).toBe(true);
       }

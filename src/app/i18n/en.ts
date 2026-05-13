@@ -129,6 +129,7 @@ export const en: Translation = {
     REMOVE_DUPLICATE_LINES: 'Remove Duplicate Lines',
     SORT_LINES_ASC: 'Sort Lines (A→Z)',
     SLUGIFY: 'Slugify',
+    HASH_MD5: 'Hash MD5',
     ERROR_JSON: 'Not valid JSON',
     ERROR_URL_DECODE: 'Invalid URL encoding',
     ERROR_BASE64_DECODE: 'Invalid Base64',
