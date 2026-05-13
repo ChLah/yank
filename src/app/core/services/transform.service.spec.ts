@@ -2,10 +2,15 @@ import { TransformService } from './transform.service';
 
 describe('TransformService', () => {
   let service: TransformService;
-  beforeEach(() => { service = new TransformService(); });
+  beforeEach(() => {
+    service = new TransformService();
+  });
 
   it('strip-whitespace trims and collapses internal spaces', () => {
-    expect(service.apply('strip-whitespace', '  hello   world  ')).toEqual({ ok: true, value: 'hello world' });
+    expect(service.apply('strip-whitespace', '  hello   world  ')).toEqual({
+      ok: true,
+      value: 'hello world',
+    });
   });
   it('uppercase converts to upper case', () => {
     expect(service.apply('uppercase', 'hello world')).toEqual({ ok: true, value: 'HELLO WORLD' });
@@ -14,13 +19,22 @@ describe('TransformService', () => {
     expect(service.apply('lowercase', 'HELLO WORLD')).toEqual({ ok: true, value: 'hello world' });
   });
   it('title-case capitalizes first letter of each word', () => {
-    expect(service.apply('title-case', 'hello world foo')).toEqual({ ok: true, value: 'Hello World Foo' });
+    expect(service.apply('title-case', 'hello world foo')).toEqual({
+      ok: true,
+      value: 'Hello World Foo',
+    });
   });
   it('url-encode encodes special characters', () => {
-    expect(service.apply('url-encode', 'hello world&foo=1')).toEqual({ ok: true, value: 'hello%20world%26foo%3D1' });
+    expect(service.apply('url-encode', 'hello world&foo=1')).toEqual({
+      ok: true,
+      value: 'hello%20world%26foo%3D1',
+    });
   });
   it('url-decode decodes an encoded string', () => {
-    expect(service.apply('url-decode', 'hello%20world')).toEqual({ ok: true, value: 'hello world' });
+    expect(service.apply('url-decode', 'hello%20world')).toEqual({
+      ok: true,
+      value: 'hello world',
+    });
   });
   it('url-decode returns error on invalid encoding', () => {
     const r = service.apply('url-decode', '%invalid');
@@ -36,13 +50,37 @@ describe('TransformService', () => {
     if (!r.ok) expect(r.error).toBe('TRANSFORM.ERROR_JSON');
   });
   it('strip-html removes all HTML tags', () => {
-    expect(service.apply('strip-html', '<b>hello</b> <i>world</i>')).toEqual({ ok: true, value: 'hello world' });
+    expect(service.apply('strip-html', '<b>hello</b> <i>world</i>')).toEqual({
+      ok: true,
+      value: 'hello world',
+    });
   });
-  it('options list contains all 8 transforms', () => {
-    expect(service.options).toHaveLength(8);
-    const ids = service.options.map(o => o.id);
-    expect(ids).toContain('strip-whitespace');
-    expect(ids).toContain('json-format');
-    expect(ids).toContain('strip-html');
+  it('base64-encode encodes ASCII text', () => {
+    expect(service.apply('base64-encode', 'foo')).toEqual({ ok: true, value: 'Zm9v' });
+  });
+  it('base64-encode handles non-ASCII (UTF-8)', () => {
+    expect(service.apply('base64-encode', 'héllo')).toEqual({ ok: true, value: 'aMOpbGxv' });
+  });
+  it('base64-decode decodes back to original UTF-8 string', () => {
+    expect(service.apply('base64-decode', 'aMOpbGxv')).toEqual({ ok: true, value: 'héllo' });
+  });
+  it('base64-decode returns error on invalid base64', () => {
+    const r = service.apply('base64-decode', '!!!not-base64!!!');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toBe('TRANSFORM.ERROR_BASE64_DECODE');
+  });
+  it('options list contains all expected IDs (current state)', () => {
+    expect(service.options.map((o) => o.id)).toEqual([
+      'strip-whitespace',
+      'uppercase',
+      'lowercase',
+      'title-case',
+      'url-encode',
+      'url-decode',
+      'base64-encode',
+      'base64-decode',
+      'json-format',
+      'strip-html',
+    ]);
   });
 });

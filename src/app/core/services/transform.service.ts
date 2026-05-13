@@ -7,6 +7,8 @@ export type TransformId =
   | 'title-case'
   | 'url-encode'
   | 'url-decode'
+  | 'base64-encode'
+  | 'base64-decode'
   | 'json-format'
   | 'strip-html';
 
@@ -15,9 +17,7 @@ export interface TransformOption {
   labelKey: string;
 }
 
-export type TransformResult =
-  | { ok: true; value: string }
-  | { ok: false; error: string };
+export type TransformResult = { ok: true; value: string } | { ok: false; error: string };
 
 @Injectable({ providedIn: 'root' })
 export class TransformService {
@@ -28,6 +28,8 @@ export class TransformService {
     { id: 'title-case', labelKey: 'TRANSFORM.TITLE_CASE' },
     { id: 'url-encode', labelKey: 'TRANSFORM.URL_ENCODE' },
     { id: 'url-decode', labelKey: 'TRANSFORM.URL_DECODE' },
+    { id: 'base64-encode', labelKey: 'TRANSFORM.BASE64_ENCODE' },
+    { id: 'base64-decode', labelKey: 'TRANSFORM.BASE64_DECODE' },
     { id: 'json-format', labelKey: 'TRANSFORM.JSON_FORMAT' },
     { id: 'strip-html', labelKey: 'TRANSFORM.STRIP_HTML' },
   ];
@@ -41,7 +43,7 @@ export class TransformService {
       case 'lowercase':
         return { ok: true, value: content.toLowerCase() };
       case 'title-case':
-        return { ok: true, value: content.replace(/\b\w/g, c => c.toUpperCase()) };
+        return { ok: true, value: content.replace(/\b\w/g, (c) => c.toUpperCase()) };
       case 'url-encode':
         return { ok: true, value: encodeURIComponent(content) };
       case 'url-decode':
@@ -52,6 +54,21 @@ export class TransformService {
             return { ok: false, error: 'TRANSFORM.ERROR_URL_DECODE' };
           }
           throw e;
+        }
+      case 'base64-encode': {
+        const bytes = new TextEncoder().encode(content);
+        let binary = '';
+        for (const b of bytes) binary += String.fromCharCode(b);
+        return { ok: true, value: btoa(binary) };
+      }
+      case 'base64-decode':
+        try {
+          const binary = atob(content);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return { ok: true, value: new TextDecoder('utf-8', { fatal: true }).decode(bytes) };
+        } catch {
+          return { ok: false, error: 'TRANSFORM.ERROR_BASE64_DECODE' };
         }
       case 'json-format':
         try {

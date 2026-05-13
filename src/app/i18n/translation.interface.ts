@@ -122,8 +122,11 @@ export interface Translation {
     URL_DECODE: string;
     JSON_FORMAT: string;
     STRIP_HTML: string;
+    BASE64_ENCODE: string;
+    BASE64_DECODE: string;
     ERROR_JSON: string;
     ERROR_URL_DECODE: string;
+    ERROR_BASE64_DECODE: string;
     HINT: string;
     DUPLICATE_ERROR: string;
   };
