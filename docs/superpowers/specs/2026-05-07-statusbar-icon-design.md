@@ -1,6 +1,12 @@
-# Statusbar / App Icon Redesign — Design Spec
+# Statusbar / App Icon Redesign — Design Spec (Superseded)
 
 **Date:** 2026-05-07
+
+> ⚠️ **Superseded by [2026-05-13-app-icon-design.md](2026-05-13-app-icon-design.md).**
+>
+> The "single bold letter Y" concept described below was abandoned after we evaluated it against Microsoft's [Windows app-icon design guidance](https://learn.microsoft.com/en-us/windows/apps/design/iconography/app-icon-design), which explicitly recommends against typography in app icons. The shipped icon is a flat geometric clipboard slip with a dog-eared corner — see the linked spec for the design that's actually in the repo.
+>
+> This file is kept for historical context (the concept exploration, palette discussion, and pipeline overview were useful inputs to the final design) but is no longer authoritative.
 
 ---
 

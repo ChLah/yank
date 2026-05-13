@@ -280,7 +280,7 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
     TrayIconBuilder::with_id("main-tray")
         .icon(icon)
         .menu(&menu)
-        .tooltip("Clipboard Manager")
+        .tooltip("YANK")
         .on_menu_event(move |app, event| match event.id().as_ref() {
             "open" => windows::show_popup(app),
             "settings" => {

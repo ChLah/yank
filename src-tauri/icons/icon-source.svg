@@ -1,0 +1,26 @@
+ <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+    <g transform="rotate(-3 512 512)">
+      <!-- Slip body (teal), top-right corner cut by a straight diagonal fold -->
+      <path d="
+        M 275.5 143.5
+        L 620 143.5
+        L 870.5 394
+        L 870.5 820.5
+        A 122 122 0 0 1 748.5 942.5
+        L 275.5 942.5
+        A 122 122 0 0 1 153.5 820.5
+        L 153.5 265.5
+        A 122 122 0 0 1 275.5 143.5 Z" fill="#0F8FA0"/>
+
+      <!-- Folded corner (yellow underside) — a right triangle, the original
+           top-right corner reflected over the fold line -->
+      <path d="
+        M 620 143.5
+        L 870.5 394
+        L 620 394 Z" fill="#FFC72C"/>
+
+      <!-- Fold crease (paper-thickness hairline at the bend) -->
+      <path d="M 620 143.5 L 870.5 394"
+        stroke="#0A6E7C" stroke-width="6" stroke-linecap="round"/>
+    </g>
+  </svg>
