@@ -47,5 +47,19 @@ describe('TransformPickerComponent', () => {
       expect(valid.ok).toBe(true);
       if (valid.ok) expect(valid.value).toBe('{\n  "a": 1\n}');
     });
+
+    it('applyAsync returns ok for all hash transforms on a sample string', async () => {
+      const sample = 'hello world';
+      for (const opt of service.options) {
+        if (!service.isAsync(opt.id)) continue;
+        const result = await service.applyAsync(opt.id, sample);
+        expect(result.ok).toBe(true);
+      }
+    });
+
+    it('apply returns error for base64-decode on garbage input', () => {
+      const result = service.apply('base64-decode', '!!!not-base64!!!');
+      expect(result).toMatchObject({ ok: false, error: 'TRANSFORM.ERROR_BASE64_DECODE' });
+    });
   });
 });

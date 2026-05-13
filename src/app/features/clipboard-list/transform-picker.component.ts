@@ -89,9 +89,11 @@ export class TransformPickerComponent {
     this.apply();
   }
 
-  private apply(): void {
+  private async apply(): Promise<void> {
     const opt = this.transformService.options[this.cursor()];
-    const result = this.transformService.apply(opt.id, this.content());
+    const result = this.transformService.isAsync(opt.id)
+      ? await this.transformService.applyAsync(opt.id, this.content())
+      : this.transformService.apply(opt.id, this.content());
     if (!result.ok) {
       this.errorKey.set(result.error);
       return;
