@@ -22,12 +22,12 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 use store::SqliteStore;
 
 /// Resolve the directory tracing-appender writes to. On Windows this matches
-/// Tauri's `app_data_dir()`: `%APPDATA%\com.yank.app\logs\`.
+/// Tauri's `app_data_dir()`: `%APPDATA%\com.mockelsoft.yank\logs\`.
 fn log_dir() -> std::path::PathBuf {
     let base = std::env::var_os("APPDATA")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(std::env::temp_dir);
-    base.join("com.yank.app").join("logs")
+    base.join("com.mockelsoft.yank").join("logs")
 }
 
 /// Holds the WorkerGuard returned by the non-blocking writer; dropping it

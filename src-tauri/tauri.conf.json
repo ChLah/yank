@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "YANK",
   "version": "0.1.0",
-  "identifier": "com.yank.app",
+  "identifier": "com.mockelsoft.yank",
   "build": {
     "frontendDist": "../dist/yank/browser",
     "devUrl": "http://localhost:4200",
