@@ -75,9 +75,15 @@ pub fn save_settings(
     Ok(())
 }
 
+// `async fn` is required: `WebviewWindowBuilder::build()` deadlocks when
+// invoked from a sync Tauri command (the worker thread holding the command
+// also needs to drive the event loop that processes window creation).
+// Symptom is a white/unresponsive new window. The tray-menu path doesn't
+// have this problem because menu events fire on the main thread directly.
+// See https://github.com/tauri-apps/tauri/issues/13963.
 #[tauri::command]
-pub fn open_image_preview(id: i64, app_handle: tauri::AppHandle) -> Result<(), String> {
-    crate::windows::open_image_preview(&app_handle, id).map_err(|e| e.to_string())
+pub async fn open_settings_window(app_handle: tauri::AppHandle) -> Result<(), String> {
+    crate::windows::open_settings(&app_handle).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

@@ -130,39 +130,6 @@ fn get_cursor_position() -> Option<(i32, i32)> {
     None
 }
 
-pub fn open_image_preview(
-    app: &AppHandle,
-    id: i64,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let label = "image-preview";
-
-    // If window already exists, navigate to the new entry and show
-    if let Some(window) = app.get_webview_window(label) {
-        let _ = window.eval(&format!("window.location.hash = '#/preview?id={}'", id));
-        let _ = window.show();
-        let _ = window.set_focus();
-        return Ok(());
-    }
-
-    // Open at root (same URL as the main window) and use an initialization
-    // script to pre-set the hash before Angular boots. This avoids passing
-    // '#' and '?' through PathBuf which mangles them on Windows, and avoids
-    // any ambiguity about whether WebviewUrl::App uses the dev server or the
-    // bundled asset protocol for dynamically created windows.
-    WebviewWindowBuilder::new(app, label, WebviewUrl::App("/".into()))
-        .title("Image Preview")
-        .inner_size(800.0, 600.0)
-        .resizable(true)
-        .decorations(true)
-        .initialization_script(&format!(
-            "window.location.hash = '#/preview?id={}';",
-            id
-        ))
-        .build()?;
-
-    Ok(())
-}
-
 pub fn open_settings(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let label = "settings";
 
@@ -174,9 +141,10 @@ pub fn open_settings(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
 
     WebviewWindowBuilder::new(app, label, WebviewUrl::App("/".into()))
         .title("Settings")
-        .inner_size(500.0, 680.0)
+        .inner_size(880.0, 680.0)
         .resizable(false)
         .decorations(false)
+        .center()
         .initialization_script("window.location.hash = '#/settings';")
         .build()?;
 

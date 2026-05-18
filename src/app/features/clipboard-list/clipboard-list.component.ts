@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TauriEventBus } from '../../core/services/tauri-event-bus.service';
-import { RouterLink } from '@angular/router';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import { lucideClipboard, lucideSettings } from '@ng-icons/lucide';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -41,7 +40,6 @@ type TabType = 'snippets' | ClipboardTabType;
     ClipboardFooterHintsComponent,
     SnippetsFooterHintsComponent,
     UpdateBannerComponent,
-    RouterLink,
     NgIcon,
     HlmIcon,
     HlmBadge,
@@ -78,15 +76,18 @@ type TabType = 'snippets' | ClipboardTabType;
             'CLIPBOARD.CAPTURE_LABEL' | translate
           }}</span>
           <hlm-switch
+            class="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-red-500"
             [checked]="!captureIsPaused()"
             (checkedChange)="onCaptureSwitchChange($event)"
           />
-          <a
-            routerLink="/settings"
+          <button
+            type="button"
+            (click)="onOpenSettingsClick()"
             class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            [attr.aria-label]="'SETTINGS.TITLE' | translate"
           >
             <ng-icon hlm size="sm" name="lucideSettings" />
-          </a>
+          </button>
         </ng-container>
       </app-page-header>
 
@@ -224,6 +225,16 @@ export class ClipboardListComponent implements OnInit {
     } catch {
       this.captureIsPaused.set(!this.captureIsPaused());
     }
+  }
+
+  protected async onOpenSettingsClick(): Promise<void> {
+    // Hide the popup before opening settings. The popup is alwaysOnTop, so
+    // without this the new settings window opens behind it and never reaches
+    // the foreground. Doing the hide as its own IPC round-trip (rather than
+    // baked into `open_settings_window`) gives the popup webview a clean tear
+    // down before we touch window creation.
+    await this.bridge.hidePopup();
+    await this.bridge.openSettingsWindow();
   }
 
   private cycleTab(direction: 1 | -1): void {

@@ -227,7 +227,7 @@ pub fn run() {
             commands::delete_entry,
             commands::get_settings,
             commands::save_settings,
-            commands::open_image_preview,
+            commands::open_settings_window,
             commands::get_entry_image,
             commands::hide_popup,
             commands::toggle_pin,

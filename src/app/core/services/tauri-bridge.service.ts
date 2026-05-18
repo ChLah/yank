@@ -30,8 +30,8 @@ export class TauriBridgeService {
     return invoke('save_settings', { settings });
   }
 
-  openImagePreview(id: number): Promise<void> {
-    return invoke('open_image_preview', { id });
+  openSettingsWindow(): Promise<void> {
+    return invoke('open_settings_window');
   }
 
   getEntryImage(id: number): Promise<string> {
