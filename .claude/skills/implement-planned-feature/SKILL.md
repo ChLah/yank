@@ -19,6 +19,15 @@ Use Glob to collect both lists:
 
 **Matching logic:** For each spec, derive its _feature slug_ by stripping the `YYYY-MM-DD-` date prefix and `-design.md` suffix (e.g. `2026-04-29-more-transforms-design.md` → `more-transforms`). Then check whether any plan filename contains that slug as a substring. Use judgment for near-matches (e.g. `pause-capture` matches `pause-capture-mode`; `yank-naming` matches `yank-rename`). When in doubt, include the spec in the unplanned list rather than silently skipping it.
 
+**Filter out superseded specs.** A spec that has been replaced by a newer one is not actionable and must not be surfaced. Detect supersession by reading the spec's first ~30 lines and looking for either signal:
+
+1. The phrase `Superseded by` (case-insensitive) in the body — typically inside a `> ⚠️` blockquote near the top, pointing to the replacement spec.
+2. The token `(Superseded)` (case-insensitive) in the H1 title.
+
+A `**Supersedes:** [...]` line points *outward* to the superseded spec and is a normal annotation on the authoritative one — do **not** filter on this.
+
+If a spec is superseded, drop it before applying the matching logic above. It does not appear in the user-facing list even if no plan exists.
+
 ### 2. Extract Title and Description
 
 For each unplanned spec, read the file and extract:
