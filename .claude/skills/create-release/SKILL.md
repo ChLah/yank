@@ -99,9 +99,20 @@ Wait for the user's response. Accept plain confirmation ("ok", "looks good", "ye
 
 Apply requested changes and re-display the summary. Repeat until the user confirms.
 
-## Step 6 — Create the tag
+## Step 6 — Bump version in tauri.conf.json
 
-Once confirmed:
+Edit `src-tauri/tauri.conf.json` and update the `"version"` field to `<X.Y.Z>` (no leading `v`).
+
+Then commit that change:
+
+```bash
+git add src-tauri/tauri.conf.json
+git commit -m "chore: bump version to <X.Y.Z>"
+```
+
+## Step 7 — Create the tag
+
+Tag the version-bump commit:
 
 ```bash
 git tag -a v<X.Y.Z> -m "<full release notes message>"
@@ -110,10 +121,11 @@ git tag -a v<X.Y.Z> -m "<full release notes message>"
 Then tell the user:
 
 ```
-Tag v<X.Y.Z> created locally.
+Version bumped to <X.Y.Z> in tauri.conf.json and committed.
+Tag v<X.Y.Z> created on that commit.
 
-Push it to trigger the release pipeline:
-  git push origin v<X.Y.Z>
+Push both to trigger the release pipeline:
+  git push origin main && git push origin v<X.Y.Z>
 ```
 
 Do NOT push automatically.
