@@ -53,15 +53,21 @@ jobs:
         shell: bash
         run: |
           NOTES=$(git tag -l --format='%(contents)' "${{ steps.version.outputs.tag }}")
+          if [[ -z "$NOTES" ]]; then
+            echo "ERROR: Tag '${{ steps.version.outputs.tag }}' has no annotation message." >&2
+            echo "Use 'git tag -a vX.Y.Z -m \"Release notes here\"' to create an annotated tag." >&2
+            exit 1
+          fi
           echo "$NOTES" > release-notes.txt
 
       - name: Build Tauri app
+        shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          $config = '{"version":"${{ steps.version.outputs.version }}","bundle":{"createUpdaterArtifacts":true}}'
-          node node_modules/@tauri-apps/cli/tauri.js build --config $config
+          CONFIG='{"version":"${{ steps.version.outputs.version }}","bundle":{"createUpdaterArtifacts":true}}'
+          node node_modules/@tauri-apps/cli/tauri.js build --config "$CONFIG"
 
       - name: Locate build artifacts
         id: artifacts
@@ -78,21 +84,19 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
           EXENAME="${{ steps.artifacts.outputs.exename }}"
           SIGNATURE=$(cat "${{ steps.artifacts.outputs.sig }}")
-          cat > latest.json <<EOF
-          {
-            "version": "$VERSION",
-            "notes": "See release notes on GitHub.",
-            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "platforms": {
-              "windows-x86_64": {
-                "signature": "$SIGNATURE",
-                "url": "https://github.com/ChLah/yank/releases/download/${{ steps.version.outputs.tag }}/${EXENAME}"
-              }
-            }
-          }
-          EOF
+          jq -n \
+            --arg version "$VERSION" \
+            --arg sig "$SIGNATURE" \
+            --arg url "https://github.com/ChLah/yank/releases/download/${TAG}/${EXENAME}" \
+            '{
+              version: $version,
+              notes: "See release notes on GitHub.",
+              pub_date: (now | strftime("%Y-%m-%dT%H:%M:%SZ")),
+              platforms: {"windows-x86_64": {signature: $sig, url: $url}}
+            }' > latest.json
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
