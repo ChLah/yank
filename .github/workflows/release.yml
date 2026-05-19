@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Extract release notes from tag annotation
+        id: notes
+        shell: bash
+        run: |
+          NOTES=$(git tag -l --format='%(contents)' "${{ steps.version.outputs.tag }}")
+          echo "$NOTES" > release-notes.txt
+
+      - name: Build Tauri app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          $config = '{"version":"${{ steps.version.outputs.version }}","bundle":{"createUpdaterArtifacts":true}}'
+          node node_modules/@tauri-apps/cli/tauri.js build --config $config
+
+      - name: Locate build artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          BUNDLE_DIR="src-tauri/target/release/bundle/nsis"
+          EXE=$(ls "$BUNDLE_DIR"/*-setup.exe | head -1)
+          SIG="${EXE}.sig"
+          echo "exe=$EXE" >> "$GITHUB_OUTPUT"
+          echo "sig=$SIG" >> "$GITHUB_OUTPUT"
+          echo "exename=$(basename "$EXE")" >> "$GITHUB_OUTPUT"
+
+      - name: Generate latest.json manifest
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          EXENAME="${{ steps.artifacts.outputs.exename }}"
+          SIGNATURE=$(cat "${{ steps.artifacts.outputs.sig }}")
+          cat > latest.json <<EOF
+          {
+            "version": "$VERSION",
+            "notes": "See release notes on GitHub.",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "$SIGNATURE",
+                "url": "https://github.com/ChLah/yank/releases/download/${{ steps.version.outputs.tag }}/${EXENAME}"
+              }
+            }
+          }
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.txt
+          files: |
+            ${{ steps.artifacts.outputs.exe }}
+            ${{ steps.artifacts.outputs.sig }}
+            latest.json
