@@ -3,6 +3,7 @@
   "description": "YANK — Yet Another Nifty Keeper. Your clipboard history, kept.",
   "version": "0.0.0",
   "scripts": {
+    "preinstall": "npx only-allow pnpm",
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
