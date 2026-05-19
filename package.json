@@ -8,8 +8,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "vitest run",
-    "spartan": "ng g @spartan-ng/cli:ui",
-    "update:local": "tsx scripts/update-server.ts"
+    "spartan": "ng g @spartan-ng/cli:ui"
   },
   "private": true,
   "packageManager": "pnpm@10.28.2",
