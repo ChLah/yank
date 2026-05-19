@@ -8,7 +8,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "vitest run",
-    "spartan": "ng g @spartan-ng/cli:ui"
+    "spartan": "ng g @spartan-ng/cli:ui",
+    "hooks:install": "node -e \"const{copyFileSync,existsSync,mkdirSync,unlinkSync,symlinkSync}=require('fs');const path=require('path');mkdirSync('.git/hooks',{recursive:true});const src=path.resolve('scripts/pre-push');const t='.git/hooks/pre-push';if(existsSync(t))unlinkSync(t);try{symlinkSync(src,t);}catch(e){copyFileSync(src,t);}\""
   },
   "private": true,
   "packageManager": "pnpm@10.28.2",

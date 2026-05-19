@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Enforces: if pushing a v* tag, tauri.conf.json version must match.
+
+TAURI_CONF="src-tauri/tauri.conf.json"
+
+while read local_ref local_sha remote_ref remote_sha; do
+  if [[ "$local_ref" == refs/tags/v* ]]; then
+    TAG="${local_ref#refs/tags/}"
+    TAG_VERSION="${TAG#v}"
+
+    CONF_VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$TAURI_CONF','utf8')).version)")
+
+    if [[ "$TAG_VERSION" != "$CONF_VERSION" ]]; then
+      echo ""
+      echo "ERROR: Tag version mismatch!"
+      echo "  Tag:              $TAG ($TAG_VERSION)"
+      echo "  tauri.conf.json:  $CONF_VERSION"
+      echo ""
+      echo "Update tauri.conf.json to version $TAG_VERSION before pushing this tag."
+      echo ""
+      exit 1
+    fi
+  fi
+done
+
+exit 0
