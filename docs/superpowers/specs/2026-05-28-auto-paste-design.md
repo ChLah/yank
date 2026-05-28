@@ -30,7 +30,13 @@ A toggle in Settings → History (Verlauf) enables/disables the feature. It defa
 
 ### Shared state: previous window handle
 
-A new `Arc<AtomicUsize>` named `PreviousHwnd` is added to app state. It stores the raw HWND (Windows window handle) of the application that was focused immediately before Yank's popup appeared.
+A new `Arc<AtomicUsize>` is added to app state under the type alias `PreviousHwnd`. It stores the raw HWND (Windows window handle) of the application that was focused immediately before Yank's popup appeared.
+
+```rust
+pub type PreviousHwnd = AtomicUsize;
+```
+
+It is managed via `app.manage(Arc::new(AtomicUsize::new(0)))` in `lib.rs`. In `show_popup()` it is retrieved via `app.state::<Arc<PreviousHwnd>>()` — no signature change needed.
 
 In `windows.rs` → `show_popup()`, **before** calling `window.show()`:
 ```rust
@@ -38,18 +44,16 @@ In `windows.rs` → `show_popup()`, **before** calling `window.show()`:
 {
     use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
     let hwnd = unsafe { GetForegroundWindow() };
-    previous_hwnd.store(hwnd.0 as usize, Ordering::Relaxed);
+    app.state::<Arc<PreviousHwnd>>().store(hwnd.0 as usize, Ordering::Relaxed);
 }
 ```
 
-`PreviousHwnd` is managed via `app.manage(...)` in `lib.rs` and passed into `show_popup`.
-
 ### Shared paste-and-close helper (Windows-only)
 
-A private Rust function `do_paste_and_close` in `commands.rs` (or a new `paste.rs` module):
+A private async Rust function `do_paste_and_close` in `commands.rs` (or a new `paste.rs` module). Uses `tokio::time::sleep` so the delay is non-blocking:
 
 ```rust
-fn do_paste_and_close(app_handle: &AppHandle, prev_hwnd: usize, auto_paste: bool) {
+async fn do_paste_and_close(app_handle: &AppHandle, prev_hwnd: usize, auto_paste: bool) {
     // 1. Hide the popup
     if let Some(window) = app_handle.get_webview_window("main") {
         let _ = window.hide();
@@ -63,21 +67,19 @@ fn do_paste_and_close(app_handle: &AppHandle, prev_hwnd: usize, auto_paste: bool
         use windows::Win32::Foundation::HWND;
         use windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow;
         use windows::Win32::UI::Input::KeyboardAndMouse::{
-            SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP,
-            VK_CONTROL, VK_V,
+            SendInput, INPUT, KEYEVENTF_KEYUP, VK_CONTROL, VK_V,
         };
         unsafe {
             SetForegroundWindow(HWND(prev_hwnd as isize));
         }
-        std::thread::sleep(std::time::Duration::from_millis(150));
-        // Send Ctrl+V down, then Ctrl+V up
+        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
         let inputs = [
             make_key_input(VK_CONTROL.0, 0),
             make_key_input(VK_V.0, 0),
             make_key_input(VK_V.0, KEYEVENTF_KEYUP.0),
             make_key_input(VK_CONTROL.0, KEYEVENTF_KEYUP.0),
         ];
-        unsafe { SendInput(&inputs, size_of::<INPUT>() as i32) };
+        unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };
     }
 }
 ```
@@ -102,7 +104,7 @@ pub async fn paste_entry_and_close(
     let auto_paste = store.get_settings()
         .map(|s| s.auto_paste)
         .unwrap_or(false);
-    let hwnd = prev_hwnd.0.load(Ordering::Relaxed);
+    let hwnd = prev_hwnd.load(Ordering::Relaxed);
     do_paste_and_close(&app_handle, hwnd, auto_paste).await;
     Ok(())
 }
@@ -119,7 +121,7 @@ pub async fn paste_text_and_close(
     let auto_paste = store.get_settings()
         .map(|s| s.auto_paste)
         .unwrap_or(false);
-    let hwnd = prev_hwnd.0.load(Ordering::Relaxed);
+    let hwnd = prev_hwnd.load(Ordering::Relaxed);
     do_paste_and_close(&app_handle, hwnd, auto_paste).await;
     Ok(())
 }
