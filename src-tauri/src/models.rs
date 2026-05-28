@@ -56,6 +56,7 @@ pub struct AppSettings {
     pub window_position: WindowPositionMode,
     pub pause_shortcut: String,
     pub auto_check_updates: bool,
+    pub auto_paste: bool,
 }
 
 impl Default for AppSettings {
@@ -72,6 +73,7 @@ impl Default for AppSettings {
             window_position: WindowPositionMode::Cursor,
             pause_shortcut: String::new(),
             auto_check_updates: true,
+            auto_paste: true,
         }
     }
 }

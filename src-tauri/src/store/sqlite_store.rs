@@ -420,7 +420,7 @@ impl SqliteStore {
         let map = Self::fetch_settings_map(&conn, &[
             "shortcut", "maxEntries", "language", "theme",
             "autostart", "deleteAfterMaxEntries", "deleteAfterDays", "maxDays",
-            "windowPosition", "pauseShortcut", "autoCheckUpdates",
+            "windowPosition", "pauseShortcut", "autoCheckUpdates", "autoPaste",
         ])?;
 
         let defaults = AppSettings::default();
@@ -449,11 +449,12 @@ impl SqliteStore {
         }).unwrap_or(WindowPositionMode::Cursor);
         let pause_shortcut = text("pauseShortcut").unwrap_or(defaults.pause_shortcut);
         let auto_check_updates = int("autoCheckUpdates").map(|v| v != 0).unwrap_or(defaults.auto_check_updates);
+        let auto_paste = int("autoPaste").map(|v| v != 0).unwrap_or(defaults.auto_paste);
 
         Ok(AppSettings {
             shortcut, max_entries, language, theme, autostart,
             delete_after_max_entries, delete_after_days, max_days,
-            window_position, pause_shortcut, auto_check_updates,
+            window_position, pause_shortcut, auto_check_updates, auto_paste,
         })
     }
 
@@ -484,6 +485,7 @@ impl SqliteStore {
             ("windowPosition",        Some(window_position_str),                   None),
             ("pauseShortcut",         Some(settings.pause_shortcut.as_str()),      None),
             ("autoCheckUpdates",      None,                                         Some(settings.auto_check_updates as i64)),
+            ("autoPaste",             None,                                         Some(settings.auto_paste as i64)),
         ];
 
         let conn = self.conn.lock().unwrap();
@@ -1830,5 +1832,21 @@ mod tests {
         store.run_migrations().unwrap();
         let (_, _, installed_at) = store.get_persisted_stats().unwrap();
         assert_eq!(installed_at, 1_500_000_000);
+    }
+
+    #[test]
+    fn test_auto_paste_setting_round_trip() {
+        let store = in_memory_store();
+
+        // default is true
+        let loaded = store.get_settings().unwrap();
+        assert!(loaded.auto_paste);
+
+        // save false and reload
+        let mut settings = store.get_settings().unwrap();
+        settings.auto_paste = false;
+        store.save_settings(&settings).unwrap();
+        let loaded = store.get_settings().unwrap();
+        assert!(!loaded.auto_paste);
     }
 }
