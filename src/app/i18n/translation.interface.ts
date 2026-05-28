@@ -64,6 +64,7 @@ export interface Translation {
     STATS_RESET_DB_BUTTON: string;
     STATS_RESET_SUCCESS: string;
     STATS_SESSION_RESET_SUCCESS: string;
+    AUTO_PASTE_LABEL: string;
   };
   CLIPBOARD: {
     TITLE: string;
