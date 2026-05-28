@@ -22,17 +22,6 @@ pub fn get_entries(store: StoreState) -> Result<Vec<ClipboardEntry>, String> {
 }
 
 #[tauri::command]
-pub fn set_clipboard(
-    id: i64,
-    store: StoreState,
-    session_stats: SessionStatsState,
-) -> Result<(), String> {
-    store.restore_to_clipboard(id).map_err(|e| e.to_string())?;
-    session_stats.pastes.fetch_add(1, Ordering::Relaxed);
-    Ok(())
-}
-
-#[tauri::command]
 pub fn delete_entry(id: i64, store: StoreState) -> Result<(), String> {
     store.delete_entry(id).map_err(|e| e.to_string())
 }
@@ -107,12 +96,6 @@ pub fn toggle_pin(id: i64, store: StoreState) -> Result<bool, String> {
 #[tauri::command]
 pub fn save_window_position(x: i32, y: i32, store: StoreState) -> Result<(), String> {
     store.save_window_position(x as i64, y as i64).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn set_clipboard_text(text: String) -> Result<(), String> {
-    let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
-    clipboard.set_text(text).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -277,5 +260,69 @@ pub fn reset_database(
     // Notify the popup so the clipboard list reloads to its now-empty state.
     use tauri::Emitter;
     let _ = app_handle.emit("clipboard-changed", ());
+    Ok(())
+}
+
+async fn do_paste_and_close(app_handle: &tauri::AppHandle, auto_paste: bool) {
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let _ = window.hide();
+    }
+    if !auto_paste {
+        return;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use std::mem::size_of;
+        use windows::Win32::UI::Input::KeyboardAndMouse::{
+            SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBD_EVENT_FLAGS, KEYBDINPUT,
+            KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_CONTROL, VK_V,
+        };
+        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        let make = |vk: VIRTUAL_KEY, flags: KEYBD_EVENT_FLAGS| INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 {
+                ki: KEYBDINPUT {
+                    wVk: vk,
+                    wScan: 0,
+                    dwFlags: flags,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        };
+        let inputs = [
+            make(VK_CONTROL, KEYBD_EVENT_FLAGS(0)),
+            make(VK_V,       KEYBD_EVENT_FLAGS(0)),
+            make(VK_V,       KEYEVENTF_KEYUP),
+            make(VK_CONTROL, KEYEVENTF_KEYUP),
+        ];
+        unsafe { SendInput(&inputs, size_of::<INPUT>() as i32) };
+    }
+}
+
+#[tauri::command]
+pub async fn paste_entry_and_close(
+    id: i64,
+    store: StoreState<'_>,
+    session_stats: SessionStatsState<'_>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    store.restore_to_clipboard(id).map_err(|e| e.to_string())?;
+    session_stats.pastes.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let auto_paste = store.get_settings().map(|s| s.auto_paste).unwrap_or(false);
+    do_paste_and_close(&app_handle, auto_paste).await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn paste_text_and_close(
+    text: String,
+    store: StoreState<'_>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+    clipboard.set_text(text).map_err(|e| e.to_string())?;
+    let auto_paste = store.get_settings().map(|s| s.auto_paste).unwrap_or(false);
+    do_paste_and_close(&app_handle, auto_paste).await;
     Ok(())
 }

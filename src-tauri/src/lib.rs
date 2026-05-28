@@ -223,7 +223,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_entries,
-            commands::set_clipboard,
+            commands::paste_entry_and_close,
+            commands::paste_text_and_close,
             commands::delete_entry,
             commands::get_settings,
             commands::save_settings,
@@ -232,7 +233,6 @@ pub fn run() {
             commands::hide_popup,
             commands::toggle_pin,
             commands::save_window_position,
-            commands::set_clipboard_text,
             commands::update_entry_content,
             commands::ocr_image,
             commands::get_snippets,
