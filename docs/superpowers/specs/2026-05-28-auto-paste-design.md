@@ -146,7 +146,12 @@ pasteTextAndClose(text: string): Promise<void> {
 }
 ```
 
-Existing `setClipboard`, `setClipboardText`, and `hidePopup` methods remain for callers that still need them (Escape-to-close, etc.).
+`setClipboard` and `setClipboardText` are **removed** from `TauriBridgeService` — all their callers are migrated to the new methods. The corresponding Rust commands `set_clipboard` and `set_clipboard_text` are also removed. `ClipboardService.setClipboard()` (which wrapped `bridge.setClipboard` + `bridge.hidePopup`) is removed too; its call site in `clipboard-tab.component.ts` calls `bridge.pasteEntryAndClose` directly.
+
+`hidePopup()` is **kept** — it is still used by non-paste close paths:
+- Escape to close in `clipboard-tab` and `snippets-tab`
+- `onEscape()` in image preview
+- `onOpenSettingsClick()` in `clipboard-list.component.ts` (hides popup before opening settings window)
 
 ### Updated call sites
 
