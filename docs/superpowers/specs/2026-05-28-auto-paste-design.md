@@ -28,50 +28,29 @@ A toggle in Settings → History (Verlauf) enables/disables the feature. It defa
 
 ## Rust Backend
 
-### Shared state: previous window handle
+### No stored window handle needed
 
-A new `Arc<AtomicUsize>` is added to app state under the type alias `PreviousHwnd`. It stores the raw HWND (Windows window handle) of the application that was focused immediately before Yank's popup appeared.
+When `window.hide()` is called, Windows automatically deactivates our window and restores focus to the previously-active application — standard Win32 behaviour (same as dismissing a context menu with Escape). There is no need to capture or store the previous HWND, and no `SetForegroundWindow` call is required.
 
-```rust
-pub type PreviousHwnd = AtomicUsize;
-```
+### Shared paste-and-close helper
 
-It is managed via `app.manage(Arc::new(AtomicUsize::new(0)))` in `lib.rs`. In `show_popup()` it is retrieved via `app.state::<Arc<PreviousHwnd>>()` — no signature change needed.
-
-In `windows.rs` → `show_popup()`, **before** calling `window.show()`:
-```rust
-#[cfg(target_os = "windows")]
-{
-    use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
-    let hwnd = unsafe { GetForegroundWindow() };
-    app.state::<Arc<PreviousHwnd>>().store(hwnd.0 as usize, Ordering::Relaxed);
-}
-```
-
-### Shared paste-and-close helper (Windows-only)
-
-A private async Rust function `do_paste_and_close` in `commands.rs` (or a new `paste.rs` module). Uses `tokio::time::sleep` so the delay is non-blocking:
+A private async function `do_paste_and_close` in `commands.rs`. Uses `tokio::time::sleep` so the delay is non-blocking:
 
 ```rust
-async fn do_paste_and_close(app_handle: &AppHandle, prev_hwnd: usize, auto_paste: bool) {
-    // 1. Hide the popup
+async fn do_paste_and_close(app_handle: &AppHandle, auto_paste: bool) {
+    // 1. Hide the popup — Windows restores focus to the previous app automatically
     if let Some(window) = app_handle.get_webview_window("main") {
         let _ = window.hide();
     }
-    if !auto_paste || prev_hwnd == 0 {
+    if !auto_paste {
         return;
     }
-    // 2. Restore focus and send Ctrl+V (Windows only)
+    // 2. Wait for focus transition, then send Ctrl+V to whichever window now has focus
     #[cfg(target_os = "windows")]
     {
-        use windows::Win32::Foundation::HWND;
-        use windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow;
         use windows::Win32::UI::Input::KeyboardAndMouse::{
             SendInput, INPUT, KEYEVENTF_KEYUP, VK_CONTROL, VK_V,
         };
-        unsafe {
-            SetForegroundWindow(HWND(prev_hwnd as isize));
-        }
         tokio::time::sleep(std::time::Duration::from_millis(150)).await;
         let inputs = [
             make_key_input(VK_CONTROL.0, 0),
@@ -84,8 +63,6 @@ async fn do_paste_and_close(app_handle: &AppHandle, prev_hwnd: usize, auto_paste
 }
 ```
 
-If `prev_hwnd` is 0 (e.g. popup opened via tray icon with no prior window), the paste step is silently skipped.
-
 ### New Tauri commands
 
 Both are `async fn` so the 150 ms sleep does not block the Tauri event loop:
@@ -96,7 +73,6 @@ pub async fn paste_entry_and_close(
     id: i64,
     store: StoreState<'_>,
     session_stats: SessionStatsState<'_>,
-    prev_hwnd: State<'_, Arc<PreviousHwnd>>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
     store.restore_to_clipboard(id).map_err(|e| e.to_string())?;
@@ -104,15 +80,13 @@ pub async fn paste_entry_and_close(
     let auto_paste = store.get_settings()
         .map(|s| s.auto_paste)
         .unwrap_or(false);
-    let hwnd = prev_hwnd.load(Ordering::Relaxed);
-    do_paste_and_close(&app_handle, hwnd, auto_paste).await;
+    do_paste_and_close(&app_handle, auto_paste).await;
     Ok(())
 }
 
 #[tauri::command]
 pub async fn paste_text_and_close(
     text: String,
-    prev_hwnd: State<'_, Arc<PreviousHwnd>>,
     store: StoreState<'_>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
@@ -121,20 +95,19 @@ pub async fn paste_text_and_close(
     let auto_paste = store.get_settings()
         .map(|s| s.auto_paste)
         .unwrap_or(false);
-    let hwnd = prev_hwnd.load(Ordering::Relaxed);
-    do_paste_and_close(&app_handle, hwnd, auto_paste).await;
+    do_paste_and_close(&app_handle, auto_paste).await;
     Ok(())
 }
 ```
 
-Both commands are registered in `lib.rs` → `invoke_handler`.
+Both commands are registered in `lib.rs` → `invoke_handler`. The old `set_clipboard` and `set_clipboard_text` commands are removed.
 
 ---
 
 ## Angular Frontend
 
 ### `TauriBridgeService`
-Two new methods replacing the old scattered `setClipboard`/`setClipboardText` + `hidePopup` combinations:
+Two new methods replace the old `setClipboard`/`setClipboardText` + `hidePopup` combinations:
 
 ```ts
 pasteEntryAndClose(id: number): Promise<void> {
@@ -146,7 +119,7 @@ pasteTextAndClose(text: string): Promise<void> {
 }
 ```
 
-`setClipboard` and `setClipboardText` are **removed** from `TauriBridgeService` — all their callers are migrated to the new methods. The corresponding Rust commands `set_clipboard` and `set_clipboard_text` are also removed. `ClipboardService.setClipboard()` (which wrapped `bridge.setClipboard` + `bridge.hidePopup`) is removed too; its call site in `clipboard-tab.component.ts` calls `bridge.pasteEntryAndClose` directly.
+`setClipboard` and `setClipboardText` are **removed** from `TauriBridgeService` — all their callers are migrated to the new methods. `ClipboardService.setClipboard()` (which wrapped `bridge.setClipboard` + `bridge.hidePopup`) is removed too; its call site in `clipboard-tab.component.ts` calls `bridge.pasteEntryAndClose` directly.
 
 `hidePopup()` is **kept** — it is still used by non-paste close paths:
 - Escape to close in `clipboard-tab` and `snippets-tab`
@@ -162,7 +135,7 @@ pasteTextAndClose(text: string): Promise<void> {
 | `clipboard-tab.component.ts` → `onTransformApplied()` | `bridge.setClipboardText(text)` + `bridge.hidePopup()` | `bridge.pasteTextAndClose(text)` |
 | `clipboard-tab.component.ts` → `onMergeApplied()` | `bridge.setClipboardText(merged)` + `bridge.hidePopup()` | `bridge.pasteTextAndClose(merged)` |
 | `image-preview.component.ts` → `copyToClipboard()` | `bridge.setClipboard(id)` + `bridge.hidePopup()` | `bridge.pasteEntryAndClose(id)` |
-| `snippets-tab.component.ts` → snippet paste | `bridge.setClipboardText(text)` + `bridge.hidePopup()` | `bridge.pasteTextAndClose(text)` |
+| `snippets-tab.component.ts` → snippet paste (×2) | `bridge.setClipboardText(text)` + `bridge.hidePopup()` | `bridge.pasteTextAndClose(text)` |
 
 `SettingsService` is **not** injected into any of these — the backend reads `auto_paste` from the settings store itself, keeping the frontend call sites free of that concern.
 
@@ -199,8 +172,7 @@ AUTO_PASTE_LABEL: 'Auto-Einfügen',
 
 ## Edge Cases
 
-- **HWND is 0**: popup opened via tray icon with no prior app focused. `do_paste_and_close` skips the paste silently.
+- **No prior focused window** (popup opened from tray): after `window.hide()`, Windows will focus the desktop or taskbar. `SendInput(Ctrl+V)` targets whatever has focus — likely a no-op. Acceptable behaviour.
 - **Escape to close**: calls `bridge.hidePopup()` directly — never calls `pasteEntryAndClose` or `pasteTextAndClose`, so auto-paste is not triggered.
 - **Image paste**: uses `pasteEntryAndClose(id)` — works in any application that accepts image paste (browsers, chat apps, image editors); silently ignored elsewhere.
-- **Cross-platform**: `SetForegroundWindow` and `SendInput` are behind `#[cfg(target_os = "windows")]`. The `do_paste_and_close` function compiles on all platforms; the paste step is simply omitted on non-Windows.
-- **Invalid/stale HWND**: `SetForegroundWindow` returns a bool; failure is non-fatal and logged as a warning. The clipboard content is already set before the paste attempt.
+- **Cross-platform**: `SendInput` is behind `#[cfg(target_os = "windows")]`. `do_paste_and_close` compiles on all platforms; the paste step is simply omitted on non-Windows.
