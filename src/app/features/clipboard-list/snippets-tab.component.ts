@@ -431,8 +431,7 @@ export class SnippetsTabComponent implements OnInit {
   protected async onPlaceholderConfirmed(text: string): Promise<void> {
     this.showPlaceholderOverlay.set(false);
     this.placeholderSnippet.set(null);
-    await this.bridge.setClipboardText(text);
-    this.bridge.hidePopup();
+    await this.bridge.pasteTextAndClose(text);
   }
 
   protected onPlaceholderCancelled(): void {
@@ -503,7 +502,7 @@ export class SnippetsTabComponent implements OnInit {
       this.placeholderSnippet.set(snippet);
       this.showPlaceholderOverlay.set(true);
     } else {
-      this.bridge.setClipboardText(snippet.content).then(() => this.bridge.hidePopup());
+      this.bridge.pasteTextAndClose(snippet.content);
     }
   }
 

@@ -21,19 +21,30 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.com
 @Component({
   selector: 'app-image-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgIcon, HlmIcon, HlmButton, TranslatePipe, PageHeaderComponent, LoadingSpinnerComponent, EmptyStateComponent],
+  imports: [
+    NgIcon,
+    HlmIcon,
+    HlmButton,
+    TranslatePipe,
+    PageHeaderComponent,
+    LoadingSpinnerComponent,
+    EmptyStateComponent,
+  ],
   providers: [provideIcons({ lucideLoader, lucideCopy, lucideX, lucideCheck })],
   host: { '(keydown.escape)': 'onEscape()' },
   template: `
     <div class="flex flex-col h-full bg-zinc-950">
-
       <app-page-header variant="dark" [dragRegion]="false">
         <ng-container start>
-          <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">{{ 'IMAGE_PREVIEW.TITLE' | translate }}</span>
+          <span class="text-[13px] font-semibold text-zinc-200 tracking-tight">{{
+            'IMAGE_PREVIEW.TITLE' | translate
+          }}</span>
         </ng-container>
         <ng-container end>
           <button
-            hlmBtn variant="outline" size="sm"
+            hlmBtn
+            variant="outline"
+            size="sm"
             class="flex items-center gap-1.5"
             [disabled]="copying()"
             (click)="copyToClipboard()"
@@ -47,7 +58,9 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.com
             }
           </button>
           <button
-            hlmBtn variant="ghost" size="sm"
+            hlmBtn
+            variant="ghost"
+            size="sm"
             class="w-8 h-8 p-0 flex items-center justify-center"
             (click)="closeWindow()"
             [title]="'IMAGE_PREVIEW.CLOSE' | translate"
@@ -80,7 +93,9 @@ import { EmptyStateComponent } from '../../shared/ui/empty-state/empty-state.com
       </div>
 
       @if (copied()) {
-        <div class="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl">
+        <div
+          class="fixed bottom-4 right-4 flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl"
+        >
           <ng-icon hlm size="sm" name="lucideCheck" class="text-green-400 shrink-0" />
           <span class="text-[12px] text-zinc-200">{{ 'IMAGE_PREVIEW.COPIED' | translate }}</span>
         </div>
@@ -137,8 +152,7 @@ export class ImagePreviewComponent {
   protected async copyToClipboard(): Promise<void> {
     this.copying.set(true);
     try {
-      await this.bridge.setClipboard(this.entryId());
-      await this.bridge.hidePopup();
+      await this.bridge.pasteEntryAndClose(this.entryId());
       this.router.navigate(['/']);
     } finally {
       this.copying.set(false);

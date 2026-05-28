@@ -329,7 +329,7 @@ export class ClipboardTabComponent {
     if (entry.kind === 'image') {
       this.router.navigate(['/preview'], { queryParams: { id: entry.id } });
     } else {
-      this.clipboard.setClipboard(entry.id);
+      this.bridge.pasteEntryAndClose(entry.id);
     }
   }
 
@@ -398,8 +398,7 @@ export class ClipboardTabComponent {
   protected async onEditConfirm(text: string): Promise<void> {
     this.selection.exitEditMode();
     try {
-      await this.bridge.setClipboardText(text);
-      this.bridge.hidePopup();
+      await this.bridge.pasteTextAndClose(text);
     } catch {
       toast.error(this.translate.instant('CLIPBOARD.EDIT_COPY_FAILED'));
     }
@@ -411,8 +410,7 @@ export class ClipboardTabComponent {
 
   protected async onTransformApplied(event: { transformedContent: string }): Promise<void> {
     this.showTransformPicker.set(false);
-    await this.bridge.setClipboardText(event.transformedContent);
-    this.bridge.hidePopup();
+    await this.bridge.pasteTextAndClose(event.transformedContent);
   }
 
   protected onTransformCancelled(): void {
@@ -585,8 +583,7 @@ export class ClipboardTabComponent {
     this.showMergePicker.set(false);
     this.selection.clearMarks();
     try {
-      await this.bridge.setClipboardText(merged);
-      this.bridge.hidePopup();
+      await this.bridge.pasteTextAndClose(merged);
     } catch {
       toast.error(this.translate.instant('CLIPBOARD.EDIT_COPY_FAILED'));
     }
