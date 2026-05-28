@@ -6,7 +6,7 @@ import { AppSettings } from '../../../core/models/settings.model';
 
 export type HistorySettings = Pick<
   AppSettings,
-  'maxEntries' | 'deleteAfterMaxEntries' | 'maxDays' | 'deleteAfterDays'
+  'maxEntries' | 'deleteAfterMaxEntries' | 'maxDays' | 'deleteAfterDays' | 'autoPaste'
 >;
 
 @Component({
@@ -74,6 +74,17 @@ export type HistorySettings = Pick<
           />
         </div>
       </div>
+
+      <div class="flex items-center justify-between gap-4 py-3.5">
+        <label class="text-[13px] text-foreground" for="auto-paste-switch">
+          {{ 'SETTINGS.AUTO_PASTE_LABEL' | translate }}
+        </label>
+        <hlm-switch
+          id="auto-paste-switch"
+          [checked]="settings().autoPaste"
+          (checkedChange)="onAutoPasteChange($event)"
+        />
+      </div>
     </div>
   `,
 })
@@ -98,5 +109,9 @@ export class SettingsHistoryComponent {
 
   protected onDeleteAfterDaysChange(checked: boolean): void {
     this.settings.update((s) => ({ ...s, deleteAfterDays: checked }));
+  }
+
+  protected onAutoPasteChange(checked: boolean): void {
+    this.settings.update((s) => ({ ...s, autoPaste: checked }));
   }
 }

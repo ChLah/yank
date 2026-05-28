@@ -198,6 +198,7 @@ export class SettingsComponent {
     deleteAfterMaxEntries: this.settings().deleteAfterMaxEntries,
     maxDays: this.settings().maxDays,
     deleteAfterDays: this.settings().deleteAfterDays,
+    autoPaste: this.settings().autoPaste,
   }));
 
   protected readonly privacySlice = computed(() => ({

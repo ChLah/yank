@@ -35,6 +35,7 @@ export const de: Translation = {
     EXCLUDED_APPS_PLACEHOLDER: 'z.B. KeePass.exe',
     EXCLUDED_APPS_ADD: 'App hinzufügen',
     EXCLUDED_APPS_ADDED: 'hinzugefügt {{date}}',
+    AUTO_PASTE_LABEL: 'Auto-Einfügen',
     UPDATES_AUTO_CHECK_LABEL: 'Beim Start automatisch nach Updates suchen',
     UPDATES_CURRENT_VERSION: 'Aktuelle Version',
     UPDATES_CHECK_NOW: 'Nach Updates suchen',
