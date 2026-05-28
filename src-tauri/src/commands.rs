@@ -277,6 +277,9 @@ async fn do_paste_and_close(app_handle: &tauri::AppHandle, auto_paste: bool) {
             SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBD_EVENT_FLAGS, KEYBDINPUT,
             KEYEVENTF_KEYUP, VIRTUAL_KEY, VK_CONTROL, VK_V,
         };
+        // Windows needs ~150 ms to fully relinquish focus from our Webview
+        // window before Ctrl+V can be safely injected into the previously-
+        // focused application.
         tokio::time::sleep(std::time::Duration::from_millis(150)).await;
         let make = |vk: VIRTUAL_KEY, flags: KEYBD_EVENT_FLAGS| INPUT {
             r#type: INPUT_KEYBOARD,
@@ -308,7 +311,7 @@ pub async fn paste_entry_and_close(
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     store.restore_to_clipboard(id).map_err(|e| e.to_string())?;
-    session_stats.pastes.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    session_stats.pastes.fetch_add(1, Ordering::Relaxed);
     let auto_paste = store.get_settings().map(|s| s.auto_paste).unwrap_or(false);
     do_paste_and_close(&app_handle, auto_paste).await;
     Ok(())
@@ -318,10 +321,12 @@ pub async fn paste_entry_and_close(
 pub async fn paste_text_and_close(
     text: String,
     store: StoreState<'_>,
+    session_stats: SessionStatsState<'_>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
     clipboard.set_text(text).map_err(|e| e.to_string())?;
+    session_stats.pastes.fetch_add(1, Ordering::Relaxed);
     let auto_paste = store.get_settings().map(|s| s.auto_paste).unwrap_or(false);
     do_paste_and_close(&app_handle, auto_paste).await;
     Ok(())
