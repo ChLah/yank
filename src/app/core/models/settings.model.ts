@@ -14,6 +14,7 @@ export interface AppSettings {
   maxDays: number;
   windowPosition: WindowPositionMode;
   autoCheckUpdates: boolean;
+  autoPaste: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -28,4 +29,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxDays: 30,
   windowPosition: 'cursor',
   autoCheckUpdates: true,
+  autoPaste: true,
 };
