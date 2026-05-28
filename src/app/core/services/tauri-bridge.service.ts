@@ -14,8 +14,8 @@ export class TauriBridgeService {
     return invoke<ClipboardEntry[]>('get_entries');
   }
 
-  setClipboard(id: number): Promise<void> {
-    return invoke('set_clipboard', { id });
+  pasteEntryAndClose(id: number): Promise<void> {
+    return invoke('paste_entry_and_close', { id });
   }
 
   deleteEntry(id: number): Promise<void> {
@@ -50,8 +50,8 @@ export class TauriBridgeService {
     return invoke('save_window_position', { x, y });
   }
 
-  setClipboardText(text: string): Promise<void> {
-    return invoke('set_clipboard_text', { text });
+  pasteTextAndClose(text: string): Promise<void> {
+    return invoke('paste_text_and_close', { text });
   }
 
   updateEntryContent(id: number, content: string): Promise<void> {

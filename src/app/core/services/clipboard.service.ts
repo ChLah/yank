@@ -28,11 +28,6 @@ export class ClipboardService {
     this._entries.reload();
   }
 
-  async setClipboard(id: number): Promise<void> {
-    await this.bridge.setClipboard(id);
-    await this.bridge.hidePopup();
-  }
-
   async deleteEntry(id: number): Promise<void> {
     await this.bridge.deleteEntry(id);
     this._entries.reload();
